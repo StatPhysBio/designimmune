@@ -23,17 +23,17 @@ t2 = 0.5 # dissociation time
 n, m = 4, 2
 
 # cells
-N0 = 1000
+N0 = 10000
 Treg0 = 10000 # initial Tregs
-g_NE_max = 0.36
-g_NM_max = 0.12
+g_NE_max = 0 #0.36
+g_NM_max = 4 #0.12
 b_E_max = 2.0
-g_ME_max = 0 #4.0
-g_EM_max = 0.036
+g_ME_max = 6.0
+g_EM_max = 0.02
 
 k_E = 10**(-11)*(6.0221408*10**23)*50*10**(-6)
 k_M = k_E
-d_E_max = 2.5
+d_E_max = 1
 g_T_max = 4
 d_T_max = 6
 
@@ -105,7 +105,7 @@ def b_T(T):
 @nb.njit
 def g_ME(t1,a1,E,T):
 
-    return g_ME_max*(hl_u(c1_ss(t1,a1, E, T),k_M))
+    return g_ME_max*p_A(t1,a1)
 
 @nb.njit
 def g_EM(T):
@@ -113,9 +113,9 @@ def g_EM(T):
     return g_EM_max
 
 @nb.njit
-def d_E(t1,a1, E, T):
+def d_E(t1,a1, E, T, b_E_pop = b_E_max):
     
-    return d_E_max*(1-hl_u(c1_ss(t1,a1, E, T), k_E))
+    return (b_E_pop + d_E_max)*(1-hl_u(c1_ss(t1,a1, E, T), k_E))
 
 @nb.njit
 def d_T(T):
@@ -139,14 +139,40 @@ def state_dyn(t, z, b_a1, t1, d_a1, T_a1):
             E*g_EM(T),\
             0*T*(b_T(T) - d_T(T))])
 
+@nb.njit
+def pop_state_dyn(t, z, b_a1, t1, d_a1, T_a1, b_E_pop, g_ME_pop):
+    
+    
+    a1, N, E, cM, eM, T = z
+    
+    #P = P1(a1,E)[0] # set to 0 for noiseless, 1 for noise
+    #P_vec[np.argmax(P_vec == -999)] = P # (1) uncomment to debug noise
+    
+    return np.asarray([a1*b_a1*(1- a1/a1_max)*(a1 >= a1_0) - d_a1*a1*E,\
+            -(g_NE(T)+g_NM(T))*N*p_A(t1,a1),\
+            g_NE(T)*N*p_A(t1,a1) + cM*g_ME_pop*p_A(t1,a1) +  E*(b_E_pop - g_EM(T) - d_E(t1,a1,E,T,b_E_pop)), \
+            g_NM(T)*N*p_A(t1,a1) - cM*g_ME_pop*p_A(t1,a1), \
+            E*g_EM(T),\
+            0*T*(b_T(T) - d_T(T))])
+
 ### (3) Code to run individual simulation
 # Run single simulation and plot outputs
-def stoch_sim(b_a1 = 2, t1 = 10, d_a1 = 3.8*10**(-4), T_a1 = 10, duration = 20, steps = 10**4):
+duration = 20
+steps = 10**4
+
+def stoch_sim(b_a1 = 2, t1 = 10, d_a1 = 3.8*10**(-4), T_a1 = 10, noise_model = "pop", noise_cv = 0.5):
+
     
     dt = duration/steps
     ts = np.linspace(0, duration, steps + 1)
+    if noise_model == "pop":
+        b_E_pop = np.random.lognormal(mean = np.log(b_E_max), sigma = noise_cv*np.abs(np.log(b_E_max)))
+        g_ME_pop = np.random.lognormal(mean = np.log(g_ME_max), sigma = noise_cv*np.abs(np.log(g_ME_max)))
     
-    states = solve_ivp(state_dyn, [0, duration], init_state,
+        states = solve_ivp(pop_state_dyn, [0, duration], init_state,
+                    dense_output=True, args=[b_a1, t1, d_a1, T_a1, b_E_pop, g_ME_pop]).sol(ts).T
+    else:
+        states = solve_ivp(state_dyn, [0, duration], init_state,
                     dense_output=True, args=[b_a1, t1, d_a1, T_a1]).sol(ts).T
 
     a1, N, E, cM, eM, T = states[:,0], states[:,1], states[:,2], states[:,3], states[:,4], states[:,5]
