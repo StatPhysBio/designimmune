@@ -160,14 +160,14 @@ def pop_state_dyn(t, z, b_a1, t1, d_a1, T_a1, b_E_pop, g_ME_pop):
 duration = 20
 steps = 10**4
 
-def stoch_sim(b_a1 = 2, t1 = 10, d_a1 = 3.8*10**(-4), T_a1 = 10, noise_model = "pop", noise_cv = 0.5):
+def stoch_sim(b_a1 = 2, t1 = 10, d_a1 = 3.8*10**(-4), T_a1 = 10, noise_model = "pop", noise_cv = [0.5,0.5]):
 
     
     dt = duration/steps
     ts = np.linspace(0, duration, steps + 1)
     if noise_model == "pop":
-        b_E_pop = np.random.lognormal(mean = np.log(b_E_max), sigma = noise_cv*np.abs(np.log(b_E_max)))
-        g_ME_pop = np.random.lognormal(mean = np.log(g_ME_max), sigma = noise_cv*np.abs(np.log(g_ME_max)))
+        b_E_pop = np.random.lognormal(mean = np.log(b_E_max), sigma = noise_cv[0]*np.abs(np.log(b_E_max)))
+        g_ME_pop = np.random.lognormal(mean = np.log(g_ME_max), sigma = noise_cv[1]*np.abs(np.log(g_ME_max)))
     
         states = solve_ivp(pop_state_dyn, [0, duration], init_state,
                     dense_output=True, args=[b_a1, t1, d_a1, T_a1, b_E_pop, g_ME_pop]).sol(ts).T
