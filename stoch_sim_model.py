@@ -6,6 +6,7 @@ from scipy.interpolate import interp1d
 from scipy import special
 from math import erf
 import numba as nb
+import os as os
 
 ### (1) Define simulation parameters
 # Define simulation parameters
@@ -180,21 +181,29 @@ def sum_sim(a1_0 = a1_0, b_a1 = b_a1, t1 = t1, d_a1 = d_a1, T_a1 = T_a1, noise_c
     # compute state and costate dynamics
     dt = duration/steps
     a1, N, E, cM, eM, T, ts = stoch_sim(a1_0, b_a1, t1, d_a1, T_a1, noise_cv = noise_cv)
-    run_data = [a1_0, b_a1, t1, d_a1, np.sum(a1*dt), np.argmax(a1)*dt, np.max(E)/(np.argmax(E)*dt), \
-                np.argmax(E)*dt, (eM[-1]+cM[-1])/np.max(E), np.sum(E*dt)]
+    run_data = [a1_0, b_a1, t1, d_a1, np.sum(np.log(a1+1)*dt), np.argmax(a1)*dt, np.max(E)/(np.argmax(E)*dt), \
+                np.argmax(E)*dt, (eM[-1]+cM[-1])/np.max(E), np.sum(np.log(E+1)*dt)]
     return run_data
 
-stat_names = [r"$a_1^0$", r"$b_{a_1}$",r"$t_1$",r"$d_{a_1}$",r"$\int a_1 dt$",\
+stat_names = [r"$a_1^0$", r"$b_{a_1}$",r"$t_1$",r"$d_{a_1}$",r"$\int \log(a_1+1) dt$",\
                              r"$T_{a_1}^{max}$", r"$\frac{E^{max}}{T_{E}^{max}}$",r"$T_{E}^{max}$",\
-                             r"$\frac{(cM + eM)^\infty}{E^{max}}$",r"$\int E dt$"]
+                             r"$\frac{(cM + eM)^\infty}{E^{max}}$",r"$\int \log(E+1) dt$"]
+stat_names_for_df = ['a1_0','b_a1', 't_1','d_a1',\
+                     'int_loga1','T_a1_max', 'E_max_T_E_max',\
+                     'T_E_max','mem_frac','int_logE']
 
 ### (5) define basic mutual information function
 from sklearn.metrics import mutual_info_score
 
-def calc_MI(x, y):
-    bx = np.histogram_bin_edges(x, bins="auto", range=None, weights=None)
-    by = np.histogram_bin_edges(y, bins="auto", range=None, weights=None)
+def calc_MI(x, y, bin_num = 500):
+    # bx = np.histogram_bin_edges(x, bins="sqrt", range=None, weights=None)
+    # by = np.histogram_bin_edges(y, bins="sqrt", range=None, weights=None)
     
-    c_xy = np.histogram2d(x, y, [bx,by])[0]
-    mi = mutual_info_score(None, None, contingency=c_xy)/np.log(2)
-    return mi
+    c_xy = np.histogram2d(x, y, bin_num)[0]
+    mi_raw = mutual_info_score(None, None, contingency=c_xy)/np.log(2)
+    
+    # MI correction by shuffling data
+    c_xy_shuffle = np.histogram2d(x, y[np.random.permutation(y.shape[0])], bin_num)[0]
+    mi_correction = mutual_info_score(None, None, contingency=c_xy_shuffle)/np.log(2)
+    
+    return mi_raw - mi_correction
