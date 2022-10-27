@@ -26,7 +26,7 @@ n, m = 4, 2
 # cells
 N0 = 10000
 Treg0 = 10000 # initial Tregs
-g_NE_max = 0 #0.36
+g_NE_max = 0.10 #0.36
 g_NM_max = 4 #0.12
 b_E_max = 2.0
 g_ME_max = 6.0
@@ -35,7 +35,7 @@ g_EM_max = 0.07
 k_E = 10**(-11)*(6.0221408*10**23)*50*10**(-6)
 k_M = k_E
 d_E_max = 1
-g_T_max = 4
+b_T_max = 4
 d_T_max = 6
 
 # cytokines
@@ -84,14 +84,14 @@ def c1_ss(t1,a1, E, T, b_c1_pop = b_c1):
     return (E*b_c1_pop*p_A(t1,a1) + I_c1)/(T*f_T + 1/tau_c)
 
 @nb.njit
-def g_NE(T):
+def g_NE(T, max_val = g_NE_max):
     
-    return g_NE_max
+    return max_val
 
 @nb.njit
-def g_NM(T):
+def g_NM(T, max_val = g_NM_max):
     
-    return g_NM_max
+    return max_val
 
 @nb.njit
 def b_E(T):
@@ -101,17 +101,17 @@ def b_E(T):
 @nb.njit
 def b_T(T):
     
-    return g_T_max
+    return b_T_max
 
 @nb.njit
-def g_ME(t1,a1,E,T):
+def g_ME(t1,a1,E,T, max_val = g_ME_max):
 
-    return g_ME_max*p_A(t1,a1)
+    return max_val*p_A(t1,a1)
 
 @nb.njit
-def g_EM(t1,a1,E,T):
+def g_EM(t1,a1,E,T, max_val = g_EM_max):
     
-    return g_EM_max*(1-p_A(t1,a1))
+    return max_val*(1-p_A(t1,a1))
 
 @nb.njit
 def d_E(t1,a1, E, T, b_E_pop = b_E_max, b_c1_pop = b_c1):
@@ -138,16 +138,17 @@ def state_dyn(t, z, a1_0, b_a1, t1, d_a1, T_a1):
             0*T*(b_T(T) - d_T(T))])
 
 @nb.njit
-def pop_state_dyn(t, z, a1_0, b_a1, t1, d_a1, b_E_pop, g_ME_pop, b_c1_pop, T_a1 = T_a1):
+def pop_state_dyn(t, z, a1_0, b_a1, t1, d_a1, b_E_pop, b_c1_pop, 
+                  g_NE_pop, g_NM_pop, g_ME_pop, g_EM_pop, T_a1 = T_a1):
     
     
     a1, N, E, cM, eM, T = z
     
     return np.asarray([a1*b_a1*(1- a1/a1_max)*(1 - (a1*b_a1*(1 - a1/a1_max) - d_a1*a1*E <= 0)*(a1 <= mu_theta))*(a1 >= a1_0) - d_a1*a1*E,\
-            -(g_NE(T)+g_NM(T))*N*p_A(t1,a1),\
-            g_NE(T)*N*p_A(t1,a1) + cM*g_ME_pop*p_A(t1, a1) +  E*(b_E_pop - g_EM(t1,a1,E,T) - d_E(t1, a1, E, T, b_E_pop, b_c1_pop)), \
-            g_NM(T)*N*p_A(t1, a1) - cM*g_ME_pop*p_A(t1, a1), \
-            E*g_EM(t1, a1, E, T),\
+            -(g_NE(T, g_NE_pop)+g_NM(T, g_NM_pop))*N*p_A(t1,a1),\
+            g_NE(T, g_NE_pop)*N*p_A(t1,a1) + cM*g_ME(t1,a1,E,T, g_ME_pop) +  E*(b_E_pop - g_EM(t1,a1,E,T, g_EM_pop) - d_E(t1, a1, E, T, b_E_pop, b_c1_pop)), \
+            g_NM(T, g_NM_pop)*N*p_A(t1, a1) - cM*g_ME(t1,a1,E,T, g_ME_pop), \
+            E*g_EM(t1, a1, E, T, g_EM_pop),\
             0*T*(b_T(T) - d_T(T))])
 
 ### (3) Code to run individual simulation
@@ -155,19 +156,30 @@ def pop_state_dyn(t, z, a1_0, b_a1, t1, d_a1, b_E_pop, g_ME_pop, b_c1_pop, T_a1 
 duration = 20
 steps = 10**4
 
-def stoch_sim(a1_0 = a1_0, b_a1 = b_a1, t1 = t1, d_a1 = d_a1, T_a1 = T_a1, noise_model = "pop", noise_cv = [0.0, 0.0, 0.0]):
+def stoch_sim(a1_0 = a1_0, b_a1 = b_a1, t1 = t1, d_a1 = d_a1, T_a1 = T_a1,
+              diff_rates = [g_NE_max, g_NM_max, g_ME_max, g_EM_max],
+              noise_model = "pop", noise_cv = [0.5,0,0,0,0,0]):
 
     
     dt = duration/steps
     ts = np.linspace(0, duration, steps + 1)
     
     if noise_model == "pop":
-        b_E_pop = np.random.lognormal(mean = np.log(b_E_max), sigma = noise_cv[0]*np.abs(np.log(b_E_max)))
-        g_ME_pop = np.random.lognormal(mean = np.log(g_ME_max), sigma = noise_cv[1]*np.abs(np.log(g_ME_max)))
-        b_c1_pop = np.random.lognormal(mean = np.log(b_c1), sigma = noise_cv[2]*np.abs(np.log(b_c1)))
+        b_E_pop = (b_E_max > 0)*np.random.lognormal(mean = np.log(b_E_max/np.sqrt(1 + noise_cv[0]**2) + (b_E_max == 0)), sigma = np.sqrt(np.log(1+ noise_cv[0]**2)))
+        
+        b_c1_pop = (b_c1 > 0)*np.random.lognormal(mean = np.log(b_c1/np.sqrt(1 + noise_cv[1]**2) + (b_c1 == 0)), sigma = np.sqrt(np.log(1+ noise_cv[1]**2)))
+        
+        g_NE_pop = (diff_rates[0] > 0)*np.random.lognormal(mean = np.log(diff_rates[0]/np.sqrt(1 + noise_cv[2]**2) + (diff_rates[0] == 0)), sigma = np.sqrt(np.log(1+ noise_cv[2]**2)))
+        
+        g_NM_pop = (diff_rates[1] > 0)*np.random.lognormal(mean = np.log(diff_rates[1]/np.sqrt(1 + noise_cv[3]**2) + (diff_rates[1] == 0)), sigma = np.sqrt(np.log(1+ noise_cv[3]**2)))
+        
+        g_ME_pop = (diff_rates[2] > 0)*np.random.lognormal(mean = np.log(diff_rates[2]/np.sqrt(1 + noise_cv[4]**2) + (diff_rates[2] == 0)), sigma = np.sqrt(np.log(1+ noise_cv[4]**2)))
+        
+        g_EM_pop = (diff_rates[3] > 0)*np.random.lognormal(mean = np.log(diff_rates[3]/np.sqrt(1 + noise_cv[5]**2) + (diff_rates[3] == 0)), sigma = np.sqrt(np.log(1+ noise_cv[5]**2)))
+
         
         states = solve_ivp(pop_state_dyn, [0, duration], np.concatenate(([a1_0], init_state), axis = None),
-                    dense_output=True, args=[a1_0, b_a1, t1, d_a1, b_E_pop, g_ME_pop, b_c1_pop, T_a1,]).sol(ts).T
+                    dense_output=True, args=[a1_0, b_a1, t1, d_a1, b_E_pop, b_c1_pop, g_NE_pop, g_NM_pop, g_ME_pop, g_EM_pop, T_a1]).sol(ts).T
     else:
         states = solve_ivp(state_dyn, [0, duration], np.concatenate(([a1_0],init_state), axis = None),
                     dense_output=True, args=[a1_0, b_a1, t1, d_a1, T_a1]).sol(ts).T
@@ -177,20 +189,30 @@ def stoch_sim(a1_0 = a1_0, b_a1 = b_a1, t1 = t1, d_a1 = d_a1, T_a1 = T_a1, noise
     return a1, N, E, cM, eM, T, ts
 
 ### (4) Parallelize simulation runs
-def sum_sim(a1_0 = a1_0, b_a1 = b_a1, t1 = t1, d_a1 = d_a1, T_a1 = T_a1, noise_cv = [0.1,0.0,0.0]):
+def sum_sim(a1_0 = a1_0, b_a1 = b_a1, t1 = t1, d_a1 = d_a1, T_a1 = T_a1,
+            diff_rates = [g_NE_max, g_NM_max, g_ME_max, g_EM_max],
+            noise_cv = [0.1,0.0,0.0,0.0,0.0,0.0]):
     # compute state and costate dynamics
     dt = duration/steps
-    a1, N, E, cM, eM, T, ts = stoch_sim(a1_0, b_a1, t1, d_a1, T_a1, noise_cv = noise_cv)
-    run_data = [a1_0, b_a1, t1, d_a1, np.sum(np.log(a1+1)*dt), np.argmax(a1)*dt, np.max(E)/(np.argmax(E)*dt), \
-                np.argmax(E)*dt, (eM[-1]+cM[-1])/np.max(E), np.sum(np.log(E+1)*dt)]
+    a1, N, E, cM, eM, T, ts = stoch_sim(a1_0, b_a1, t1, d_a1, T_a1,
+                                        diff_rates = diff_rates,
+                                        noise_cv = noise_cv)
+    
+    run_data = [a1_0, b_a1, t1, d_a1, np.sum(np.log((a1+1)/np.argmax(a1)*dt)*dt), np.argmax(a1)*dt,
+                np.max(E)/(np.argmax(E)*dt), \
+                np.argmax(E)*dt, (eM[-1]+cM[-1])/np.max(E), np.sum(E*dt), np.sum(np.log(E+1)*dt),\
+                np.sum(np.log((E+eM+cM+1))*dt)]
+    
     return run_data
 
-stat_names = [r"$a_1^0$", r"$b_{a_1}$",r"$t_1$",r"$d_{a_1}$",r"$\int \log(a_1+1) dt$",\
-                             r"$T_{a_1}^{max}$", r"$\frac{E^{max}}{T_{E}^{max}}$",r"$T_{E}^{max}$",\
-                             r"$\frac{(cM + eM)^\infty}{E^{max}}$",r"$\int \log(E+1) dt$"]
+stat_names = [r"$a_1^0$", r"$b_{a_1}$",r"$t_1$",r"$d_{a_1}$",r"$\int \log\left(\frac{a_1+1}{T_{a_1}^{max}}\right) dt$",\
+              r"$T_{a_1}^{max}$", r"$\frac{E^{max}}{T_{E}^{max}}$",r"$T_{E}^{max}$",\
+              r"$\frac{(cM + eM)^\infty}{E^{max}}$",r"$\int E dt$", \
+              r"$\int \log\left(E+1\right) dt$",r"$\int \log\left(\frac{E+M+1}{T_{E}^{max}}\right) dt$"]
+
 stat_names_for_df = ['a1_0','b_a1', 't_1','d_a1',\
                      'int_loga1','T_a1_max', 'E_max_T_E_max',\
-                     'T_E_max','mem_frac','int_logE']
+                     'T_E_max','mem_frac','int_logE', 'int_logEM']
 
 ### (5) define basic mutual information function
 from sklearn.metrics import mutual_info_score

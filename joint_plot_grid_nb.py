@@ -247,3 +247,4 @@ def joint_plot_grid(in_x: list, in_y: list, nbins_x: int=20, nbins_y: int=20,
         plotter(fig, x, y, idx)
     
     plt.show()
+    return fig
