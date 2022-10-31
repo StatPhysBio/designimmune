@@ -153,7 +153,7 @@ def pop_state_dyn(t, z, a1_0, b_a1, t1, d_a1, b_E_pop, b_c1_pop,
 
 ### (3) Code to run individual simulation
 # Run single simulation and plot outputs
-duration = 20
+duration = 10
 steps = 10**4
 
 def stoch_sim(a1_0 = a1_0, b_a1 = b_a1, t1 = t1, d_a1 = d_a1, T_a1 = T_a1,
@@ -198,14 +198,14 @@ def sum_sim(a1_0 = a1_0, b_a1 = b_a1, t1 = t1, d_a1 = d_a1, T_a1 = T_a1,
                                         diff_rates = diff_rates,
                                         noise_cv = noise_cv)
     
-    run_data = [a1_0, b_a1, t1, d_a1, np.sum(np.log((a1+1)/np.argmax(a1)*dt)*dt), np.argmax(a1)*dt,
+    run_data = [a1_0, b_a1, t1, d_a1, np.sum(np.log((a1+1))*dt), np.argmax(a1)*dt,
                 np.max(E)/(np.argmax(E)*dt), \
                 np.argmax(E)*dt, (eM[-1]+cM[-1])/np.max(E), np.sum(E*dt), np.sum(np.log(E+1)*dt),\
                 np.sum(np.log((E+eM+cM+1))*dt)]
     
     return run_data
 
-stat_names = [r"$a_1^0$", r"$b_{a_1}$",r"$t_1$",r"$d_{a_1}$",r"$\int \log\left(\frac{a_1+1}{T_{a_1}^{max}}\right) dt$",\
+stat_names = [r"$a_1^0$", r"$b_{a_1}$",r"$t_1$",r"$d_{a_1}$",r"$\int \log\left(a_1+1\right) dt$",\
               r"$T_{a_1}^{max}$", r"$\frac{E^{max}}{T_{E}^{max}}$",r"$T_{E}^{max}$",\
               r"$\frac{(cM + eM)^\infty}{E^{max}}$",r"$\int E dt$", \
               r"$\int \log\left(E+1\right) dt$",r"$\int \log\left(\frac{E+M+1}{T_{E}^{max}}\right) dt$"]
