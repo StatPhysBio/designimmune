@@ -7,6 +7,7 @@ from scipy import special
 from math import erf
 import numba as nb
 import os as os
+import pandas as pd
 
 ### (1) Define simulation parameters
 # Define simulation parameters
@@ -84,14 +85,14 @@ def c1_ss(t1,a1, E, T, b_c1_pop = b_c1):
     return (E*b_c1_pop*p_A(t1,a1) + I_c1)/(T*f_T + 1/tau_c)
 
 @nb.njit
-def g_NE(T, max_val = g_NE_max):
+def g_NE(t1,a1,E,T, max_val = g_NE_max):
     
-    return max_val
+    return max_val*p_A(t1,a1)
 
 @nb.njit
-def g_NM(T, max_val = g_NM_max):
+def g_NM(t1,a1,E,T, max_val = g_NM_max):
     
-    return max_val
+    return max_val*p_A(t1,a1)
 
 @nb.njit
 def b_E(T):
@@ -131,9 +132,9 @@ def state_dyn(t, z, a1_0, b_a1, t1, d_a1, T_a1):
     a1, N, E, cM, eM, T = z
     
     return np.asarray([a1*b_a1*(1- a1/a1_max)*(1 - (a1*b_a1*(1 - a1/a1_max) - d_a1*a1*E <= 0)*(a1 <= mu_theta))*(a1 >= a1_0) - d_a1*a1*E,\
-            -(g_NE(T)+g_NM(T))*N*p_A(t1,a1),\
-            g_NE(T)*N*p_A(t1,a1) + cM*g_ME(t1,a1,E,T) +  E*(b_E(T) - g_EM(t1,a1,E,T) - d_E(t1,a1,E,T)), \
-            g_NM(T)*N*p_A(t1,a1) - cM*g_ME(t1,a1,E,T), \
+            -(g_NE(t1,a1,E,T)+g_NM(t1,a1,E,T))*N,\
+            g_NE(t1,a1,E,T)*N + cM*g_ME(t1,a1,E,T) +  E*(b_E(T) - g_EM(t1,a1,E,T) - d_E(t1,a1,E,T)), \
+            g_NM(t1,a1,E,T)*N - cM*g_ME(t1,a1,E,T), \
             E*g_EM(t1,a1,E,T),\
             0*T*(b_T(T) - d_T(T))])
 
@@ -145,9 +146,24 @@ def pop_state_dyn(t, z, a1_0, b_a1, t1, d_a1, b_E_pop, b_c1_pop,
     a1, N, E, cM, eM, T = z
     
     return np.asarray([a1*b_a1*(1- a1/a1_max)*(1 - (a1*b_a1*(1 - a1/a1_max) - d_a1*a1*E <= 0)*(a1 <= mu_theta))*(a1 >= a1_0) - d_a1*a1*E,\
-            -(g_NE(T, g_NE_pop)+g_NM(T, g_NM_pop))*N*p_A(t1,a1),\
-            g_NE(T, g_NE_pop)*N*p_A(t1,a1) + cM*g_ME(t1,a1,E,T, g_ME_pop) +  E*(b_E_pop - g_EM(t1,a1,E,T, g_EM_pop) - d_E(t1, a1, E, T, b_E_pop, b_c1_pop)), \
-            g_NM(T, g_NM_pop)*N*p_A(t1, a1) - cM*g_ME(t1,a1,E,T, g_ME_pop), \
+            -(g_NE(t1,a1,E,T, g_NE_pop)+g_NM(t1,a1,E,T, g_NM_pop))*N,\
+            g_NE(t1,a1,E,T, g_NE_pop)*N + cM*g_ME(t1,a1,E,T, g_ME_pop) +  E*(b_E_pop - g_EM(t1,a1,E,T, g_EM_pop) - d_E(t1, a1, E, T, b_E_pop, b_c1_pop)), \
+            g_NM(t1,a1,E,T, g_NM_pop)*N - cM*g_ME(t1,a1,E,T, g_ME_pop), \
+            E*g_EM(t1, a1, E, T, g_EM_pop),\
+            0*T*(b_T(T) - d_T(T))])
+
+@nb.njit
+def sec_pop_state_dyn(t, z, a1_0, b_a1, t1, d_a1, b_E_pop, b_c1_pop, 
+                  g_NE_pop, g_NM_pop, g_ME_pop, g_EM_pop, T_a1 = T_a1):
+    
+    
+    a1, N, E, pM, cM, eM, T = z
+    
+    return np.asarray([a1*b_a1*(1- a1/a1_max)*(1 - (a1*b_a1*(1 - a1/a1_max) - d_a1*a1*E <= 0)*(a1 <= mu_theta))*(a1 >= a1_0) - d_a1*a1*E,\
+            -(g_NE(t1,a1,E,T, g_NE_pop)+g_NM(t1,a1,E,T, g_NM_pop))*N,\
+            g_NE(t1,a1,E,T, g_NE_pop)*N + cM*g_ME(t1,a1,E,T, g_ME_pop) + g_ME(t1,a1,E,T, g_ME_pop)*pM +  E*(b_E_pop - g_EM(t1,a1,E,T, g_EM_pop) - d_E(t1, a1, E, T, b_E_pop, b_c1_pop)), \
+            -g_ME(t1,a1,E,T, g_ME_pop)*pM,\
+            g_NM(t1,a1,E,T, g_NM_pop)*N - cM*g_ME(t1,a1,E,T, g_ME_pop), \
             E*g_EM(t1, a1, E, T, g_EM_pop),\
             0*T*(b_T(T) - d_T(T))])
 
@@ -158,7 +174,7 @@ steps = 10**4
 
 def stoch_sim(a1_0 = a1_0, b_a1 = b_a1, t1 = t1, d_a1 = d_a1, T_a1 = T_a1,
               diff_rates = [g_NE_max, g_NM_max, g_ME_max, g_EM_max],
-              noise_model = "pop", noise_cv = [0.5,0,0,0,0,0]):
+              noise_model = "pop", noise_cv = [0.5,0,0,0,0,0], infection = "prim"):
 
     
     dt = duration/steps
@@ -186,26 +202,35 @@ def stoch_sim(a1_0 = a1_0, b_a1 = b_a1, t1 = t1, d_a1 = d_a1, T_a1 = T_a1,
 
     a1, N, E, cM, eM, T = states[:,0], states[:,1], states[:,2], states[:,3], states[:,4], states[:,5]
     
-    return a1, N, E, cM, eM, T, ts
+    if infection == "sec" and noise_model == "pop":
+        states = solve_ivp(sec_pop_state_dyn, [0, duration], np.concatenate(([a1_0], np.array([N[-1], 0,cM[-1] + eM[-1], 0, 0, Treg0])), axis = None),
+                    dense_output=True, args=[a1_0, b_a1, t1, d_a1, b_E_pop, b_c1_pop, g_NE_pop, g_NM_pop, g_ME_pop, g_EM_pop, T_a1]).sol(ts).T
+        a1, N, E, pM, cM, eM, T = states[:,0], states[:,1], states[:,2], states[:,3], states[:,4], states[:,5], states[:,6]
+    else:
+        pM = 0
+    
+    return a1, N, E, cM, eM + pM, T, ts
 
 ### (4) Parallelize simulation runs
 def sum_sim(a1_0 = a1_0, b_a1 = b_a1, t1 = t1, d_a1 = d_a1, T_a1 = T_a1,
             diff_rates = [g_NE_max, g_NM_max, g_ME_max, g_EM_max],
-            noise_cv = [0.1,0.0,0.0,0.0,0.0,0.0]):
+            noise_cv = [0.1,0.0,0.0,0.0,0.0,0.0],
+            infection = "primary"):
     # compute state and costate dynamics
     dt = duration/steps
     a1, N, E, cM, eM, T, ts = stoch_sim(a1_0, b_a1, t1, d_a1, T_a1,
                                         diff_rates = diff_rates,
-                                        noise_cv = noise_cv)
+                                        noise_cv = noise_cv,
+                                        infection = infection)
     
-    run_data = [a1_0, b_a1, t1, d_a1, np.sum(np.log((a1+1))*dt), np.argmax(a1)*dt,
+    run_data = [a1_0, b_a1, t1, d_a1, np.sum(np.log((a1+1))*dt)*np.argmax(a1)*dt, np.argmax(a1)*dt,
                 np.max(E)/(np.argmax(E)*dt), \
                 np.argmax(E)*dt, (eM[-1]+cM[-1])/np.max(E), np.sum(E*dt), np.sum(np.log(E+1)*dt),\
                 np.sum(np.log((E+eM+cM+1))*dt)]
     
     return run_data
 
-stat_names = [r"$a_1^0$", r"$b_{a_1}$",r"$t_1$",r"$d_{a_1}$",r"$\int \log\left(a_1+1\right) dt$",\
+stat_names = [r"$a_1^0$", r"$b_{a_1}$",r"$t_1$",r"$d_{a_1}$",r"$T_{a_1}^{max}\int \log\left(a_1+1\right) dt$",\
               r"$T_{a_1}^{max}$", r"$\frac{E^{max}}{T_{E}^{max}}$",r"$T_{E}^{max}$",\
               r"$\frac{(cM + eM)^\infty}{E^{max}}$",r"$\int E dt$", \
               r"$\int \log\left(E+1\right) dt$",r"$\int \log\left(\frac{E+M+1}{T_{E}^{max}}\right) dt$"]
@@ -217,15 +242,26 @@ stat_names_for_df = ['a1_0','b_a1', 't_1','d_a1',\
 ### (5) define basic mutual information function
 from sklearn.metrics import mutual_info_score
 
-def calc_MI(x, y, bin_num = 500):
-    # bx = np.histogram_bin_edges(x, bins="sqrt", range=None, weights=None)
-    # by = np.histogram_bin_edges(y, bins="sqrt", range=None, weights=None)
+def calc_MI(x, y, bin_num = 100, correction = True):
+    _, bx = pd.qcut(x, bin_num, retbins=True, duplicates = 'drop')
+    _, by = pd.qcut(y, bin_num, retbins=True, duplicates = 'drop')
     
-    c_xy = np.histogram2d(x, y, bin_num)[0]
+    if bx.size == 1:
+        bx = np.append(bx, bx +1)
+        
+    if by.size == 1:
+        by = np.append(by, by +1)
+    
+    c_xy = np.histogram2d(x, y, (bx,by))[0]
     mi_raw = mutual_info_score(None, None, contingency=c_xy)/np.log(2)
     
     # MI correction by shuffling data
-    c_xy_shuffle = np.histogram2d(x, y[np.random.permutation(y.shape[0])], bin_num)[0]
+    c_xy_shuffle = np.histogram2d(x, y[np.random.permutation(y.shape[0])], (bx,by))[0]
     mi_correction = mutual_info_score(None, None, contingency=c_xy_shuffle)/np.log(2)
     
-    return mi_raw - mi_correction
+    if correction == True:
+        out = mi_raw - mi_correction
+    else:
+        out = mi_raw
+    
+    return out
