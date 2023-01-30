@@ -14,9 +14,10 @@ import pandas as pd
 
 # antigens
 I_0 = 10_000 # initial detectable levelof infected cells
+pmhc_frac = 0.03 # typical percent of phmcs on apcs that correspond to pathogen
 a2 = 20_000_000
-b_I = 8
 tau_I = 10
+b_I = 8
 d_IE = 3.8*10**(-4) # proxy for virulence
 d_I = 1*10**(-1)
 T_I = 2
@@ -28,41 +29,39 @@ n, m = 4, 2
 # cells
 N0 = 100
 Treg0 = 0 # initial Tregs
-b_N_max = 1.50
-b_E_max = 3.0 + 0.07
-b_cM_max = 1
+b_N_max = 1.0
+b_N_act_max = 3.0
+b_E_max = 3.0
+b_cM_max = 1.2
+b_eM_max = 1/60
 
 E_min = 1 # minimum detectable cell counts
 
 d_E_max = 2.0
-b_eTr_max = 10000
+b_eTr_max = 5000
 d_eTr_max = 1
 
 # cytokines
 l = 2
-b_c1 = 1000*3600*24
+b_c1 = 10000*3600*24
 b_c2 = 10 #b_c1/100
-f_T = 1.4*10**(7)*10**(4)*3600*24/(6.0221408*10**23) #*50*10**(-6))
+f_T = 6*1.4*10**(7)*10**(4)*3600*24/(6.0221408*10**23) #*50*10**(-6))
 k_c2_a = 10**(-14)*(6.0221408*10**23)*50*10**(-6)
-tau_c = 0.015*24
+tau_c = 0.25
 I_c1 = 0
 I_c2 = 0
 
 # cellular cytokine thresholds
 k_E = 10**(-11)*(6.0221408*10**23)*50*10**(-6)
 k_M = k_E
-k_Tr = k_E/2
+k_Tr = k_E/100
 
 # set initial state
 init_state = np.array([N0, 0, 0, 0, Treg0]) # N, E, cM, eM, T
 
-# activation threshold
-mean_theta = 50_000_000 # set to point at which activation probabity equals antigen frequency
-cv_theta = 0.5 #np.log((mu_theta*tau_I**n +t2**n)/(mu_theta*tau_I**m + t2**m))/10
-
 # hyper parameters
 alpha = 0.5 # antigen-cyokine weighting
-psi_N_I, psi_N_c, psi_cM_I, psi_cM_c, psi_E_I, psi_E_c = 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 # decision to upregulate or downregulate based on stimulus
+psi_N_I, psi_N_c, psi_cM_I, psi_cM_c, psi_E_I, psi_E_c = 1.0, 0.5, 0.5, 0.5, 1.0, 1.0 # decision to upregulate or downregulate based on stimulus
 
 ### (2) Define functions for simulations
 # Define functions for simulations
@@ -82,8 +81,12 @@ def a_1(tau_I,I):
 def a_stim(tau_I,I):
     return (a_1(tau_I,I)/a2*tau_I**n +t2**n)/(a_1(tau_I,I)/a2*tau_I**m + t2**m)
 
+# activation threshold
+mean_theta = a_stim(4*t2, pmhc_frac*a2)
+cv_theta = 0.5 #np.log((mu_theta*tau_I**n +t2**n)/(mu_theta*tau_I**m + t2**m))/10
+
 @nb.njit
-def p_A(tau_I, I, mu = np.log(a_stim(4*t2, mean_theta)/np.sqrt(1 + cv_theta**2)), sigma = np.sqrt(np.log(1 + cv_theta**2))):
+def p_A(tau_I, I, mu = np.log(a_stim(4*t2, pmhc_frac*a2)/np.sqrt(1 + cv_theta**2)), sigma = np.sqrt(np.log(1 + cv_theta**2))):
     
     # mu = np.log(a_stim(4*t2, mean_theta)/np.sqrt(1 + cv_theta**2))
     # sigma = np.sqrt(np.log(1 + cv_theta**2))
@@ -96,14 +99,20 @@ def c2_ss(I, E):
     return E*b_c2*tau_c
 
 @nb.njit
-def c1_ss(tau_I,I, E, eTr, b_c1_pop = b_c1):
-    
-    return (E*b_c1_pop*p_A(tau_I,I))/(eTr*f_T + 1/tau_c)
+def c1_ss(p_act, tau_I,I, E, eTr, b_c1_pop = b_c1):
+    #out = (E*b_c1_pop*p_A(tau_I,I))/(eTr*f_T + 1/tau_c)
+    out = (E*b_c1_pop*p_act - k_Tr/tau_c + np.sqrt((E*b_c1_pop*p_act -k_Tr/tau_c)**2 + 4*(eTr*f_T + 1/tau_c)*k_Tr*E*b_c1_pop*p_act))/(2*(eTr*f_T + 1/tau_c))
+    return out
 
 @nb.njit
 def b_N(tau_I,I,E,T, max_val = b_N_max):
     
     return max_val*p_A(tau_I,I)
+
+@nb.njit
+def b_N_act(tau_I,I,E,T, max_val = b_N_act_max):
+    
+    return max_val
 
 @nb.njit
 def g_NE(tau_I,I,E,T, max_val = b_N_max, b_c1_pop = b_c1, psi_N_I = psi_N_I, psi_N_c = psi_N_c):
@@ -120,7 +129,7 @@ def g_NM(tau_I,I,E,T, max_val = b_N_max, b_c1_pop = b_c1, psi_N_I = psi_N_I, psi
 @nb.njit
 def b_E(tau_I,I, E, T, max_val = b_E_max, b_c1_pop = b_c1):
     
-    return max_val*hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E)
+    return max_val*hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E*(1-p_A(tau_I,I)))
 
 @nb.njit
 def g_EE(tau_I,I, E, T, max_val = b_E_max, b_c1_pop = b_c1, psi_E_I = psi_E_I, psi_E_c = psi_E_c):
@@ -132,14 +141,14 @@ def g_EE(tau_I,I, E, T, max_val = b_E_max, b_c1_pop = b_c1, psi_E_I = psi_E_I, p
 @nb.njit
 def b_eTr(tau_I,I, E, eTr, max_val = b_eTr_max, b_c1_pop = b_c1):
     
-    mu_eTr = np.log(a_stim(t2, mean_theta)/np.sqrt(1 + cv_theta**2))
-    sigma_eTr = np.sqrt(np.log(1 + (10*cv_theta)**2))
-    return max_val*(p_A(tau_I,I, mu = mu_eTr, sigma = sigma_eTr))*hl_u(c1_ss(tau_I,I, E, eTr, b_c1_pop), k_E)
+    mu_eTr = np.log(a_stim(2*t2, pmhc_frac*a2)/np.sqrt(1 + cv_theta**2))
+    sigma_eTr = np.sqrt(np.log(1 + (2*cv_theta)**2))
+    return max_val*p_A(tau_I,I, mu = mu_eTr, sigma = sigma_eTr)*hl_u(c1_ss(p_A(tau_I,I, mu = mu_eTr, sigma = sigma_eTr), tau_I,I, E, eTr, b_c1_pop), k_E)
 
 @nb.njit
-def b_cM(tau_I,I,E,T, max_val = b_cM_max):
+def b_cM(tau_I,I,E,T, max_val = b_cM_max, b_c1_pop = b_c1):
 
-    return max_val*p_A(tau_I,I)
+    return max_val*hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E)
 
 @nb.njit
 def g_MM(tau_I,I,E,T, max_val = b_cM_max, b_c1_pop = b_c1, psi_cM_I = psi_cM_I, psi_cM_c = psi_cM_c):
@@ -161,7 +170,10 @@ def d_E(tau_I,I, E, T, b_E_pop = b_E_max, b_c1_pop = b_c1):
 @nb.njit
 def d_eTr(tau_I,I, E, T, max_val = d_eTr_max, b_c1_pop = b_c1):
     
-    return d_eTr_max*(1-hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_Tr))
+    mu_eTr = np.log(a_stim(2*t2, pmhc_frac*a2)/np.sqrt(1 + cv_theta**2))
+    sigma_eTr = np.sqrt(np.log(1 + (2*cv_theta)**2))
+    
+    return d_eTr_max*(1-hl_u(c1_ss(p_A(tau_I,I, mu = mu_eTr, sigma = sigma_eTr), tau_I,I, E, T, b_c1_pop), k_Tr))
 
 # define dynamics
 @nb.njit
@@ -246,23 +258,23 @@ def stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     else:
         states = solve_ivp(state_dyn, [0, duration], np.concatenate(([I_0],init_state), axis = None), method="Radau", dense_output=True, args=[I_0, b_I, tau_I, d_IE, T_I]).sol(ts).T
 
-    I, N, E, cM, eM, T = states[:,0], states[:,1], states[:,2], states[:,3], states[:,4], states[:,5]
+    I, N, E, cM, eM, eTr = states[:,0], states[:,1], states[:,2], states[:,3], states[:,4], states[:,5]
     
     if infection == "sec" and noise_model == "pop":
         states = solve_ivp(pop_state_dyn, [0, duration], np.concatenate(([I_0], np.array([N[-1], 0,cM[-1] + eM[-1], 0, 0, Treg0])), axis = None), method="Radau",
                     dense_output=True, args=[I_0, b_I, tau_I, d_IE, T_I, bN_pop, bE_pop, bcM_pop, bc1_pop, psi_N_I, psi_N_c, psi_cM_I, psi_cM_c, psi_E_I, psi_E_c, infection]).sol(ts).T
         
-        I, N, E, pM, cM, eM, T = states[:,0], states[:,1], states[:,2], states[:,3], states[:,4], states[:,5], states[:,6]
+        I, N, E, pM, cM, eM, eTr = states[:,0], states[:,1], states[:,2], states[:,3], states[:,4], states[:,5], states[:,6]
     else:
         pM = 0
     
-    return np.array([bN_pop, bE_pop, bcM_pop, bc1_pop]), I, N, E, cM, eM + pM, T, ts
+    return np.array([bN_pop, bE_pop, bcM_pop, bc1_pop]), I, N, E, cM, eM + pM, eTr, ts
 
 ## agent-based simulation with tau leaping
 def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                     regulation_coeffs = [psi_N_I, psi_N_c, psi_cM_I, psi_cM_c, psi_E_I, psi_E_c],
-                    rates = [b_N_max, b_E_max, b_cM_max, b_c1],
-                    rate_cv = np.array([0.5, 0.5, 0.5, 2.0]),
+                    rates = [mean_theta, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
+                    rate_cv = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2.0]),
                     infection = "prim", duration = 20, steps = 10**4):
     
     dt =  duration/steps
@@ -270,82 +282,110 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     # draw population of reponding cells for agent-based simulations
     psi_N_I, psi_N_c, psi_cM_I, psi_cM_c, psi_E_I, psi_E_c = regulation_coeffs
     
-    bN = np.minimum(np.random.lognormal(mean = np.log((rates[0])/np.sqrt(1 + rate_cv[0]**2)), 
-                        sigma = np.sqrt(np.log(1+ rate_cv[0]**2)), size = N0), 10)
-    bE = np.minimum(np.random.lognormal(mean = np.log((rates[1])/np.sqrt(1 + rate_cv[1]**2)), 
-                        sigma = np.sqrt(np.log(1+ rate_cv[1]**2)), size = N0), 10)
-    bcM = np.minimum(np.random.lognormal(mean = np.log((rates[2])/np.sqrt(1 + rate_cv[2]**2)), 
-                        sigma = np.sqrt(np.log(1+ rate_cv[2]**2)), size = N0), 10)
-    bc1 = np.random.lognormal(mean = np.log((rates[3])/np.sqrt(1 + rate_cv[3]**2)), 
-                        sigma = np.sqrt(np.log(1+ rate_cv[3]**2)), size = N0)
+    theta_act = np.random.lognormal(mean = np.log((rates[0])/np.sqrt(1 + rate_cv[0]**2)), 
+                        sigma = np.sqrt(np.log(1+ rate_cv[0]**2)), size = N0)
+    
+    bN = np.minimum(np.random.lognormal(mean = np.log((rates[1])/np.sqrt(1 + rate_cv[1]**2)), 
+                        sigma = np.sqrt(np.log(1+ rate_cv[1]**2)), size = N0), 5)
+    
+    bN_act = np.minimum(np.random.lognormal(mean = np.log((rates[2])/np.sqrt(1 + rate_cv[2]**2)), 
+                        sigma = np.sqrt(np.log(1+ rate_cv[2]**2)), size = N0), 5)
+    
+    bE = np.minimum(np.random.lognormal(mean = np.log((rates[3])/np.sqrt(1 + rate_cv[3]**2)), 
+                        sigma = np.sqrt(np.log(1+ rate_cv[3]**2)), size = N0), 5)
+    
+    bcM = np.minimum(np.random.lognormal(mean = np.log((rates[4])/np.sqrt(1 + rate_cv[4]**2)), 
+                        sigma = np.sqrt(np.log(1+ rate_cv[4]**2)), size = N0), 5)
+    
+    beM = np.minimum(np.random.lognormal(mean = np.log((rates[5])/np.sqrt(1 + rate_cv[5]**2)), 
+                        sigma = np.sqrt(np.log(1+ rate_cv[5]**2)), size = N0), 5)
+    
+    bc1 = np.random.lognormal(mean = np.log((rates[6])/np.sqrt(1 + rate_cv[6]**2)), 
+                        sigma = np.sqrt(np.log(1+ rate_cv[6]**2)), size = N0)
     
     
     # define variables for storage
-    N_m = np.zeros((steps+1, N0))
+    N_m = np.zeros((steps+1, N0), dtype = int)
+    N_act_m = np.zeros((steps+1, N0), dtype = int)
     N_m[0,:] +=1
 
-    # S = np.zeros(steps+1)
-    E_m = np.zeros((steps+1, N0))
-    cM_m = np.zeros((steps+1, N0))
-    eM_m = np.zeros((steps+1, N0))
+    E_m = np.zeros((steps+1, N0), dtype = int)
+    cM_m = np.zeros((steps+1, N0), dtype = int)
+    eM_m = np.zeros((steps+1, N0), dtype = int)
     I = np.zeros(steps+1)
+    eTr = np.zeros(steps+1)
 
     # Run population simulation
     t = 0.0
     I[0] = I_0
-    # S[0] = S0
     
     for i in np.arange(1, steps + 1):
-        # compute total population of cell types
-        E_pop, cM_pop, eM_pop = np.sum(E_m[i-1]), np.sum(cM_m[i-1]), np.sum(eM_m[i-1])
-        p_t = p_A(tau_I,I[i-1])
-        hl_t = hl_u(c1_ss(tau_I,I[i-1], E_pop, Treg0, np.mean(bc1)), k_E)
         
-        # run infection dynamics: replication and effector clearance
-        # S[i] = S[i-1] - dt*(I[i-1] >= I_0)*np.exp(-t/T_I)*I[i-1]*b_I*(S[i-1]-I[i-1])
-        I[i] = I[i-1] + dt*((I[i-1] >= I_0)*np.exp(-t/T_I)*I[i-1]*b_I - d_IE*I[i-1]*E_pop - d_I*I[i-1])
+        # Compute total population of cell types
+        E_pop, cM_pop, eM_pop = np.sum(E_m[i-1]), np.sum(cM_m[i-1]), np.sum(eM_m[i-1])
+        p_t = (a_stim(tau_I,I[i-1]) >= theta_act)*1 #p_A(tau_I,I[i-1])
+        hl_t = hl_u(c1_ss(p_t, tau_I,I[i-1], E_pop, eTr[i-1], bc1), k_E)
+        
+        # Run infection dynamics: replication and effector clearance
+        I[i] = I[i-1] + dt*((I[i-1] >= I_0)*np.exp(-t/T_I)*I[i-1]*b_I - d_IE*I[i-1]*E_pop - d_I*I[i-1])*(I[i-1] > 0.0)
+        
+        eTr[i] = b_eTr(tau_I, I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max, b_c1_pop = np.mean(bc1)) - eTr[i-1]*d_eTr(tau_I,I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max, b_c1_pop = np.mean(bc1))
+        
+        # Time-dependent rates
+        b_N_t = bN*(a_stim(tau_I,I[i-1]) >= theta_act) # np.nan_to_num(b_N(tau_I, I[i-1], E_pop, Treg0, max_val = bN))
+        b_N_act_t = bN_act #np.nan_to_num(b_N_act(tau_I, I[i-1], E_pop, Treg0, max_val = bN_act))
+        b_E_t = bE*hl_t #np.nan_to_num(b_E(tau_I, I[i-1], E_pop, Treg0, max_val = bE, b_c1_pop = np.mean(bc1)))
+        b_cM_t = bN*hl_t #np.nan_to_num(b_cM(tau_I, I[i-1], E_pop, Treg0, max_val = bcM, b_c1_pop = np.mean(bc1)))
+        b_eM_t = np.nan_to_num(b_eM_max*(1-np.nan_to_num(alpha*((1-psi_E_I)*(1-p_t) + psi_E_I*p_t) + (1-alpha)*((1 - psi_E_c)*(1-hl_t) + psi_E_c*hl_t))))
+        d_E_t = d_E_max*(1-hl_t) #np.nan_to_num(d_E(tau_I, I[i-1], E_pop, Treg0, b_E_pop = bcM, b_c1_pop = np.mean(bc1)))
+            
+        # Naive cells have a timer to activation
+        N_act = (np.random.poisson(b_N_t*dt, N0) > 0)*N_m[i-1,:]
+        
+        N_act_div = (np.amax(N_act_m, axis = 0) < 2)*np.random.binomial(N_act_m[i-1,:].astype(int), dt*b_N_act_t, N0)
+        
+        N_act_diff = (np.amax(N_act_m, axis = 0) == 2)*np.random.binomial(N_act_m[i-1,:].astype(int), dt*b_N_act_t, N0)
+        
+        N_act_to_cM = np.random.binomial(2*N_act_diff.astype(int), 1-np.nan_to_num(alpha*((1-psi_N_I)*(1-p_t) + psi_N_I*p_t) + (1-alpha)*((1 - psi_N_c)*(1-hl_t) + psi_N_c*hl_t)), N0)
 
-        # naive cells have a timer to activation
-        N_act = (np.random.poisson(np.nan_to_num(dt*b_N(tau_I,I[i-1], E_pop, Treg0, max_val = bN)), N0) > 0)*N_m[i-1,:]
-        N_to_cM = np.random.binomial(N_act.astype(int), 
-                                     np.nan_to_num(alpha*((1-psi_N_I)*(1-p_t) + psi_N_I*p_t) + (1-alpha)*((1 - psi_N_c)*(1-hl_t) + psi_N_c*hl_t)), N0)
+        # Central memory cells divide and differentiate
+        cM_div = np.random.binomial(cM_m[i-1,:], dt*b_cM_t, N0)
 
-        # central memory cells divide and differentiate
-        cM_div = np.random.binomial(cM_m[i-1,:].astype(int), np.nan_to_num(dt*b_cM(tau_I,I[i-1], E_pop, Treg0, max_val = bcM)), N0)
-        cM_to_E = np.random.binomial(2*cM_div.astype(int), 
-                                     np.nan_to_num(alpha*((1-psi_cM_I)*(1-p_t) + psi_cM_I*p_t) + (1-alpha)*((1 - psi_cM_c)*(1-hl_t) + psi_cM_c*hl_t)), N0)
-
-        # effector cells divide and differentiate, or die, or both
-        E_div_die = np.random.binomial(E_m[i-1,:].astype(int), np.nan_to_num(dt*b_E(tau_I,I[i-1], E_pop, Treg0, max_val = bE, b_c1_pop = np.mean(bc1))
-                                       + dt*d_E(tau_I,I[i-1], E_pop, Treg0, b_E_pop = bcM, b_c1_pop = np.mean(bc1))), N0)
-        E_div = np.random.binomial(E_div_die.astype(int), np.nan_to_num(b_E(tau_I,I[i-1], E_pop, Treg0, max_val = bE, b_c1_pop = np.mean(bc1))/(b_E(tau_I,I[i-1], E_pop, Treg0, max_val = bE, b_c1_pop = np.mean(bc1)) + d_E(tau_I,I[i-1], E_pop, Treg0, b_E_pop = bE, b_c1_pop = np.mean(bc1)))), N0)
-        E_to_eM = np.random.binomial(2*E_div.astype(int), 
-                                     np.nan_to_num(alpha*((1-psi_E_I)*(1-p_t) + psi_E_I*p_t) + (1-alpha)*((1 - psi_E_c)*(1-hl_t) + psi_E_c*hl_t)), N0)
-        E_die = E_div_die - E_div
+        # Effector cells divide and differentiate, or die, or both
+        
+        E_div_die_diff = np.random.binomial(E_m[i-1,:], dt*(b_E_t + d_E_t + b_eM_t), N0)
+                     
+        E_div = np.random.binomial(E_div_die_diff, b_E_t/(b_E_t + d_E_t + b_eM_t), N0)
+                     
+        E_die = np.random.binomial(E_div_die_diff-E_div, d_E_t/(d_E_t + b_eM_t), N0)
+        
+        E_to_eM = E_div_die_diff - E_div - E_die
 
 
         # Update population dynamics
         N_m[i,:] = N_m[i-1,:] - N_act
-        cM_m[i,:] = N_to_cM + (cM_m[i-1,:] + cM_div - cM_to_E) 
-        E_m[i,:] = (N_act - N_to_cM) + cM_to_E + (E_m[i-1,:] + E_div - E_to_eM) - E_die  # sometimes get negative E value. Must be a bug I'm not seeing.
+        N_act_m[i,:] = N_act_m[i-1,:] + N_act + N_act_div - N_act_diff
+        cM_m[i,:] = cM_m[i-1,:] + N_act_to_cM + cM_div # - cM_to_E) 
+        E_m[i,:] = (2*N_act_diff - N_act_to_cM) + (E_m[i-1,:] + E_div - E_to_eM) - E_die 
         eM_m[i,:] = eM_m[i-1,:] + E_to_eM
 
-        # increment time
+        # Increment time
         t += dt
         
-        # Collect population dynamics
-        N, cM, E, eM = np.sum(N_m, axis = 1), np.sum(cM_m, axis = 1), np.sum(E_m, axis = 1), np.sum(eM_m, axis = 1)
-        ts = np.linspace(0, duration, steps + 1)
+    # Collect population dynamics
+    N, cM, E, eM = np.sum(N_m + N_act_m, axis = 1), np.sum(cM_m, axis = 1), np.sum(E_m, axis = 1), np.sum(eM_m, axis = 1)
+    ts = np.linspace(0, duration, steps + 1)
     
-    return np.array(regulation_coeffs), I, N, E, cM, eM, Treg0, ts
+    return np.array(regulation_coeffs), I, N, E, cM, eM, eTr, ts
 
 ### (4) Parallelize simulation runs
 def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             regulation_coeffs = [psi_N_I, psi_N_c, psi_cM_I, psi_cM_c, psi_E_I, psi_E_c],
-            rates = [b_N_max, b_E_max, b_cM_max, b_c1],
-            rate_cv = [0.5, 0.5, 0.5, 2.0],
+            rates = [mean_theta, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
+            rate_cv = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2.0]),
             infection = "primary",
             sim_kind = "agent"):
+    
     # compute state and costate dynamics
     if sim_kind == "agent":
         rates, I, N, E, cM, eM, T, ts = agent_stoch_sim(I_0, b_I, tau_I, d_IE, T_I,
@@ -363,8 +403,8 @@ def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     dt = ts[1]-ts[0]
     
     run_data = np.concatenate((regulation_coeffs, [I_0, b_I, tau_I, d_IE, np.sum( np.log(np.maximum(I, E_min)) )*dt, np.argmax(I)*dt,
-                                       np.where(np.argmax(E) < 1, 0.0, np.max(E)/(np.argmax(E)*dt)), \
-                                       np.argmax(E)*dt, np.where(np.max(E) < 1.0, 0.0, (eM[-1]+cM[-1])/np.max(E)), np.sum(E*dt), np.sum(np.log(np.maximum(E, E_min))*dt),\
+                                       np.max(E), \
+                                       np.argmax(E)*dt, eM[-1]+cM[-1], np.sum(E*dt), np.sum(np.log(np.maximum(E, E_min))*dt),\
                                        np.sum(np.log(np.maximum(E+eM+cM, E_min))*dt)]), 
                               axis = None)
     
@@ -373,8 +413,8 @@ def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 stat_names = [r"$\psi_{N}^{(I)}$", r"$\psi_{N}^{(c)}$", r"$\psi_{cM}^{(I)}$", r"$\psi_{cM}^{(c)}$", r"$\psi_{E}^{(I)}$", r"$\psi_{E}^{(c)}$",\
               r"$I_0$", r"$b_{I}$", r"$t_1$", r"$d_{I,E}$",\
               r"$\int_0^{T_{sim}} \log(I) dt$",\
-              r"$T_{I}^{max}$", r"$\frac{E^{max}}{T_{E}^{max}}$", r"$T_{E}^{max}$",\
-              r"$\frac{(cM + eM)^\infty}{E^{max}}$", r"$\int E dt$", \
+              r"$T_{I}^{max}$", r"$E^{max}$", r"$T_{E}^{max}$",\
+              r"$(cM + eM)^\infty}$", r"$\int E dt$", \
               r"$\int \log\left(E\right) dt$", r"$\int \log\left(E+M\right) dt$"]
 
 stat_names_for_df = ['I_0','b_I', 't_1','d_IE',\
