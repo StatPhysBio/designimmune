@@ -446,13 +446,13 @@ def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                                                        np.sum(np.log(np.maximum(E+eM+cM, E_min))*dt)]), 
                                   axis = None)
     
-    return rates, run_data
+    return run_data
 
 stat_names = [r"$\psi_{N}^{(I)}$", r"$\psi_{N}^{(c)}$", r"$\psi_{cM}^{(I)}$", r"$\psi_{cM}^{(c)}$", r"$\psi_{E}^{(I)}$", r"$\psi_{E}^{(c)}$",\
               r"$I_0$", r"$b_{I}$", r"$t_1$", r"$d_{I,E}$",\
-              r"$\int_0^{T_{sim}} \log(I_{prim}) dt$",\
-              r"$T_{I_{prim}}^{max}$", 
-              r"$\int_0^{T_{sim}} \log(I_{sec}) dt$",\
+              r"$\int_0^{T_{sim}} \log(I_{p}) dt$",\
+              r"$T_{I_{p}}^{max}$", 
+              r"$\int_0^{T_{sim}} \log(I_{s}) dt$",\
               r"$E^{max}$",\
               r"$T_{E}^{max}$",\
               r"$(cM + eM)^\infty}$",\
