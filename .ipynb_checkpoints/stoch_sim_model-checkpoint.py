@@ -227,7 +227,7 @@ def pop_state_dyn(t, z, I_0, b_I, tau_I, d_IE, T_I,
 
 ### (3) Code to run individual simulation
 # Run single simulation and plot outputs
-duration = 20
+duration = 11
 steps = 10**4
 
 ## ODE-based model
