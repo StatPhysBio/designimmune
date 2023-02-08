@@ -73,7 +73,10 @@ def sample_grid(d,m, type = 'discrete'):
     else:
         sampler = qmc.Sobol(d=d, scramble=False)
         vertices = np.array(list(itertools.product(np.arange(0,3)/2, repeat=d)))
-        sample = np.vstack((sampler.random_base2(m=m), vertices))
+        if m >0:
+            sample = np.vstack((sampler.random_base2(m=m), vertices))
+        else:
+            sample = vertices
     
     return sample
 
@@ -81,10 +84,18 @@ def sample_grid(d,m, type = 'discrete'):
 
 # Create grid of regulation coeffs
 m = 0
-regs_N = sample_grid(d=2,m=m, type = 'cts')
+regs_all = sample_grid(d=4,m=m)
 
 # Run simulations
-MI_N_grid = np.array([comp_MI(psi_N_I = regs_N[i,0], psi_N_c = regs_N[i,1]) \
-                      for i in np.arange(regs_N.shape[0])])
+MI_reg_grid = np.array([comp_MI(psi_N_I = reg[0], psi_N_c = reg[1], \
+                                psi_cM_I = 0.5, psi_cM_c = 0.5, \
+                                psi_E_I = reg[2],psi_E_c = reg[3]) \
+                      for reg in regs_all])
 
-#np.save("_sim_data/"+isim_kind+'-'+infection_type+'-opt-N.npy', MI_N_grid)
+# Match networks with MI outputs
+MI_data = np.zeros((len(MI_reg_grid),len(MI_reg_grid[0])))
+
+for i in np.arange(len(MI_reg_grid)):
+    MI_data[i,:] = MI_reg_grid[i].astype(float)
+
+#np.save("_sim_data/"+isim_kind+'-'+infection_type+'-optnets-all.npy', MI_data)
