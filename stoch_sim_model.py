@@ -61,7 +61,7 @@ init_state = np.array([N0, 0, 0, 0, Treg0]) # N, E, cM, eM, T
 
 # hyper parameters
 alpha = 0.5 # antigen-cyokine weighting
-psi_N_I, psi_N_c, psi_cM_I, psi_cM_c, psi_E_I, psi_E_c = 1.0, 0.5, 0.5, 0.5, 1.0, 1.0 # decision to upregulate or downregulate based on stimulus
+psis = [1.0, 0.5, 0.5, 0.5, 1.0, 1.0] # decision to upregulate or downregulate based on stimulus: psi_N_I, psi_N_c, psi_cM_I, psi_cM_c, psi_E_I, psi_E_c
 
 ### (2) Define functions for simulations
 # Define functions for simulations
@@ -115,12 +115,12 @@ def b_N_act(tau_I,I,E,T, max_val = b_N_act_max):
     return max_val
 
 @nb.njit
-def g_NE(tau_I,I,E,T, max_val = b_N_max, b_c1_pop = b_c1, psi_N_I = psi_N_I, psi_N_c = psi_N_c):
+def g_NE(tau_I,I,E,T, max_val = b_N_max, b_c1_pop = b_c1, psi_N_I = psis[0], psi_N_c = psis[1]):
     
     return max_val*p_A(tau_I,I)
 
 @nb.njit
-def g_NM(tau_I,I,E,T, max_val = b_N_max, b_c1_pop = b_c1, psi_N_I = psi_N_I, psi_N_c = psi_N_c):
+def g_NM(tau_I,I,E,T, max_val = b_N_max, b_c1_pop = b_c1, psi_N_I = psis[0], psi_N_c = psis[1]):
     
     out = max_val*(alpha*((1-psi_N_I)*(1-p_A(tau_I,I)) + psi_N_I*p_A(tau_I,I)) + (1-alpha)*((1 - psi_N_c)*(1-hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E)) + psi_N_c*hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E)))
     
@@ -132,7 +132,7 @@ def b_E(tau_I,I, E, T, max_val = b_E_max, b_c1_pop = b_c1):
     return max_val*hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E*(1-p_A(tau_I,I)))
 
 @nb.njit
-def g_EE(tau_I,I, E, T, max_val = b_E_max, b_c1_pop = b_c1, psi_E_I = psi_E_I, psi_E_c = psi_E_c):
+def g_EE(tau_I,I, E, T, max_val = b_E_max, b_c1_pop = b_c1, psi_E_I = psis[4], psi_E_c = psis[5]):
     
     out = max_val*(alpha*((1-psi_E_I)*(1-p_A(tau_I,I)) + psi_E_I*p_A(tau_I,I)) + (1-alpha)*((1 - psi_E_c)*(1-hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E)) + psi_E_c*hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E)))
         
@@ -151,7 +151,7 @@ def b_cM(tau_I,I,E,T, max_val = b_cM_max, b_c1_pop = b_c1):
     return max_val*hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E)
 
 @nb.njit
-def g_MM(tau_I,I,E,T, max_val = b_cM_max, b_c1_pop = b_c1, psi_cM_I = psi_cM_I, psi_cM_c = psi_cM_c):
+def g_MM(tau_I,I,E,T, max_val = b_cM_max, b_c1_pop = b_c1, psi_cM_I = psis[2], psi_cM_c = psis[3]):
     
     out = max_val*(alpha*((1-psi_cM_I)*(1-p_A(tau_I,I)) + psi_cM_I*p_A(tau_I,I)) + (1-alpha)*((1 - psi_cM_c)*(1-hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E)) + psi_cM_c*hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E)))
     
@@ -232,7 +232,7 @@ steps = 10**4
 
 ## ODE-based model
 def stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
-              regulation_coeffs = [psi_N_I, psi_N_c, psi_cM_I, psi_cM_c, psi_E_I, psi_E_c],
+              regulation_coeffs = psis,
               rates = [b_N_max, b_E_max, b_cM_max, b_c1],
               noise_model = "pop", 
               rate_cv = [0.5, 0.5, 0.5, 2.0], 
@@ -274,10 +274,12 @@ def stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
 #######################
 def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
-                    regulation_coeffs = [psi_N_I, psi_N_c, psi_cM_I, psi_cM_c, psi_E_I, psi_E_c],
+                    regulation_coeffs = psis,
                     rates = [mean_theta, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
                     rate_cv = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2.0]),
-                    infection = "prim", duration = 20, steps = 10**4):
+                    infection = "prim", 
+                    duration = 20, 
+                    steps = 10**4):
     
     dt =  duration/steps
     
@@ -345,7 +347,8 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             # Run infection dynamics: replication and effector clearance
             I[i] = I[i-1] + dt*((I[i-1] >= I_0)*np.exp(-t/T_I)*I[i-1]*b_I - d_IE*I[i-1]*E_pop - d_I*I[i-1])*(I[i-1] > 0.0)
 
-            eTr[i] = b_eTr(tau_I, I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max, b_c1_pop = np.mean(bc1)) - eTr[i-1]*d_eTr(tau_I,I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max, b_c1_pop = np.mean(bc1))
+            eTr[i] = b_eTr(tau_I, I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max, b_c1_pop = np.mean(bc1)) - eTr[i-1]*d_eTr(tau_I,I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max,
+                                                                                                                          b_c1_pop = np.mean(bc1))
 
             # Time-dependent rates
             b_N_t = np.nan_to_num(bN*(a_stim(tau_I,I[i-1]) >= theta_act))
@@ -409,7 +412,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 
 ### (4) Parallelize simulation runs
 def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
-            regulation_coeffs = [psi_N_I, psi_N_c, psi_cM_I, psi_cM_c, psi_E_I, psi_E_c],
+            regulation_coeffs = psis,
             rates = [mean_theta, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
             rate_cv = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2.0]),
             infection = "prim",
