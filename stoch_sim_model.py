@@ -1,6 +1,7 @@
+import itertools
+
 ### Stochastic model dynamics ###
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 from scipy import special
@@ -165,7 +166,7 @@ def g_EM(tau_I,I,E,T, max_val = b_E_max):
 @nb.njit
 def d_E(tau_I,I, E, T, b_E_pop = b_E_max, b_c1_pop = b_c1):
     
-    return d_E_max*(1-hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E))
+    return d_E_max*(1-hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E)) + b_E(tau_I,I, E, T, max_val = b_E_max, b_c1_pop = b_c1_pop)/20
 
 @nb.njit
 def d_eTr(tau_I,I, E, T, max_val = d_eTr_max, b_c1_pop = b_c1):
@@ -278,11 +279,12 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                     rates = [mean_theta, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
                     rate_cv = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2.0]),
                     infection = "prim", 
-                    duration = 20, 
+                    duration = 12, 
                     steps = 10**4):
     
     dt =  duration/steps
     
+    cov_bE_bM = 0.8
     # set infection scenario
     infection_count = 0
     if infection == "prim":
@@ -302,11 +304,14 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     bN_act = np.minimum(np.random.lognormal(mean = np.log((rates[2])/np.sqrt(1 + rate_cv[2]**2)), 
                         sigma = np.sqrt(np.log(1+ rate_cv[2]**2)), size = N0), 5)
     
-    bE = np.minimum(np.random.lognormal(mean = np.log((rates[3])/np.sqrt(1 + rate_cv[3]**2)), 
-                        sigma = np.sqrt(np.log(1+ rate_cv[3]**2)), size = N0), 5)
+    bE, bcM = np.exp(np.random.multivariate_normal(mean = [np.log((rates[3])/np.sqrt(1 + rate_cv[3]**2)), np.log((rates[4])/np.sqrt(1 + rate_cv[4]**2))], 
+                                        cov = np.array([[np.log(1+ rate_cv[3]**2), np.sqrt(np.log(1+ rate_cv[3]**2)*np.log(1+ rate_cv[4]**2))*np.log(cov_bE_bM*(np.exp(1)-1)+1)], [np.sqrt(np.log(1+ rate_cv[3]**2)*np.log(1+ rate_cv[4]**2))*np.log(cov_bE_bM*(np.exp(1)-1)+1), np.log(1+ rate_cv[4]**2)]]), size = N0)).T
     
-    bcM = np.minimum(np.random.lognormal(mean = np.log((rates[4])/np.sqrt(1 + rate_cv[4]**2)), 
-                        sigma = np.sqrt(np.log(1+ rate_cv[4]**2)), size = N0), 5)
+#     bE = np.minimum(np.random.lognormal(mean = np.log((rates[3])/np.sqrt(1 + rate_cv[3]**2)), 
+#                         sigma = np.sqrt(np.log(1+ rate_cv[3]**2)), size = N0), 5)
+    
+#     bcM = np.minimum(np.random.lognormal(mean = np.log((rates[4])/np.sqrt(1 + rate_cv[4]**2)), 
+#                         sigma = np.sqrt(np.log(1+ rate_cv[4]**2)), size = N0), 5)
     
     beM = np.minimum(np.random.lognormal(mean = np.log((rates[5])/np.sqrt(1 + rate_cv[5]**2)), 
                         sigma = np.sqrt(np.log(1+ rate_cv[5]**2)), size = N0), 5)
@@ -471,7 +476,7 @@ stat_names_for_df = ['I_0','b_I', 't_1','d_IE',\
 from sklearn.metrics import mutual_info_score
 from sklearn.linear_model import LinearRegression
 
-def calc_MI(x, y, bin_num = 10, correction = False):
+def calc_MI(x, y, bin_num = 50, correction = False):
     
     subsample_size = np.array([0.6, 0.7, 0.8, 0.9, 0.95, 1.0])*x.size
     replicates = 20
@@ -514,6 +519,21 @@ def calc_MI(x, y, bin_num = 10, correction = False):
     lr.fit(mi_data[:,0].reshape(-1,1), mi_data[:,1].reshape(-1,1))
     
     return lr.intercept_
+
+### (6) functions for generating sobol sequence grids
+def sample_grid(d,m, type = 'discrete'):
+    
+    if type == 'discrete':
+        sample = np.array(list(itertools.product(np.arange(0,3)/2, repeat=d)))
+    else:
+        sampler = qmc.Sobol(d=d, scramble=False)
+        vertices = np.array(list(itertools.product(np.arange(0,3)/2, repeat=d)))
+        if m > 0:
+            sample = np.vstack((sampler.random_base2(m=m), vertices))
+        else:
+            sample = vertices
+    
+    return sample
 
 
 # def calc_MI(x, y, bin_num = 10, correction = True):
