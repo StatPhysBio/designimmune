@@ -279,7 +279,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                     rates = [mean_theta, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
                     rate_cv = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2.0]),
                     infection = "prim", 
-                    duration = 12, 
+                    duration = 10, 
                     steps = 10**4):
     
     dt =  duration/steps
@@ -367,11 +367,11 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             N_act = (np.random.poisson(b_N_t*dt, N0) > 0)*N_m[i-1,:]
             
             # Activated naive cells divide and differentiate
-            N_act_div = (np.amax(N_act_m, axis = 0) < 2)*np.random.binomial(N_act_m[i-1,:].astype(int), dt*b_N_act_t, N0)
+            N_act_div = (np.amax(N_act_m, axis = 0) < 2)*np.random.binomial(N_act_m[i-1,:], dt*b_N_act_t, N0)
 
-            N_act_diff = (np.amax(N_act_m, axis = 0) == 2)*np.random.binomial(N_act_m[i-1,:].astype(int), dt*b_N_act_t, N0)
+            N_act_diff = (np.amax(N_act_m, axis = 0) == 2)*np.random.binomial(N_act_m[i-1,:], dt*b_N_act_t, N0)
 
-            N_act_to_cM = np.random.binomial(2*N_act_diff.astype(int), 1-np.nan_to_num(alpha*((1-psi_N_I)*(1-p_t) + psi_N_I*p_t) + (1-alpha)*((1 - psi_N_c)*(1-hl_t) + psi_N_c*hl_t)), N0)
+            N_act_to_cM = np.random.binomial(2*N_act_diff, 1-np.nan_to_num(alpha*((1-psi_N_I)*(1-p_t) + psi_N_I*p_t) + (1-alpha)*((1 - psi_N_c)*(1-hl_t) + psi_N_c*hl_t)), N0)
 
             # New central memory cells divide
             cM_div = np.random.binomial(cM_m[i-1,:], dt*b_cM_t, N0)

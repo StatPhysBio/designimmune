@@ -22,7 +22,6 @@ runs = 1000
 
 def run(regs = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], outdir=''):
     print(f'Running with regs = {list(regs)}')
-    
     Is = np.random.lognormal(mean = np.log(np.array([b_I, tau_I])/np.sqrt(1 + np.array([cv_b_I, cv_tau_I])**2)), 
                             sigma = np.sqrt(np.log(1 + np.array([cv_b_I, cv_tau_I])**2)), size = (runs,2))
 
@@ -39,7 +38,7 @@ def run(regs = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], outdir=''):
         
     MI_data = np.zeros(2*len(MI_args))
     for i in np.arange(len(MI_args)):
-        MI_data[i] = calc_MI(run_data[:,8], run_data[:,MI_args[i]]) # 6 = a1_0, 7 = b_I
+        MI_data[i] = calc_MI(run_data[:,8], run_data[:,MI_args[i]]) # 8 = tau_I, 7 = b_I
         MI_data[i + len(MI_args)] = calc_MI(run_data[:,7], run_data[:,MI_args[i]])
         
     sim_data = np.array(np.append(MI_data, np.mean(run_data[:,10:], axis = 0)))
