@@ -10,7 +10,7 @@ from stoch_sim_model import *
 # Make grid
 b_I = 8
 tau_I = 10
-d_IE = 3.8*10**(-4)
+d_IE = 3.8*10**(-3)
 T_I = 2
 
 cv_b_I, cv_tau_I = 0.5, 0.5
@@ -41,6 +41,7 @@ def run(regs = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], outdir=''):
         MI_data[i] = calc_MI(run_data[:,8], run_data[:,MI_args[i]]) # 8 = tau_I, 7 = b_I
         MI_data[i + len(MI_args)] = calc_MI(run_data[:,7], run_data[:,MI_args[i]])
         
+    # Combined dataset with [regs, MI-tau_I, MI-b_I, mean-response] 
     sim_data = np.array(np.append(MI_data, np.mean(run_data[:,10:], axis = 0)))
     
     print('Concatenting')
@@ -52,17 +53,6 @@ def run(regs = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], outdir=''):
     print('Saving')
     np.save(outfile, out)
     print(f'Saved {outfile}')
-
-### (2) Maximize MI over $\psi_N^{(I)}$ and $\psi_N^{(c)}$
-
-# # Create grid of regulation coeffs
-# m = 0
-# regs_all = sample_grid(d=6,m=m)
-
-# # Run simulations
-#MI_reg_grid = run(regs_all[0,:])
-
-#np.save("_sim_data/"+isim_kind+'-'+infection_type+'-optnets-all.npy', MI_data)
 
 def main():
     import argparse
