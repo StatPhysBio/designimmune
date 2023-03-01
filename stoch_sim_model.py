@@ -30,9 +30,9 @@ n, m = 4, 2
 # cells
 N0 = 100
 Treg0 = 0 # initial Tregs
-b_N_max = 1.0
-b_N_act_max = 3.0
-b_E_max = 3.0
+b_N_max = 0.62
+b_N_act_max = 2.8
+b_E_max = 2.8
 b_cM_max = 1.2
 b_eM_max = 1/60
 
@@ -246,11 +246,11 @@ def stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     psi_NE_I, psi_NE_c, psi_cME_I, psi_cME_c, psi_EeM_I, psi_EeM_c = regulation_coeffs
     
     if noise_model == "pop":
-        bN_pop = np.mean(np.minimum((rates[0] > 0)*np.random.lognormal(mean = np.log(rates[0]/np.sqrt(1 + rate_cv[0]**2) + (rates[0] == 0)), sigma = np.sqrt(np.log(1+ rate_cv[0]**2)), size = N0), 10))
+        bN_pop = np.mean(np.minimum((rates[0] > 0)*np.random.lognormal(mean = np.log(rates[0]/np.sqrt(1 + rate_cv[0]**2) + (rates[0] == 0)), sigma = np.sqrt(np.log(1+ rate_cv[0]**2)), size = N0), 1))
             
-        bE_pop = np.mean(np.minimum((rates[1] > 0)*np.random.lognormal(mean = np.log(rates[1]/np.sqrt(1 + rate_cv[1]**2) + (rates[1] == 0)), sigma = np.sqrt(np.log(1+ rate_cv[1]**2)), size = N0), 10))
+        bE_pop = np.mean(np.minimum((rates[1] > 0)*np.random.lognormal(mean = np.log(rates[1]/np.sqrt(1 + rate_cv[1]**2) + (rates[1] == 0)), sigma = np.sqrt(np.log(1+ rate_cv[1]**2)), size = N0), 5))
         
-        bcM_pop = np.mean(np.minimum((rates[2] > 0)*np.random.lognormal(mean = np.log(rates[2]/np.sqrt(1 + rate_cv[2]**2) + (rates[2] == 0)), sigma = np.sqrt(np.log(1+ rate_cv[2]**2)), size = N0), 10))
+        bcM_pop = np.mean(np.minimum((rates[2] > 0)*np.random.lognormal(mean = np.log(rates[2]/np.sqrt(1 + rate_cv[2]**2) + (rates[2] == 0)), sigma = np.sqrt(np.log(1+ rate_cv[2]**2)), size = N0), 2.5))
         
         bc1_pop = np.mean(np.random.lognormal(mean = np.log(rates[3]/np.sqrt(1 + rate_cv[3]**2) + (rates[3] == 0)), sigma = np.sqrt(np.log(1+ rate_cv[3]**2)), size = N0))
         
@@ -277,7 +277,7 @@ def stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                     regulation_coeffs = psis,
                     rates = [mean_theta, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
-                    rate_cv = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2.0]),
+                    rate_cv = np.array([0.5, 0.2, 0.2, 0.2, 0.5, 0.5, 2.0]),
                     infection = "prim", 
                     duration = 10, 
                     steps = 10**4):
@@ -299,25 +299,25 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                         sigma = np.sqrt(np.log(1+ rate_cv[0]**2)), size = N0)
     
     bN = np.minimum(np.random.lognormal(mean = np.log((rates[1])/np.sqrt(1 + rate_cv[1]**2)), 
-                        sigma = np.sqrt(np.log(1+ rate_cv[1]**2)), size = N0), 5)
+                        sigma = np.sqrt(np.log(1+ rate_cv[1]**2)), size = N0), 1)
     
     bN_act = np.minimum(np.random.lognormal(mean = np.log((rates[2])/np.sqrt(1 + rate_cv[2]**2)), 
-                        sigma = np.sqrt(np.log(1+ rate_cv[2]**2)), size = N0), 5)
+                        sigma = np.sqrt(np.log(1+ rate_cv[2]**2)), size = N0), 4.8)
     
     bE, bcM = np.exp(np.random.multivariate_normal(mean = [np.log((rates[3])/np.sqrt(1 + rate_cv[3]**2)), np.log((rates[4])/np.sqrt(1 + rate_cv[4]**2))], 
                                         cov = np.array([[np.log(1+ rate_cv[3]**2), np.sqrt(np.log(1+ rate_cv[3]**2)*np.log(1+ rate_cv[4]**2))*np.log(cov_bE_bM*(np.exp(1)-1)+1)], [np.sqrt(np.log(1+ rate_cv[3]**2)*np.log(1+ rate_cv[4]**2))*np.log(cov_bE_bM*(np.exp(1)-1)+1), np.log(1+ rate_cv[4]**2)]]), size = N0)).T
-    
-#     bE = np.minimum(np.random.lognormal(mean = np.log((rates[3])/np.sqrt(1 + rate_cv[3]**2)), 
-#                         sigma = np.sqrt(np.log(1+ rate_cv[3]**2)), size = N0), 5)
-    
-#     bcM = np.minimum(np.random.lognormal(mean = np.log((rates[4])/np.sqrt(1 + rate_cv[4]**2)), 
-#                         sigma = np.sqrt(np.log(1+ rate_cv[4]**2)), size = N0), 5)
+    bE = np.minimum(bE, 4.8)
+    bcM = np.minimum(bcM, 2.5)
     
     beM = np.minimum(np.random.lognormal(mean = np.log((rates[5])/np.sqrt(1 + rate_cv[5]**2)), 
-                        sigma = np.sqrt(np.log(1+ rate_cv[5]**2)), size = N0), 5)
+                        sigma = np.sqrt(np.log(1+ rate_cv[5]**2)), size = N0), 2.5)
     
     bc1 = np.random.lognormal(mean = np.log((rates[6])/np.sqrt(1 + rate_cv[6]**2)), 
                         sigma = np.sqrt(np.log(1+ rate_cv[6]**2)), size = N0)
+    
+    # draw maximum number of divisions that a cell can sustain: Subramanian et al. (2008)
+    div_dest_prob = [0.0001, 0.0017, 0.0165,0.0826, 0.2206, 0.3151,0.2408,0.0984,0.0215,0.0025, 0.0002]
+    div_dest = 2**(np.random.choice(a = np.arange(12,23), p = div_dest_prob, size = N0))
     
     
     for k in np.arange(0, infection_count):
@@ -352,26 +352,28 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             # Run infection dynamics: replication and effector clearance
             I[i] = I[i-1] + dt*((I[i-1] >= I_0)*np.exp(-t/T_I)*I[i-1]*b_I - d_IE*I[i-1]*E_pop - d_I*I[i-1])*(I[i-1] > 0.0)
 
-            eTr[i] = b_eTr(tau_I, I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max, b_c1_pop = np.mean(bc1)) - eTr[i-1]*d_eTr(tau_I,I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max,
-                                                                                                                          b_c1_pop = np.mean(bc1))
+            eTr[i] = b_eTr(tau_I, I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max, b_c1_pop = np.mean(bc1)) - eTr[i-1]*d_eTr(tau_I,I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max, b_c1_pop = np.mean(bc1))
+            
+            # transition probabilities modulated by antigen and cytokine signals
+            p_N_act_E = alpha*((1-psi_NE_I)*(1-p_t) + psi_NE_I*p_t) + (1-alpha)*((1 - psi_NE_c)*(1-hl_t) + psi_NE_c*hl_t)
+            p_E_E = alpha*((1-psi_EeM_I)*(1-p_t) + psi_EeM_I*p_t) + (1-alpha)*((1 - psi_EeM_c)*(1-hl_t) + psi_EeM_c*hl_t)
+            p_M_E = alpha*((1-psi_cME_I)*(1-p_t) + psi_cME_I*p_t) + (1-alpha)*((1 - psi_cME_c)*(1-hl_t) + psi_cME_c*hl_t)
+            #print(np.mean(p_N_act_E), np.mean(p_E_E), np.mean(p_M_E))
+            # Time-dependent rates modulated by antigen and cytokine signals
+            b_N_t = bN*(a_stim(tau_I,I[i-1]) >= theta_act)
+            b_N_act_t = bN_act
+            b_E_t = bE*hl_t*p_E_E*(E_m[i-1,:] < div_dest)
+            b_cM_t = bcM*hl_t*(cM_m[i-1,:] < np.sqrt(div_dest))
+            b_eM_t = b_eM_max*(1-p_E_E)
+            d_E_t = d_E_max*(1-hl_t)
 
-            # Time-dependent rates
-            b_N_t = np.nan_to_num(bN*(a_stim(tau_I,I[i-1]) >= theta_act))
-            b_N_act_t = np.nan_to_num(bN_act)
-            b_E_t = np.nan_to_num(bE*hl_t)
-            b_cM_t = np.nan_to_num(bN*hl_t)
-            b_eM_t = np.nan_to_num(b_eM_max*(1-np.nan_to_num(alpha*((1-psi_EeM_I)*(1-p_t) + psi_EeM_I*p_t) + (1-alpha)*((1 - psi_EeM_c)*(1-hl_t) + psi_EeM_c*hl_t))))
-            d_E_t = np.nan_to_num(d_E_max*(1-hl_t))
-
-            # Naive cells have a timer to activation
+            # Naive cells have a timer to activation and first division
             N_act = (np.random.poisson(b_N_t*dt, N0) > 0)*N_m[i-1,:]
             
             # Activated naive cells divide and differentiate
-            N_act_div = (np.amax(N_act_m, axis = 0) < 2)*np.random.binomial(N_act_m[i-1,:], dt*b_N_act_t, N0)
+            N_act_diff = np.random.binomial(N_act_m[i-1,:], dt*b_N_act_t, N0)
 
-            N_act_diff = (np.amax(N_act_m, axis = 0) == 2)*np.random.binomial(N_act_m[i-1,:], dt*b_N_act_t, N0)
-
-            N_act_to_cM = np.random.binomial(2*N_act_diff, 1-np.nan_to_num(alpha*((1-psi_NE_I)*(1-p_t) + psi_NE_I*p_t) + (1-alpha)*((1 - psi_NE_c)*(1-hl_t) + psi_NE_c*hl_t)), N0)
+            N_act_to_cM = np.random.binomial(2*N_act_diff, 1 - p_N_act_E, N0)
 
             # New central memory cells divide
             cM_div = np.random.binomial(cM_m[i-1,:], dt*b_cM_t, N0)
@@ -379,7 +381,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             # Memory cells from a primary infection divide and differentiate
             pM_act = np.random.binomial(pM_m[i-1,:], 2*dt*b_N_act_t, N0)
             
-            pM_to_cM = np.random.binomial(pM_act, 1-np.nan_to_num(alpha*((1-psi_cME_I)*(1-p_t) + psi_cME_I*p_t) + (1-alpha)*((1 - psi_cME_c)*(1-hl_t) + psi_cME_c*hl_t)), N0)
+            pM_to_cM = np.random.binomial(pM_act, 1-p_M_E, N0)
             
             # Effector cells divide and differentiate, or die, or both
 
@@ -394,7 +396,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 
             # Update population dynamics
             N_m[i,:] = N_m[i-1,:] - N_act
-            N_act_m[i,:] = N_act_m[i-1,:] + N_act + N_act_div - N_act_diff
+            N_act_m[i,:] = N_act_m[i-1,:] + 2*N_act - N_act_diff
             pM_m[i,:] = pM_m[i-1,:] - pM_act
             cM_m[i,:] = cM_m[i-1,:] + N_act_to_cM + cM_div + pM_to_cM # - cM_to_E) 
             E_m[i,:] = (2*N_act_diff - N_act_to_cM) + (E_m[i-1,:] + E_div - E_to_eM) + (pM_act - pM_to_cM)  - E_die 
@@ -419,7 +421,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             regulation_coeffs = psis,
             rates = [mean_theta, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
-            rate_cv = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2.0]),
+            rate_cv = np.array([0.5, 0.2, 0.2, 0.2, 0.5, 0.5, 2.0]),
             infection = "prim",
             sim_kind = "agent"):
     
@@ -457,7 +459,7 @@ def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     return run_data
 
 stat_names = [r"$\psi_{N}^{(I)}$", r"$\psi_{N}^{(c)}$", r"$\psi_{cM}^{(I)}$", r"$\psi_{cM}^{(c)}$", r"$\psi_{E}^{(I)}$", r"$\psi_{E}^{(c)}$",\
-              r"$I_0$", r"$b_{I}$", r"$t_1$", r"$d_{I,E}$",\
+              r"$I_0$", r"$b_{I}$", r"$tau_I$", r"$d_{I,E}$",\
               r"$\int_0^{T_{sim}} \log(I_{p}) dt$",\
               r"$T_{I_{p}}^{max}$", 
               r"$\int_0^{T_{sim}} \log(I_{s}) dt$",\
@@ -467,6 +469,11 @@ stat_names = [r"$\psi_{N}^{(I)}$", r"$\psi_{N}^{(c)}$", r"$\psi_{cM}^{(I)}$", r"
               r"$\int E dt$", \
               r"$\int \log\left(E\right) dt$",\
               r"$\int \log\left(E+M\right) dt$"]
+
+stat_names_for_df = ['psi_NE_c', 'psi_NE_I', 'psi_cME_c', 'psi_cME_I', 'psi_EE_c', 'psi_EE_I',
+               'mi_tau_I_p_harm', 'mi_tau_I_T_max_I', 'mi_tau_I_s_harm', 'mi_tau_I_max_E','mi_tau_I_T_max_E','mi_tau_I_inf_mem','mi_tau_I_int_E', 'mi_tau_I_int_logE', 'mi_tau_I_int_E_mem',
+               'mi_b_I_p_harm', 'mi_b_I_T_max_I', 'mi_b_I_s_harm', 'mi_b_I_max_E','mi_b_I_T_max_E','mi_b_I_inf_mem','mi_b_I_int_E', 'mi_b_I_int_logE', 'mi_b_I_int_E_mem',
+               'p_harm', 'T_max_I', 's_harm', 'max_E','T_max_E','inf_mem','int_E', 'int_logE', 'int_E_mem']
 
 ### (5) define basic mutual information function
 from sklearn.metrics import mutual_info_score

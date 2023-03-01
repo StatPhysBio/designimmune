@@ -15,7 +15,7 @@ T_I = 2
 
 cv_b_I, cv_tau_I = 0.5, 0.5
 
-infection_type = 'sec' #'prim' or 'sec'
+infection_type = 'prim' #'prim' or 'sec'
 sim_kind = "agent"
 
 runs = 1000
