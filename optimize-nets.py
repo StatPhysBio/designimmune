@@ -10,20 +10,23 @@ from stoch_sim_model import *
 # Make grid
 b_I = 8
 tau_I = 10
-d_IE = 3.8*10**(-3)
+d_IE = 3.8*10**(-4)
 T_I = 2
 
-cv_b_I, cv_tau_I = 0.5, 0.5
+#cv_b_I, cv_tau_I = 0.5, 0.5
 
-infection_type = 'prim' #'prim' or 'sec'
+infection_type = 'sec' #'prim' or 'sec'
 sim_kind = "agent"
 
-runs = 1000
+runs = 10000
 
 def run(regs = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], outdir=''):
     print(f'Running with regs = {list(regs)}')
-    Is = np.random.lognormal(mean = np.log(np.array([b_I, tau_I])/np.sqrt(1 + np.array([cv_b_I, cv_tau_I])**2)), 
-                            sigma = np.sqrt(np.log(1 + np.array([cv_b_I, cv_tau_I])**2)), size = (runs,2))
+    
+    # Is = np.random.lognormal(mean = np.log(np.array([b_I, tau_I])/np.sqrt(1 + np.array([cv_b_I, cv_tau_I])**2)), 
+    #                         sigma = np.sqrt(np.log(1 + np.array([cv_b_I, cv_tau_I])**2)), size = (runs,2))
+    
+    Is = sample_pathogen(runs = runs)
 
     # choose which parameter to vary
     print('Running simulation')

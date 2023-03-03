@@ -4,6 +4,7 @@ import itertools
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
+from scipy.stats import qmc
 from scipy import special
 from math import erf
 import numba as nb
@@ -19,8 +20,8 @@ pmhc_frac = 0.03 # typical percent of phmcs on apcs that correspond to pathogen
 a2 = 20_000_000
 tau_I = 10
 b_I = 8
-d_IE = 3.8*10**(-3) # proxy for virulence
-d_I = 1*10**(-1)
+d_IE = 3.8*10**(-4) # proxy for virulence
+d_I = 1**(-3)
 T_I = 2
 S0 = 10_000_000 #susceptible cells
 
@@ -274,13 +275,16 @@ def stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 #######################
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
 #######################
+sim_duration = 10
+sim_steps = 10**4
+
 def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                     regulation_coeffs = psis,
                     rates = [mean_theta, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
                     rate_cv = np.array([0.5, 0.2, 0.2, 0.2, 0.5, 0.5, 2.0]),
                     infection = "prim", 
-                    duration = 10, 
-                    steps = 10**4):
+                    duration = sim_duration, 
+                    steps = sim_steps):
     
     dt =  duration/steps
     
@@ -321,6 +325,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     
     
     for k in np.arange(0, infection_count):
+        
         # define variables for storage
         if k == 0: # primary infection
             N_m = np.zeros((steps+1, N0), dtype = int)
@@ -343,9 +348,12 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
         I[0] = I_0
 
         for i in np.arange(1, steps + 1):
-
             # Compute total population of cell types
             E_pop, cM_pop, eM_pop = np.sum(E_m[i-1]), np.sum(cM_m[i-1]), np.sum(eM_m[i-1])
+            # check simulation stopping conditions
+            if I[i-1] <= E_min and E_pop <= E_min:
+                break
+            
             p_t = (a_stim(tau_I,I[i-1]) >= theta_act)*1 #p_A(tau_I,I[i-1])
             hl_t = hl_u(c1_ss(p_t, tau_I,I[i-1], E_pop, eTr[i-1], bc1), k_E)
 
@@ -415,7 +423,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                                  
     ts = np.linspace(0, duration, steps + 1)
     
-    return np.array(regulation_coeffs), dyn_data.T, ts
+    return np.array(regulation_coeffs), (dyn_data.T)[(E > E_min) + (I > E_min),:], ts[(E > E_min) + (I > E_min)]
 
 ### (4) Parallelize simulation runs
 def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
@@ -450,30 +458,30 @@ def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                                                        np.sum(np.log(np.maximum(sI, E_min)) )*dt,
                                                        np.max(E),
                                                        np.argmax(E)*dt, 
-                                                       eM[-1]+cM[-1], 
+                                                       cM[-1], 
                                                        np.sum(E*dt), 
                                                        np.sum(np.log(np.maximum(E, E_min))*dt),
-                                                       np.sum(np.log(np.maximum(E+eM+cM, E_min))*dt)]), 
+                                                       eM[-1]]), 
                                   axis = None)
     
     return run_data
 
-stat_names = [r"$\psi_{N}^{(I)}$", r"$\psi_{N}^{(c)}$", r"$\psi_{cM}^{(I)}$", r"$\psi_{cM}^{(c)}$", r"$\psi_{E}^{(I)}$", r"$\psi_{E}^{(c)}$",\
-              r"$I_0$", r"$b_{I}$", r"$tau_I$", r"$d_{I,E}$",\
+stat_names = [r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(c)}$", r"$\psi_{cM,E}^{(I)}$", r"$\psi_{cM,E}^{(c)}$", r"$\psi_{E,E}^{(I)}$", r"$\psi_{E,E}^{(c)}$",\
+              r"$I_0$", r"$b_{I}$", r"$\tau_I$", r"$d_{I,E}$",\
               r"$\int_0^{T_{sim}} \log(I_{p}) dt$",\
               r"$T_{I_{p}}^{max}$", 
               r"$\int_0^{T_{sim}} \log(I_{s}) dt$",\
               r"$E^{max}$",\
               r"$T_{E}^{max}$",\
-              r"$(cM + eM)^\infty}$",\
+              r"$(cM)^\infty}$",\
               r"$\int E dt$", \
               r"$\int \log\left(E\right) dt$",\
-              r"$\int \log\left(E+M\right) dt$"]
+              r"$(eM)^\infty}$"]
 
 stat_names_for_df = ['psi_NE_c', 'psi_NE_I', 'psi_cME_c', 'psi_cME_I', 'psi_EE_c', 'psi_EE_I',
-               'mi_tau_I_p_harm', 'mi_tau_I_T_max_I', 'mi_tau_I_s_harm', 'mi_tau_I_max_E','mi_tau_I_T_max_E','mi_tau_I_inf_mem','mi_tau_I_int_E', 'mi_tau_I_int_logE', 'mi_tau_I_int_E_mem',
-               'mi_b_I_p_harm', 'mi_b_I_T_max_I', 'mi_b_I_s_harm', 'mi_b_I_max_E','mi_b_I_T_max_E','mi_b_I_inf_mem','mi_b_I_int_E', 'mi_b_I_int_logE', 'mi_b_I_int_E_mem',
-               'p_harm', 'T_max_I', 's_harm', 'max_E','T_max_E','inf_mem','int_E', 'int_logE', 'int_E_mem']
+               'mi_tau_I_p_harm', 'mi_tau_I_T_max_I', 'mi_tau_I_s_harm', 'mi_tau_I_max_E','mi_tau_I_T_max_E','mi_tau_I_inf_cM','mi_tau_I_int_E', 'mi_tau_I_int_logE', 'mi_tau_I_inf_eM',
+               'mi_b_I_p_harm', 'mi_b_I_T_max_I', 'mi_b_I_s_harm', 'mi_b_I_max_E','mi_b_I_T_max_E','mi_b_I_inf_cM','mi_b_I_int_E', 'mi_b_I_int_logE', 'mi_b_I_int_eM',
+               'p_harm', 'T_max_I', 's_harm', 'max_E','T_max_E','inf_cM','int_E', 'int_logE', 'inf_eM']
 
 ### (5) define basic mutual information function
 from sklearn.metrics import mutual_info_score
@@ -539,6 +547,19 @@ def sample_grid(d,m, type = 'discrete'):
             sample = vertices
     
     return sample
+
+def sample_pathogen(l_bounds = [0.01, 0.5], u_bounds = [2*b_I, 2*tau_I], runs = 1000):
+    
+    sampler = qmc.Sobol(d=2, scramble=False)
+    sample = sampler.random_base2(m = int(np.ceil(np.log2(runs))))
+    out = qmc.scale(sample, l_bounds, u_bounds)
+    
+    # cv_b_I, cv_tau_I = 0.5, 0.5
+    # Is = np.random.lognormal(mean = np.log(np.array([b_I, tau_I])/np.sqrt(1 + np.array([cv_b_I, cv_tau_I])**2)), 
+#                             sigma = np.sqrt(np.log(1 + np.array([cv_b_I, cv_tau_I])**2)), size = (runs,2))
+    
+    return out
+
 
 
 # def calc_MI(x, y, bin_num = 10, correction = True):
