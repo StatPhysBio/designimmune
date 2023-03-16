@@ -342,6 +342,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
         eM_m = np.zeros((steps+1, N0), dtype = int)
         I = np.zeros(steps+1)
         eTr = np.zeros(steps+1)
+        p_XE = np.zeros((steps+1, 3))
 
         # Run population simulation
         t = 0.0
@@ -366,7 +367,9 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             p_N_act_E = alpha*((1-psi_NE_I)*(1-p_t) + psi_NE_I*p_t) + (1-alpha)*((1 - psi_NE_c)*(1-hl_t) + psi_NE_c*hl_t)
             p_E_E = alpha*((1-psi_EeM_I)*(1-p_t) + psi_EeM_I*p_t) + (1-alpha)*((1 - psi_EeM_c)*(1-hl_t) + psi_EeM_c*hl_t)
             p_M_E = alpha*((1-psi_cME_I)*(1-p_t) + psi_cME_I*p_t) + (1-alpha)*((1 - psi_cME_c)*(1-hl_t) + psi_cME_c*hl_t)
-            #print(np.mean(p_N_act_E), np.mean(p_E_E), np.mean(p_M_E))
+            
+            p_XE[i,:] = np.array([np.mean(p_N_act_E), np.mean(p_M_E), np.mean(p_E_E)])
+            
             # Time-dependent rates modulated by antigen and cytokine signals
             b_N_t = bN*(a_stim(tau_I,I[i-1]) >= theta_act)
             b_N_act_t = bN_act
@@ -423,7 +426,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                                  
     ts = np.linspace(0, duration, steps + 1)
     
-    return np.array(regulation_coeffs), (dyn_data.T)[(E > E_min) + (I > E_min),:], ts[(E > E_min) + (I > E_min)]
+    return np.array(regulation_coeffs), (dyn_data.T)[(E > E_min) + (I > E_min),:], ts[(E > E_min) + (I > E_min)], p_XE[(E > E_min) + (I > E_min)]
 
 ### (4) Parallelize simulation runs
 def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
@@ -435,7 +438,7 @@ def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     
     # compute state and costate dynamics
     if sim_kind == "agent":
-        rates, dyn, ts = agent_stoch_sim(I_0, b_I, tau_I, d_IE, T_I,
+        rates, dyn, ts, _ = agent_stoch_sim(I_0, b_I, tau_I, d_IE, T_I,
                                         regulation_coeffs = regulation_coeffs,
                                         rates = rates,
                                         rate_cv =  rate_cv,
@@ -454,7 +457,7 @@ def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     
     run_data = np.concatenate((regulation_coeffs, [I_0, b_I, tau_I, d_IE,
                                                        np.sum( np.log(np.maximum(pI, E_min)) )*dt, 
-                                                       np.argmax(pI)*dt,
+                                                       np.argmax(sI)*dt,
                                                        np.sum(np.log(np.maximum(sI, E_min)) )*dt,
                                                        np.max(E),
                                                        np.argmax(E)*dt, 
@@ -469,7 +472,7 @@ def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 stat_names = [r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(c)}$", r"$\psi_{cM,E}^{(I)}$", r"$\psi_{cM,E}^{(c)}$", r"$\psi_{E,E}^{(I)}$", r"$\psi_{E,E}^{(c)}$",\
               r"$I_0$", r"$b_{I}$", r"$\tau_I$", r"$d_{I,E}$",\
               r"$\int_0^{T_{sim}} \log(I_{p}) dt$",\
-              r"$T_{I_{p}}^{max}$", 
+              r"$T_{I}^{max}$", 
               r"$\int_0^{T_{sim}} \log(I_{s}) dt$",\
               r"$E^{max}$",\
               r"$T_{E}^{max}$",\
