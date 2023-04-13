@@ -15,15 +15,19 @@ import pandas as pd
 # Define simulation parameters
 
 # antigens
-I_0 = 10_000 # initial detectable levelof infected cells
-pmhc_frac = 0.03 # typical percent of phmcs on apcs that correspond to pathogen
-a2 = 20_000_000
+S_0 = 1_000_000 #susceptible cells
+b_S = 1_00_000
+d_S = 0.1
+I_0 = 10 # initial detectable levelof infected cells
 tau_I = 10
-b_I = 8
-d_IE = 3.8*10**(-4) # proxy for virulence
-d_I = 1**(-3)
+b_I = 2*10**(-5)
+d_IE = 12 # effector clearance rate of infection
+K_IE = 7.8*10**3 # effector avidity (half-max) for infected cells at low infection concetrations (Chao et al. 2004)
+d_I = 10**(-1)
 T_I = 2
-S0 = 10_000_000 #susceptible cells
+
+pmhc_per_I = 100/2.3
+ec50_act_mean = 10**(-12)*(6.0221408*10**23)*50*10**(-6)
 
 t2 = 2 # dissociation time
 n, m = 4, 2
@@ -72,7 +76,7 @@ def verf(x):
     return erf(x)
 
 @nb.njit
-def hl_u(x,k):
+def hl_u(x,k,l=l):
     return (x**l)/(k**l + x**l)
 
 @nb.njit
@@ -82,18 +86,6 @@ def a_1(tau_I,I):
 @nb.njit
 def a_stim(tau_I,I):
     return (a_1(tau_I,I)/a2*tau_I**n +t2**n)/(a_1(tau_I,I)/a2*tau_I**m + t2**m)
-
-# activation threshold
-mean_theta = a_stim(4*t2, pmhc_frac*a2)
-cv_theta = 0.5 #np.log((mu_theta*tau_I**n +t2**n)/(mu_theta*tau_I**m + t2**m))/10
-
-@nb.njit
-def p_A(tau_I, I, mu = np.log(a_stim(4*t2, pmhc_frac*a2)/np.sqrt(1 + cv_theta**2)), sigma = np.sqrt(np.log(1 + cv_theta**2))):
-    
-    # mu = np.log(a_stim(4*t2, mean_theta)/np.sqrt(1 + cv_theta**2))
-    # sigma = np.sqrt(np.log(1 + cv_theta**2))
-    
-    return 1/2 + verf((np.log(a_stim(tau_I,I))-mu)/np.sqrt(2*sigma**2))/2
 
 @nb.njit
 def c2_ss(I, E):
@@ -141,11 +133,9 @@ def g_EE(tau_I,I, E, T, max_val = b_E_max, b_c1_pop = b_c1, psi_EeM_I = psis[4],
     return out
 
 @nb.njit
-def b_eTr(tau_I,I, E, eTr, max_val = b_eTr_max, b_c1_pop = b_c1):
+def b_eTr(c1):
     
-    mu_eTr = np.log(a_stim(2*t2, pmhc_frac*a2)/np.sqrt(1 + cv_theta**2))
-    sigma_eTr = np.sqrt(np.log(1 + (2*cv_theta)**2))
-    return max_val*p_A(tau_I,I, mu = mu_eTr, sigma = sigma_eTr)*hl_u(c1_ss(p_A(tau_I,I, mu = mu_eTr, sigma = sigma_eTr), tau_I,I, E, eTr, b_c1_pop), k_E)
+    return b_eTr_max*hl_u(c1, k_E)
 
 @nb.njit
 def b_cM(tau_I,I,E,T, max_val = b_cM_max, b_c1_pop = b_c1):
@@ -170,12 +160,9 @@ def d_E(tau_I,I, E, T, b_E_pop = b_E_max, b_c1_pop = b_c1):
     return d_E_max*(1-hl_u(c1_ss(tau_I,I, E, T, b_c1_pop), k_E)) + b_E(tau_I,I, E, T, max_val = b_E_max, b_c1_pop = b_c1_pop)/20
 
 @nb.njit
-def d_eTr(tau_I,I, E, T, max_val = d_eTr_max, b_c1_pop = b_c1):
+def d_eTr(c1):
     
-    mu_eTr = np.log(a_stim(2*t2, pmhc_frac*a2)/np.sqrt(1 + cv_theta**2))
-    sigma_eTr = np.sqrt(np.log(1 + (2*cv_theta)**2))
-    
-    return d_eTr_max*(1-hl_u(c1_ss(p_A(tau_I,I, mu = mu_eTr, sigma = sigma_eTr), tau_I,I, E, T, b_c1_pop), k_Tr))
+    return d_eTr_max*(1-hl_u(c1, k_Tr))
 
 # define dynamics
 @nb.njit
@@ -280,15 +267,15 @@ sim_steps = 10**4
 
 def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                     regulation_coeffs = psis,
-                    rates = [mean_theta, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
-                    rate_cv = np.array([0.5, 0.2, 0.2, 0.2, 0.5, 0.5, 2.0]),
+                    rates = [ec50_act_mean, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
+                    rate_cv = np.array([5.0, 0.2, 0.2, 0.2, 0.5, 0.5, 2.0]),
                     infection = "prim", 
                     duration = sim_duration, 
                     steps = sim_steps):
     
     dt =  duration/steps
     
-    cov_bE_bM = 0.8
+    cov_bE_bM = 0.95
     # set infection scenario
     infection_count = 0
     if infection == "prim":
@@ -299,7 +286,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     # draw population of reponding cells for agent-based simulations
     psi_NE_I, psi_NE_c, psi_cME_I, psi_cME_c, psi_EeM_I, psi_EeM_c = regulation_coeffs
     
-    theta_act = np.random.lognormal(mean = np.log((rates[0])/np.sqrt(1 + rate_cv[0]**2)), 
+    ec50_act = np.random.lognormal(mean = np.log((rates[0])/np.sqrt(1 + rate_cv[0]**2)), 
                         sigma = np.sqrt(np.log(1+ rate_cv[0]**2)), size = N0)
     
     bN = np.minimum(np.random.lognormal(mean = np.log((rates[1])/np.sqrt(1 + rate_cv[1]**2)), 
@@ -341,11 +328,13 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
         cM_m = np.zeros((steps+1, N0), dtype = int)
         eM_m = np.zeros((steps+1, N0), dtype = int)
         I = np.zeros(steps+1)
+        S = np.zeros(steps+1)
         eTr = np.zeros(steps+1)
         p_XE = np.zeros((steps+1, 3))
 
         # Run population simulation
         t = 0.0
+        S[0] = S_0
         I[0] = I_0
 
         for i in np.arange(1, steps + 1):
@@ -355,13 +344,15 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             if I[i-1] <= E_min and E_pop <= E_min:
                 break
             
-            p_t = (a_stim(tau_I,I[i-1]) >= theta_act)*1 #p_A(tau_I,I[i-1])
-            hl_t = hl_u(c1_ss(p_t, tau_I,I[i-1], E_pop, eTr[i-1], bc1), k_E)
+            p_t = hl_u(pmhc_per_I*I[i-1], ec50_act,l=l) # antigen activation probability
+            c_t = c1_ss(p_t, tau_I,I[i-1], E_pop, eTr[i-1], bc1) # cytokine dynamics
+            hl_t = hl_u(c_t, k_E) # cytokine activation probability
 
             # Run infection dynamics: replication and effector clearance
-            I[i] = I[i-1] + dt*((I[i-1] >= I_0)*np.exp(-t/T_I)*I[i-1]*b_I - d_IE*I[i-1]*E_pop - d_I*I[i-1])*(I[i-1] > 0.0)
+            S[i] = S[i-1] + dt*(b_S - d_S*S[i-1] - b_I*S[i-1]*I[i-1])
+            I[i] = I[i-1] + dt*((I[i-1] >= I_0)*np.exp(-t/T_I)*b_I*S[i-1]*I[i-1] - d_IE*I[i-1]*E_pop/(K_IE + I[i-1] + E_pop) - d_I*I[i-1])*(I[i-1] > 0.0)
 
-            eTr[i] = b_eTr(tau_I, I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max, b_c1_pop = np.mean(bc1)) - eTr[i-1]*d_eTr(tau_I,I[i-1], E_pop, eTr[i-1], max_val = b_eTr_max, b_c1_pop = np.mean(bc1))
+            eTr[i] = b_eTr(np.mean(c_t)) - eTr[i-1]*d_eTr(np.mean(c_t))
             
             # transition probabilities modulated by antigen and cytokine signals
             p_N_act_E = alpha*((1-psi_NE_I)*(1-p_t) + psi_NE_I*p_t) + (1-alpha)*((1 - psi_NE_c)*(1-hl_t) + psi_NE_c*hl_t)
@@ -371,7 +362,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             p_XE[i,:] = np.array([np.mean(p_N_act_E), np.mean(p_M_E), np.mean(p_E_E)])
             
             # Time-dependent rates modulated by antigen and cytokine signals
-            b_N_t = bN*(a_stim(tau_I,I[i-1]) >= theta_act)
+            b_N_t = bN*p_t
             b_N_act_t = bN_act
             b_E_t = bE*hl_t*p_E_E*(E_m[i-1,:] < div_dest)
             b_cM_t = bcM*hl_t*(cM_m[i-1,:] < np.sqrt(div_dest))
@@ -420,9 +411,9 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
         N, cM, E, eM, pM = np.sum(N_m + N_act_m, axis = 1), np.sum(cM_m, axis = 1), np.sum(E_m, axis = 1), np.sum(eM_m, axis = 1), np.sum(pM_m, axis = 1)
         
         if k == 0: # primary infection
-            dyn_data = np.array([I, N, E, cM + pM, eM, eTr])
+            dyn_data = np.array([S, I, N, E, cM + pM, eM, eTr])
         elif k == 1: # secondary infection
-            dyn_data = np.vstack((dyn_data, np.array([I, N, E, cM + pM, eM, eTr])))
+            dyn_data = np.vstack((dyn_data, np.array([S, I, N, E, cM + pM, eM, eTr])))
                                  
     ts = np.linspace(0, duration, steps + 1)
     
@@ -431,7 +422,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 ### (4) Parallelize simulation runs
 def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             regulation_coeffs = psis,
-            rates = [mean_theta, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
+            rates = [ec50_act_mean, b_N_max, b_N_act_max, b_E_max, b_cM_max, b_eM_max, b_c1],
             rate_cv = np.array([0.5, 0.2, 0.2, 0.2, 0.5, 0.5, 2.0]),
             infection = "prim",
             sim_kind = "agent"):
@@ -444,7 +435,7 @@ def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                                         rate_cv =  rate_cv,
                                         infection = infection)
     # extract primary/secondary infection dynamics
-        pI, sI, N, E, cM, eM, eTr = dyn[:, 0], dyn[:,-6], dyn[:,-5], dyn[:,-4], dyn[:,-3], dyn[:,-2], dyn[:,-1]
+        pI, sI, N, E, cM, eM, eTr = dyn[:, 1], dyn[:,-6], dyn[:,-5], dyn[:,-4], dyn[:,-3], dyn[:,-2], dyn[:,-1]
         
     else:
         rates, I, N, E, cM, eM, T, ts = stoch_sim(I_0, b_I, tau_I, d_IE, T_I,
