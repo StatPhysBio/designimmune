@@ -265,12 +265,12 @@ def stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 sim_duration = 10
 sim_steps = 10**4
 
-t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die = 1/6, 3/4, 1/4, 1/3, 1/2, 1.0, 2, 10
+t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die = 1/6, 3/4, 1/4, 1/3, 1/2, 3.0, 1.5, 6.0
 
 def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                     regulation_coeffs = psis,
                     char_times = [t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die],
-                    trans_steps = np.array([1.0, 3.0, 4.0, 4.0, 4.0, 2.0, 2.0, 8.0]),
+                    trans_steps = np.array([1.0, 3.0, 4.0, 4.0, 4.0, 1000.0, 2.0, 1000.0]),
                     infection = "prim", 
                     duration = sim_duration, 
                     steps = sim_steps):
@@ -334,8 +334,8 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
         div_Ein = np.zeros(N0)
         out_Ein_timer = np.zeros(N0)
         out_Ein = np.zeros(N0)
-        diff_Ein_timer = np.zeros(N0)
-        diff_Ein = np.zeros(N0)
+        diff_E_eM_timer = np.zeros(N0)
+        diff_E_eM = np.zeros(N0)
         div_Eout_timer = np.zeros(N0)
         div_Eout = np.zeros(N0)
         die_E_timer = np.zeros(N0)
@@ -414,8 +414,8 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             out_Ein_timer = out_Ein_timer + np.random.binomial(1*(Ein_m[i-1,:] >= 1), dt*b_E_out*trans_steps[6], N0)
             out_Ein = 1*(out_Ein_timer >= trans_steps[6])
             
-            diff_Ein_timer = diff_Ein_timer + np.random.binomial(1*(Ein_m[i-1,:] >= 1), dt*b_eM_diff*trans_steps[5], N0)
-            diff_Ein = 1*(diff_Ein_timer >= trans_steps[5])
+            diff_E_eM_timer = diff_E_eM_timer + np.random.binomial(1*(Ein_m[i-1,:] >= 1), dt*b_eM_diff*trans_steps[5], N0)
+            diff_E_eM = 1*(diff_E_eM_timer >= trans_steps[5])
             
             div_Eout_timer = div_Eout_timer + np.random.binomial(1*(Eout_m[i-1,:] >= 1), dt*b_E_div*trans_steps[3], N0)
             div_Eout = 1*(div_Eout_timer >= trans_steps[3])
@@ -431,8 +431,8 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             pMa_m[i,:] = pMa_m[i-1,:]*(2-diff_pMa_E) + act_pM*pM_m[i-1,:]
             cM_m[i,:] = cM_m[i-1,:]*(1 + div_cM) + (max_Na-diff_Na_E)*(Na_m[i-1,:] == max_Na)
             Ein_m[i,:] = Ein_m[i-1,:]*(1 + div_Ein - out_Ein - die_E) + diff_Na_E*(Na_m[i-1,:] == max_Na) + diff_pMa_E
-            Eout_m[i,:] = Eout_m[i-1,:]*(1 + div_Eout + out_Ein - die_E - diff_Ein)
-            eM_m[i,:] = eM_m[i-1,:] + Eout_m[i-1,:]*diff_Ein
+            Eout_m[i,:] = Eout_m[i-1,:]*(1 + div_Eout - die_E - diff_E_eM) + out_Ein*Ein_m[i-1,:]
+            eM_m[i,:] = eM_m[i-1,:] + Eout_m[i-1,:]*diff_E_eM
 
             # Increment time
             t += dt
@@ -452,8 +452,8 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             div_Ein = np.zeros(N0)
             # out_Ein_timer = out_Ein_timer % trans_steps[6]
             # out_Ein = np.zeros(N0)
-            # diff_Ein_timer = diff_Ein_timer % trans_steps[5]
-            # diff_Ein = np.zeros(N0)
+            # diff_E_eM_timer = diff_E_eM_timer % trans_steps[5]
+            # diff_E_eM = np.zeros(N0)
             div_Eout_timer = div_Eout_timer % trans_steps[3]
             div_Eout = np.zeros(N0)
             # die_E_timer = die_E_timer % trans_steps[7]
@@ -470,8 +470,9 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     ts = np.linspace(0, duration, steps + 1)
     
     print("This fraction of lineages produced effectors: {}".format(np.sum(1*(np.amax(Ein_m + Eout_m, axis = 0) > 0))/N0))
+    print("These lineages produced effector memory: {}".format(np.sum(diff_E_eM)))
     
-    return np.array(regulation_coeffs), (dyn_data.T)[(E > E_min) + (I > E_min),:], ts[(E > E_min) + (I > E_min)], p_XE[(E > E_min) + (I > E_min)]
+    return np.array(regulation_coeffs), (dyn_data.T)[(E > E_min) + (I > E_min),:], ts[(E > E_min) + (I > E_min)], (Ein_m + Eout_m)[(E > E_min) + (I > E_min)]
 
 ### (4) Parallelize simulation runs
 def sum_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
