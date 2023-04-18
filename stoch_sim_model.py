@@ -14,17 +14,26 @@ import pandas as pd
 ### (1) Define simulation parameters
 # Define simulation parameters
 
-# antigens
-S_0 = 1_000_000 #susceptible cells
+# infection dynamics
+S_0 = 10_000_000 #susceptible cells
 b_S = 1_00_000
 d_S = 0.1
 I_0 = 10 # initial detectable levelof infected cells
 tau_I = 10
-b_I = 2*10**(-5)
-d_IE = 12 # effector clearance rate of infection
+b_I = 1*(10**(-6))
+d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
 K_IE = 7.8*10**3 # effector avidity (half-max) for infected cells at low infection concetrations (Chao et al. 2004)
 d_I = 10**(-1)
 T_I = 2
+
+# APC dynamics
+Aout_0 = 6*(10**4)
+d_A = 0.8
+
+# Inflammatory response
+H_0 = 100
+K_IH = K_IE
+d_H = 0.8
 
 pmhc_per_I = 100/2.3
 ec50_act_mean = 10**(-12)*(6.0221408*10**23)*50*10**(-6)
@@ -263,21 +272,21 @@ def stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
 #######################
 sim_duration = 10
-sim_steps = 10**4
+sim_steps = 5*(10**4)
 
-t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die = 1/6, 3/4, 1/4, 1/3, 1/2, 3.0, 1.5, 6.0
+t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt = 1/6, 3/4, 1/4, 1/3, 1/2, 3.0, 1.5, 6.0, 2.0
 
 def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
                     regulation_coeffs = psis,
-                    char_times = [t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die],
-                    trans_steps = np.array([1.0, 3.0, 4.0, 4.0, 4.0, 1000.0, 2.0, 1000.0]),
+                    char_times = [t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt],
+                    trans_steps = np.array([1.0, 3.0, 4.0, 4.0, 4.0, 4.0, 2.0, 4.0, 6.0]),
                     infection = "prim", 
                     duration = sim_duration, 
                     steps = sim_steps):
     
     dt =  duration/steps
     
-    # set infection scenario
+    # set infection scenario: primary or secondary
     infection_count = 0
     if infection == "prim":
         infection_count = 1
@@ -299,6 +308,13 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
     for k in np.arange(0, infection_count):
         
         # define variables for storage
+        I = np.zeros(steps+1)
+        S = np.zeros(steps+1)
+        eTr = np.zeros(steps+1)
+        Aout = np.zeros(steps+1)
+        Ain = np.zeros(steps+1)
+        H = np.zeros(steps+1)
+        
         if k == 0: # primary infection
             N_m = np.zeros((steps+1, N0), dtype = int)
             N_m[0,:] +=1
@@ -309,17 +325,14 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
         
         Na_m = np.zeros((steps+1, N0), dtype = int)
         pMa_m = np.zeros((steps+1, N0), dtype = int)
-
+        
         Ein_m = np.zeros((steps+1, N0), dtype = int) # effector in lympoid organ
         Eout_m = np.zeros((steps+1, N0), dtype = int) # effector in periphary
         cM_m = np.zeros((steps+1, N0), dtype = int)
         eM_m = np.zeros((steps+1, N0), dtype = int)
-        I = np.zeros(steps+1)
-        S = np.zeros(steps+1)
-        eTr = np.zeros(steps+1)
         p_XE = np.zeros((steps+1, 3))
         
-        # define timer variables
+        # define event timer variables
         unbind_Na_timer = np.zeros(N0)
         unbound_Na = np.zeros(N0)
         div_Na_timer = np.zeros(N0)
@@ -332,6 +345,8 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
         diff_pMa_E = np.zeros(N0)
         div_Ein_timer = np.zeros(N0)
         div_Ein = np.zeros(N0)
+        cyt_E_timer = np.zeros(N0)
+        cyt_E = np.zeros(N0)
         out_Ein_timer = np.zeros(N0)
         out_Ein = np.zeros(N0)
         diff_E_eM_timer = np.zeros(N0)
@@ -341,16 +356,29 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
         die_E_timer = np.zeros(N0)
         die_E = np.zeros(N0)
         
-        # Run population simulation
+        if k == 1: # cytolytic function is achieved almost instantly during secondary infection by memory
+            cyt_E = np.ones(N0)*(pM_m[0,:] > 0)
+        
+        ### RUN POPULATION SIMULATION ###
         t = 0.0
         S[0] = S_0
         I[0] = I_0
+        Aout[0] = Aout_0
+        H[0] = H_0
 
         for i in np.arange(1, steps + 1):
             # Compute total population of cell types
-            E_pop, cM_pop, eM_pop = np.sum(Ein_m[i-1] + Eout_m[i-1]), np.sum(cM_m[i-1]), np.sum(eM_m[i-1])
+            Ein_pop, Eout_pop, cM_pop, eM_pop, Ein_cyt_pop, Eout_cyt_pop, cM_cyt_pop, eM_cyt_pop = np.sum(Ein_m[i-1]), np.sum(Eout_m[i-1]), np.sum(cM_m[i-1]), np.sum(eM_m[i-1]), np.sum(cyt_E*Ein_m[i-1]), np.sum(cyt_E*Eout_m[i-1]), np.sum(cyt_E*cM_m[i-1]), np.sum(cyt_E*eM_m[i-1])
+            # Define population dependent CTL killing rate
+            d_IEout_pop = 0.0
+            d_IEin_pop = 0.0
+            if Eout_cyt_pop > 0:
+                d_IEout_pop = d_IE*np.sum(cyt_E*Eout_m[i-1]*p_tcr)/Eout_cyt_pop
+            if Ein_cyt_pop + cM_cyt_pop > 0:
+                d_IEin_pop = d_IE*np.sum(cyt_E*(Ein_m[i-1] + cM_cyt_pop)*p_tcr)/(Ein_cyt_pop + cM_cyt_pop)
+                
             # check simulation stopping conditions
-            if I[i-1] <= E_min and E_pop <= E_min:
+            if I[i-1] <= E_min and (Ein_pop + Eout_pop) <= E_min:
                 break
             
             # p_t = hl_u(pmhc_per_I*I[i-1], ec50_act,l=l) # antigen activation probability
@@ -359,7 +387,10 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 
             # Run infection dynamics: replication and effector clearance
             S[i] = S[i-1] + dt*(b_S - d_S*S[i-1] - b_I*S[i-1]*I[i-1])
-            I[i] = I[i-1] + dt*((I[i-1] >= I_0)*np.exp(-t/T_I)*b_I*S[i-1]*I[i-1] - d_IE*I[i-1]*E_pop/(K_IE + I[i-1] + E_pop) - d_I*I[i-1])*(I[i-1] > 0.0)
+            I[i] = I[i-1] + dt*((I[i-1] >= I_0)*np.exp(-t/T_I)*b_I*S[i-1]*I[i-1] - d_IEout_pop*I[i-1]*Eout_cyt_pop/(K_IE + I[i-1] + Eout_cyt_pop) - d_I*I[i-1])*(I[i-1] > 0.0)
+            Aout[i] = Aout[i-1] - b_I*I[i-1]*Aout[i-1]*dt
+            Ain[i] = Ain[i-1] + dt*(b_I*I[i-1]*Aout[i-1] - d_A*Ain[i-1] - d_IEin_pop*Ain[i-1]*(Ein_cyt_pop + cM_cyt_pop)/(K_IE + Ain[i-1] + Eout_cyt_pop + cM_cyt_pop))
+            H[i] = H[i-1] + dt*(I[i-1]*H[i-1]/(K_IH + I[i-1] + H[i-1]) - d_H*H[i-1])
 
             #eTr[i] = b_eTr(np.mean(c_t)) - eTr[i-1]*d_eTr(np.mean(c_t))
             
@@ -371,7 +402,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
 #             p_XE[i,:] = np.array([np.mean(p_N_act_E), np.mean(p_M_E), np.mean(p_E_E)])
             
             # Time-dependent rates modulated by antigen and cytokine signals
-            b_act_t = 0.5*(p_tcr + p_cyt)/char_times[0]
+            b_act_t = 0.5*(p_tcr + p_cyt)*(Ain[i-1]/(char_times[0]*Aout_0))
             b_stim_t = 0.5*(p_tcr + p_cyt)/char_times[1]
             b_Na_div = 0.5*(p_tcr + p_cyt)/char_times[2]
             b_E_div = (Ein_m[i-1] + Eout_m[i-1] < div_dest)*0.5*(p_tcr + p_cyt)/char_times[3]
@@ -379,6 +410,7 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             b_eM_diff = 0.5*(p_tcr + p_cyt)/char_times[5]
             b_E_out = 0.5*(p_tcr + p_cyt)/char_times[6]
             d_E_die = 1/char_times[7]
+            b_E_cyt = 0.5*(p_tcr + p_cyt)/char_times[8]
             
             ## I. Recruitment/Priming
             # Phase 1: Naive cells encounter and bind APCs
@@ -397,19 +429,22 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
             diff_Na_E_timer = diff_Na_E_timer + np.random.binomial(1*(Na_m[i-1,:]*(1-unbound_Na) > 0), dt*b_stim_t*trans_steps[1], N0)
             diff_Na_E = 1*(diff_Na_E_timer >= trans_steps[1])
 
-            # New central memory cells divide
+            # (a) New central memory cells divide
             div_cM_timer = div_cM_timer + np.random.binomial(1*(cM_m[i-1,:] >= 1), dt*b_cM_div*trans_steps[4], N0)
             div_cM = 1*(div_cM_timer >= trans_steps[4])
             
-            # Memory cells from a primary infection activate quickly and divide
+            # (b) Memory cells from a prior infection activate quickly and divide
             act_pM = np.random.binomial(pM_m[i-1,:], b_act_t*dt, N0)
             
             diff_pMa_timer = diff_pMa_timer + np.random.binomial(1*(pMa_m[i-1,:] >= 1), dt*b_Na_div*trans_steps[2], N0)
             diff_pMa_E = 1*(diff_pMa_timer >= trans_steps[2])
             
-            # Effector cells divide and differentiate, or die, or both
+            # (c) Effector cells divide, differentiate, gain cytolytic function, die
             div_Ein_timer = div_Ein_timer + np.random.binomial(1*(Ein_m[i-1,:] >= 1), dt*b_E_div*trans_steps[3], N0)
             div_Ein = 1*(div_Ein_timer >= trans_steps[3])
+            
+            cyt_E_timer = cyt_E_timer + np.random.binomial(1*(Ein_m[i-1,:] + Eout_m[i-1,:] >= 1), dt*b_E_cyt*trans_steps[8], N0)
+            cyt_E = 1*(cyt_E_timer >= trans_steps[8])
             
             out_Ein_timer = out_Ein_timer + np.random.binomial(1*(Ein_m[i-1,:] >= 1), dt*b_E_out*trans_steps[6], N0)
             out_Ein = 1*(out_Ein_timer >= trans_steps[6])
@@ -463,9 +498,9 @@ def agent_stoch_sim(I_0 = I_0, b_I = b_I, tau_I = tau_I, d_IE = d_IE, T_I = T_I,
         N, cM, E, eM, pM = np.sum(N_m, axis = 1), np.sum(cM_m, axis = 1), np.sum(Ein_m + Eout_m, axis = 1), np.sum(eM_m, axis = 1), np.sum(pM_m, axis = 1)
         
         if k == 0: # primary infection
-            dyn_data = np.array([S, I, N, E, cM + pM, eM, eTr])
+            dyn_data = np.array([S, I, Ain, N, E, cM + pM, eM, eTr])
         elif k == 1: # secondary infection
-            dyn_data = np.vstack((dyn_data, np.array([S, I, N, E, cM + pM, eM, eTr])))
+            dyn_data = np.vstack((dyn_data, np.array([S, I, Ain, N, E, cM + pM, eM, eTr])))
                                  
     ts = np.linspace(0, duration, steps + 1)
     
