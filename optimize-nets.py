@@ -8,10 +8,10 @@ from stoch_sim_model import *
 ### (1) Define function to run simulations and compute MI
 
 # Make grid
-infection_type = 'prim' #'prim' or 'sec'
+infection_type = 'sec' #'prim' or 'sec'
 sim_kind = "agent"
 reg_model = "mwc_like"
-runs = 1000
+runs = 500
 
 def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
     print(f'Running with regs = {list(regs)}')
@@ -20,11 +20,11 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
 
     # choose which parameter to vary
     print('Running simulation')
-    run_data = np.array(Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(INs)/40),1))(delayed(sum_sim)(b_I = param[0], N_0 = param[1],
+    run_data = np.array(Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(INs)/40),1))(delayed(sum_sim)(d_I = param[0], N_0 = param[1],
                                                                                                                regulation_coeffs = np.array(regs) -1,
-                                                                                                        infection = infection_type,
-                                                                                                        sim_kind = sim_kind,
-                                                                                                        reg_model = reg_model)
+                                                                                                               infection = infection_type,
+                                                                                                               sim_kind = sim_kind,
+                                                                                                               reg_model = reg_model)
                                                     for param in INs))
         
     print('Computing MI')
@@ -32,10 +32,10 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
         
     MI_data = np.zeros(2*len(MI_args))
     for i in np.arange(len(MI_args)):
-        MI_data[i] = calc_MI(run_data[:,8], run_data[:,MI_args[i]]) # 8 = N_0, 7 = b_I
+        MI_data[i] = calc_MI(run_data[:,8], run_data[:,MI_args[i]]) # 8 = N_0, 7 = d_I
         MI_data[i + len(MI_args)] = calc_MI(run_data[:,7], run_data[:,MI_args[i]])
         
-    # Combined dataset with [regs, MI-N_0, MI-b_I, mean-response] 
+    # Combined dataset with [regs, MI-N_0, MI-d_I, mean-response] 
     sim_data = np.array(np.append(MI_data, np.mean(run_data[:,10:], axis = 0)))
     
     print('Concatenting')
