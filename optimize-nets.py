@@ -11,41 +11,54 @@ from stoch_sim_model import *
 infection_type = 'sec' #'prim' or 'sec'
 sim_kind = "agent"
 reg_model = "mwc_like"
-runs = 500
+
+S_0 = 10_000_000 #susceptible cells
+d_S = 0.1
+b_S = S_0*d_S
+I_0 = 10 # initial detectable levelof infected cells
+b_I = 1*(10**(-6)) # harm per unit virion
+N_0 = 50
+
+runs = 10
+reg_weight = 2
 
 def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
-    print(f'Running with regs = {list(regs)}')
     
-    INs = sample_pathogen(runs = runs)
+    reg_coeff = reg_weight*(np.array(regs) - 1)
+    
+    print(f'Running with regs = {list(reg_coeff)}')
+    
+    # sample distribution of pathogen killing rate and size of naive repertoire
+    dI_N0s = sample_2d(l_bounds = [d_S, 49.5], u_bounds = [0.5*S_0*b_I, N_0], runs = runs)
 
     # choose which parameter to vary
     print('Running simulation')
-    run_data = np.array(Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(INs)/40),1))(delayed(sum_sim)(d_I = param[0], N_0 = param[1],
-                                                                                                               regulation_coeffs = np.array(regs) -1,
+    run_data = np.array(Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(dI_N0s)/40),1))(delayed(sum_sim)(d_I = params[0], N_0 = N_0,
+                                                                                                               regulation_coeffs = reg_coeff,
                                                                                                                infection = infection_type,
                                                                                                                sim_kind = sim_kind,
                                                                                                                reg_model = reg_model)
-                                                    for param in INs))
+                                                    for params in dI_N0s ))
         
-    print('Computing MI')
-    MI_args = np.arange(10,len(stat_names))
+#     print('Computing MI')
+#     MI_args = np.arange(10,len(stat_names))
         
-    MI_data = np.zeros(2*len(MI_args))
-    for i in np.arange(len(MI_args)):
-        MI_data[i] = calc_MI(run_data[:,8], run_data[:,MI_args[i]]) # 8 = N_0, 7 = d_I
-        MI_data[i + len(MI_args)] = calc_MI(run_data[:,7], run_data[:,MI_args[i]])
+#     MI_data = np.zeros(2*len(MI_args))
+#     for i in np.arange(len(MI_args)):
+#         MI_data[i] = calc_MI(run_data[:,8], run_data[:,MI_args[i]]) # 8 = N_0, 7 = d_I
+#         MI_data[i + len(MI_args)] = calc_MI(run_data[:,7], run_data[:,MI_args[i]])
         
-    # Combined dataset with [regs, MI-N_0, MI-d_I, mean-response] 
-    sim_data = np.array(np.append(MI_data, np.mean(run_data[:,10:], axis = 0)))
+#     # Combined dataset with [regs, MI-N_0, MI-d_I, mean-response] 
+#     sim_data = np.array(np.append(MI_data, np.mean(run_data[:,10:], axis = 0)))
     
-    print('Concatenting')
-    out = np.concatenate((regs, sim_data), axis = None)
+#     print('Concatenting')
+#     out = np.concatenate((reg_weight*(np.array(regs) - 1), sim_data), axis = None)
 
     outfile = '-'.join((regs * 1).astype('U1')) + f'-{runs}-{infection_type}-{reg_model}.npy'
     
     outfile = os.path.join(outdir, outfile) # what is outfile?
     print('Saving')
-    np.save(outfile, out)
+    np.save(outfile, run_data)
     print(f'Saved {outfile}')
 
 def main():
