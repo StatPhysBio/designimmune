@@ -8,9 +8,9 @@ from stoch_sim_model import *
 ### (1) Define function to run simulations and compute MI
 
 # Make grid
-infection_type = 'sec' #'prim' or 'sec'
+infection_type = 'sec' # 'prim' or 'sec'
 sim_kind = "agent"
-reg_model = "mwc_like"
+reg_model = "hill_or" # "mwc_like", "hill_and", "hill_or"
 
 S_0 = 10_000_000 #susceptible cells
 d_S = 0.1
@@ -18,9 +18,10 @@ b_S = S_0*d_S
 I_0 = 10 # initial detectable levelof infected cells
 b_I = 1*(10**(-6)) # harm per unit virion
 N_0 = 50
+K_IE = 7.8*(10**3)
 
-runs = 10
-reg_weight = 2
+runs = 500
+reg_weight = 1
 
 def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
     
@@ -29,11 +30,12 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
     print(f'Running with regs = {list(reg_coeff)}')
     
     # sample distribution of pathogen killing rate and size of naive repertoire
-    dI_N0s = sample_2d(l_bounds = [d_S, 49.5], u_bounds = [0.5*S_0*b_I, N_0], runs = runs)
+    dI_N0s = sample_2d(l_bounds = [d_S, N_0-0.5], u_bounds = [0.5*S_0*b_I, N_0], runs = runs)
 
     # choose which parameter to vary
     print('Running simulation')
     run_data = np.array(Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(dI_N0s)/40),1))(delayed(sum_sim)(d_I = params[0], N_0 = N_0,
+                                                                                                                  K_IE = K_IE,
                                                                                                                regulation_coeffs = reg_coeff,
                                                                                                                infection = infection_type,
                                                                                                                sim_kind = sim_kind,

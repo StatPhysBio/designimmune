@@ -21,7 +21,7 @@ b_S = S_0*d_S
 I_0 = 10 # initial detectable levelof infected cells
 b_I = 1*(10**(-6)) # harm per unit virion
 d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
-K_IE = 7.8*10**4 # effector avidity (half-max) for infected cells at low infection concetrations (Chao et al. 2004)
+K_IE = 7.8*10**3 # effector avidity (half-max) for infected cells at low infection concetrations (Chao et al. 2004)
 d_I = np.minimum(10*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
 
 # APC dynamics
@@ -46,7 +46,7 @@ b_cM_max = 1.2
 b_eM_max = 1/60
 
 # Division timer
-b_myc = 6.0*(10**3)
+b_myc = 3.0*(10**3)
 d_myc = np.log(2)*24/7
 myc_thresh = 10**(2.6)
 
@@ -179,7 +179,7 @@ def p_XtoY(I_stim, H_stim, psi_I, psi_H, F_0, K_I, K_H, reg_model = "mwc_like", 
     # I_stim := antigenic stimuli
     # H_stim := inflammatory stimuli
     # psi_. := strength of regulatory action (psi > 0 means upregulation, psi = 0 means no regulation, and psi < 0 means down regulation
-    # F_0 := bias towrads transitioning from state X to Y in the absense of stimuli
+    # F_0 := bias towards transitioning from state X to Y in the absense of stimuli
     # K_. := associated concentration thresholds for the tranistions
     # reg_model := family of regulatory functions considered: Monod-Wyman-Changeaux inspired, and Hill functions
     # alpha := relative weight of antigen and cytokine signals in Hill-OR model
@@ -333,10 +333,10 @@ def stoch_sim(I_0 = I_0, b_I = b_I, N_0 = N_0, d_IE = d_IE, d_IH = d_IH,
 #######################
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
 #######################
-sim_duration = 20
-sim_steps = 2*(10**4)
+sim_duration = 15
+sim_steps = 0.5*(10**4)
 
-t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt = 1/6, 3/4, 1/4, 1/3, 1/2, 1.5, 1.0, 3.0, 1.0
+t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt = 1/6, 3/4, 1/4, 1/3, 1/2, 1.0, 1.0, 3.0, 1.0
 
 def agent_stoch_sim(I_0 = I_0, d_I = d_I, N_0 = N_0, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE,
                     regulation_coeffs = psis,
@@ -371,39 +371,39 @@ def agent_stoch_sim(I_0 = I_0, d_I = d_I, N_0 = N_0, d_IE = d_IE, d_IH = d_IH, K
     for k in np.arange(0, infection_count):
         
         # define variables for storage
-        I = np.zeros(steps+1)
-        S = np.zeros(steps+1)
-        eTr = np.zeros(steps+1)
-        Aout = np.zeros(steps+1)
-        Ain = np.zeros(steps+1)
-        H = np.zeros(steps+1)
-        I_d_I = np.zeros(steps+1)
-        I_d_IE = np.zeros(steps+1)
+        I = np.zeros(int(steps)+1)
+        S = np.zeros(int(steps)+1)
+        eTr = np.zeros(int(steps)+1)
+        Aout = np.zeros(int(steps)+1)
+        Ain = np.zeros(int(steps)+1)
+        H = np.zeros(int(steps)+1)
+        I_d_I = np.zeros(int(steps)+1)
+        I_d_IE = np.zeros(int(steps)+1)
         
         if k == 0: # primary infection
-            N_m = np.zeros((steps+1, N_0_var), dtype = int)
+            N_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
             N_m[0,:] +=1
-            pM_m = np.zeros((steps+1, N_0_var), dtype = int)
+            pM_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
         elif k == 1: # secondary infection
             N_m[0,:] = N_m[-1,:]
             print("These lineages did not respond to a primary infection: {}".format(N_m[0,:]))
             pM_m[0,:] = cM_m[-1,:] + eM_m[-1,:]
             print("These lineages produced memory during the primary infection: {}".format(pM_m[0,:]))
             
-        Na_m = np.zeros((steps+1, N_0_var), dtype = int)
-        pMa_m = np.zeros((steps+1, N_0_var), dtype = int)
+        Na_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
+        pMa_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
         
-        mycNa_m = np.zeros((steps+1, N_0_var))
-        mycpMa_m = np.zeros((steps+1, N_0_var))
-        mycEin_m = np.zeros((steps+1, N_0_var))
-        mycEout_m = np.zeros((steps+1, N_0_var))
-        myccM_m = np.zeros((steps+1, N_0_var))
+        mycNa_m = np.zeros((int(steps)+1, N_0_var))
+        mycpMa_m = np.zeros((int(steps)+1, N_0_var))
+        mycEin_m = np.zeros((int(steps)+1, N_0_var))
+        mycEout_m = np.zeros((int(steps)+1, N_0_var))
+        myccM_m = np.zeros((int(steps)+1, N_0_var))
         
-        Ein_m = np.zeros((steps+1, N_0_var), dtype = int) # effector in lympoid organ
-        Eout_m = np.zeros((steps+1, N_0_var), dtype = int) # effector in periphary
-        cM_m = np.zeros((steps+1, N_0_var), dtype = int)
-        eM_m = np.zeros((steps+1, N_0_var), dtype = int)
-        p_XE = np.zeros((steps+1, 4))
+        Ein_m = np.zeros((int(steps)+1, N_0_var), dtype = int) # effector in lympoid organ
+        Eout_m = np.zeros((int(steps)+1, N_0_var), dtype = int) # effector in periphary
+        cM_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
+        eM_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
+        p_XE = np.zeros((int(steps)+1, 4))
         
         # Define event timer variables
         unbind_Na_timer = np.zeros(N_0_var, dtype =int)
@@ -488,7 +488,7 @@ def agent_stoch_sim(I_0 = I_0, d_I = d_I, N_0 = N_0, d_IE = d_IE, d_IH = d_IH, K
         # errors and troubleshooting
         error_time = 0
 
-        for i in np.arange(1, steps + 1):
+        for i in np.arange(1, int(steps) + 1):
             # Compute total population of cell types
             Na_pop, Ein_pop, Eout_pop, cM_pop, eM_pop, pMa_pop = np.sum(Na_m[i-1]), np.sum(Ein_m[i-1]), np.sum(Eout_m[i-1]), np.sum(cM_m[i-1]), np.sum(eM_m[i-1]), np.sum(pMa_m[i-1])
             
@@ -645,13 +645,13 @@ def agent_stoch_sim(I_0 = I_0, d_I = d_I, N_0 = N_0, d_IE = d_IE, d_IH = d_IH, K
             # pMa_div_flag = [(1 - 1*(div_pMa_timer[j] >= trans_steps[2])) if pMa_m[i,j] > 0 else 1 for j in np.arange(N_0_var)]
             
             #### New binding events ####
-            b_act_t = p_tcr*Ain[i]/(char_times[0]*(K_IE/10 + Ain[i]))
+            b_act_t = p_tcr*Ain[i]/(char_times[0]*(Aout_0/10 + Ain[i]))
             b_stim_t = [1/(p_tcr[j]*char_times[1]) for j in np.arange(N_0_var)]
-            b_IEin_bind = p_tcr*Ain[i]/(char_times[0]*(K_IE/10 + Ain[i] + np.sum(cM_m[i]) ))
-            b_IEout_bind = 5*d_IE*I[i]/(K_IE/10 + I[i] + Eout_pop)
-            b_IN_bind = p_tcr*Ain[i]/(char_times[0]*(K_IE/10 + Ain[i]))
-            b_IcM_bind = p_tcr*Ain[i]/(char_times[0]*(K_IE/10 + Ain[i]))
-            b_IpMa_bind = p_tcr*Ain[i]/(char_times[0]*(K_IE/10 + Ain[i]))
+            b_IEin_bind = p_tcr*Ain[i]/(char_times[0]*(Aout_0/10  + Ain[i] + np.sum(cM_m[i]) + np.sum(Ein_m[i])))
+            b_IEout_bind = 5*d_IE*I[i]/(K_IE/10 + I[i] + np.sum(Eout_m[i]))
+            b_IN_bind = p_tcr*Ain[i]/(char_times[0]*(Aout_0/10 + Ain[i]))
+            b_IcM_bind = p_tcr*Ain[i]/(char_times[0]*(Aout_0/10 + Ain[i]))
+            b_IpMa_bind = p_tcr*Ain[i]/(char_times[0]*(Aout_0/10 + Ain[i]))
             
             bound_IN = [np.random.binomial(1, dt*b_IN_bind[j], Na_m[i,j]) if Na_m[i,j] > 0 else 0 for j in np.arange(N_0_var)]
             bound_IcM = [np.random.binomial(1, dt*b_IcM_bind[j], cM_m[i,j]) if cM_m[i,j] > 0 else 0 for j in np.arange(N_0_var)]
@@ -725,7 +725,7 @@ def agent_stoch_sim(I_0 = I_0, d_I = d_I, N_0 = N_0, d_IE = d_IE, d_IH = d_IH, K
         elif k == 1: # secondary infection
             dyn_data = np.vstack((dyn_data, np.array([S, I, Ain, Na + pMa, E, cM + pM, eM, H, I_d_I, I_d_IE])))
                                  
-    ts = np.linspace(0, duration, steps + 1)
+    ts = np.linspace(0, duration, int(steps) + 1)
     
     # print("This fraction of lineages produced effectors: {}".format(np.sum(1*(np.amin(Ein_m + Eout_m, axis = 0) > 0))/N_0_var))
     # print("These lineages produced effector memory: {}".format(np.sum(eM_m[-1,:] > 0)))
@@ -831,46 +831,88 @@ stat_names_for_df = ['psi_NE_c', 'psi_NE_I', 'psi_EeM_c', 'psi_EeM_I', 'psi_pME_
 from sklearn.metrics import mutual_info_score
 from sklearn.linear_model import LinearRegression
 
-def calc_MI(x, y, bin_num = 50, correction = False):
+def fast_mi(contingency):
+    """
+    This comes from sklearn.metrics.mutual_info_score and takes only the
+    piece of code relevant for contingency being a numpy array.
+    """
+    from math import log
+    nzx, nzy = np.nonzero(contingency)
+    nz_val = contingency[nzx, nzy]
+
+    contingency_sum = contingency.sum()
+    pi = np.ravel(contingency.sum(axis=1))
+    pj = np.ravel(contingency.sum(axis=0))
+
+    # Since MI <= min(H(X), H(Y)), any labelling with zero entropy, i.e. containing a
+    # single cluster, implies MI = 0
+    if pi.size == 1 or pj.size == 1:
+        return 0.0
+
+    log_contingency_nm = np.log(nz_val)
+    contingency_nm = nz_val / contingency_sum
+    # Don't need to calculate the full outer product, just for non-zeroes
+    outer = pi.take(nzx).astype(np.int64, copy=False) * pj.take(nzy).astype(
+        np.int64, copy=False
+    )
+    log_outer = -np.log(outer) + log(pi.sum()) + log(pj.sum())
+    mi = (
+        contingency_nm * (log_contingency_nm - log(contingency_sum))
+        + contingency_nm * log_outer
+    )
+    mi = np.where(np.abs(mi) < np.finfo(mi.dtype).eps, 0.0, mi)
+    return np.clip(mi.sum(), 0.0, None)
+
+def calc_MI(x, y, bin_num = 50, correction = False, seed=None, replicates = 20):
+    rng = np.random.default_rng(seed)
     
     subsample_size = np.array([0.6, 0.7, 0.8, 0.9, 0.95, 1.0])*x.size
-    replicates = 20
-    
-    mi_data = np.zeros((subsample_size.size*replicates, 2))
-    entry =0
+
+    mi_data = np.zeros((subsample_size.size * replicates, 2))
+    entry = 0
     
     for sub in subsample_size:
+        # Precompute permutations of indices [0, int(sub) - 1] to be used
+        # for shuffling data.
+        permutations = rng.permuted(np.tile(np.arange(int(sub)), replicates)
+                                    .reshape(replicates, int(sub)),
+                                    axis=1)
+        
+        # Sample integers between [0, x.size - 1] with replacement
+        # for all replicates.
+        choices = rng.integers(low=0, high=x.size, size=(replicates, int(sub)))
+        
+        # Compute the quantiles for each replicate in a vectorized manner.
+        bx = np.quantile(x[choices], np.linspace(0, 1, bin_num + 1), axis=1).T
+        by = np.quantile(y[choices], np.linspace(0, 1, bin_num + 1), axis=1).T
+
         for i in np.arange(0,replicates):
-            choice =  np.random.choice(int(sub), int(sub))
-            x_, y_ = x[choice], y[choice]
+            # Quantiles can be degenerate if there's not enough data.
+            unique_bx, unique_by = np.unique(bx[i]), np.unique(by[i])
+            
+            if unique_bx.size == 1:
+                unique_bx = np.append(unique_bx, unique_bx + 1)
 
-
-            _, bx = pd.qcut(x_, bin_num, retbins=True, duplicates = 'drop')
-            _, by = pd.qcut(y_, bin_num, retbins=True, duplicates = 'drop')
-
-            if bx.size == 1:
-                bx = np.append(bx, bx +1)
-
-            if by.size == 1:
-                by = np.append(by, by +1)
-
-            c_xy = np.histogram2d(x_, y_, (bx,by))[0]
-            mi_raw = mutual_info_score(None, None, contingency=c_xy)/np.log(2)
-
-            # MI correction by shuffling data
-            c_xy_shuffle = np.histogram2d(x_, y_[np.random.permutation(y_.shape[0])], (bx,by))[0]
-            mi_correction = mutual_info_score(None, None, contingency=c_xy_shuffle)/np.log(2)
+            if unique_by.size == 1:
+                unique_by = np.append(unique_by, unique_by + 1)
+                
+            c_xy = np.histogram2d(x[choices[i]], y[choices[i]], (unique_bx, unique_by))[0]
+            mi_raw = fast_mi(c_xy) / np.log(2)
+            
+            c_xy_shuffle = np.histogram2d(x[choices[i]], y[choices[i]][permutations[i]], (unique_bx, unique_by))[0]
+            mi_correction = fast_mi(c_xy_shuffle) / np.log(2)
 
             if correction == True:
+                # MI correction by shuffling data
                 out = mi_raw - mi_correction
             else:
                 out = mi_raw
-            
+
             mi_data[entry, 1], mi_data[entry, 0] = out, 1/sub
-            
+
             entry += 1
-            
+
     lr = LinearRegression()
     lr.fit(mi_data[:,0].reshape(-1,1), mi_data[:,1].reshape(-1,1))
-    
+
     return lr.intercept_
