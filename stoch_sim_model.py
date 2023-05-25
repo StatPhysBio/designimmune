@@ -21,7 +21,7 @@ b_S = S_0*d_S
 I_0 = 10 # initial detectable levelof infected cells
 b_I = 1*(10**(-6)) # harm per unit virion
 d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
-K_IE = 7.8*10**3 # effector avidity (half-max) for infected cells at low infection concetrations (Chao et al. 2004)
+K_IE = 7.8*(10**3) # effector avidity (half-max) for infected cells at low infection concetrations (Chao et al. 2004)
 d_I = np.minimum(10*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
 
 # APC dynamics
@@ -226,7 +226,7 @@ def sample_grid(d,m, type = 'discrete'):
     
     return sample
 
-def sample_2d(l_bounds = [d_S, 1.5], u_bounds = [0.5*S_0*b_I, 2], runs = 1000):
+def sample_2d(l_bounds = [d_S, 0.5], u_bounds = [S_0*b_I, 1.0], runs = 1000):
     
     sampler = qmc.Sobol(d=2, scramble=False)
     sample = sampler.random_base2(m = int(np.ceil(np.log2(runs))))
@@ -363,8 +363,8 @@ def agent_stoch_sim(I_0 = I_0, d_I = d_I, N_0 = N_0, d_IE = d_IE, d_IH = d_IH, K
     # draw population of reponding cells for agent-based simulations
     psi_NE_I, psi_NE_c, psi_EeM_I, psi_EeM_c, psi_pME_I, psi_pME_c = regulation_coeffs
     
-    p_tcr = np.random.uniform(low = 0.75, high = 1.0, size = N_0_var)
-    p_cyt = np.random.uniform(low = 0.75, high = 1.0, size = N_0_var)
+    p_tcr = np.ones(N_0_var) #np.random.uniform(low = 0.75, high = 1.0, size = N_0_var) 
+    p_cyt = np.ones(N_0_var) #np.random.uniform(low = 0.75, high = 1.0, size = N_0_var)
     
     max_Na = 4 # maximum population of activated naive cells before fate specification
     
@@ -814,7 +814,7 @@ stat_names = [r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(c)}$", r"$\psi_{E,eM}^{(I)}
               r"$\int H_p dt$",
               r"$\int H_s dt$"]
 
-stat_names_for_df = ['psi_NE_c', 'psi_NE_I', 'psi_EeM_c', 'psi_EeM_I', 'psi_pME_c', 'psi_pME_I',
+stat_names_for_df = ['psi_NE_I', 'psi_NE_c', 'psi_EeM_I', 'psi_EeM_c', 'psi_pME_I', 'psi_pME_c',
                      'I_0', 'd_I', 'N_0', 'd_IE', 'K_IE',
                      'p_load', 's_load','T_max_pI', 'T_max_sI', 'harm_pI', 'harm_sI', 
                      'harm_pE', 'harm_sE', 'max_pE', 'max_sE','T_max_pE', 'T_max_sE', 

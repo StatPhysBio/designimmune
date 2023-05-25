@@ -10,7 +10,8 @@ from stoch_sim_model import *
 # Make grid
 infection_type = 'sec' # 'prim' or 'sec'
 sim_kind = "agent"
-reg_model = "hill_or" # "mwc_like", "hill_and", "hill_or"
+reg_model = "mwc_like" # "mwc_like", "hill_and", "hill_or"
+comment = "no-cell-var"
 
 S_0 = 10_000_000 #susceptible cells
 d_S = 0.1
@@ -30,7 +31,7 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
     print(f'Running with regs = {list(reg_coeff)}')
     
     # sample distribution of pathogen killing rate and size of naive repertoire
-    dI_N0s = sample_2d(l_bounds = [d_S, N_0-0.5], u_bounds = [0.5*S_0*b_I, N_0], runs = runs)
+    dI_N0s = sample_2d(l_bounds = [0, N_0-0.5], u_bounds = [1.25, N_0], runs = runs)
 
     # choose which parameter to vary
     print('Running simulation')
@@ -56,7 +57,7 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
 #     print('Concatenting')
 #     out = np.concatenate((reg_weight*(np.array(regs) - 1), sim_data), axis = None)
 
-    outfile = '-'.join((regs * 1).astype('U1')) + f'-{runs}-{infection_type}-{reg_model}.npy'
+    outfile = '-'.join((regs * 1).astype('U1')) + f'-{runs}-{infection_type}-{reg_model}-{comment}.npy'
     
     outfile = os.path.join(outdir, outfile) # what is outfile?
     print('Saving')
