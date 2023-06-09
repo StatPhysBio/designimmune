@@ -21,7 +21,7 @@ b_I = 1*(10**(-6)) # harm per unit virion
 N_0 = 50
 K_IE = 7.8*(10**3)
 
-runs = 500
+runs = 100
 reg_weight = 1
 
 def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
@@ -35,7 +35,7 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
 
     # choose which parameter to vary
     print('Running simulation')
-    run_data = np.array(Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(dI_N0s)/40),1))(delayed(sum_sim)(d_I = params[0], N_0 = N_0,
+    run_data = np.array(Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(dI_N0s)/20),1))(delayed(sum_sim)(d_I = params[0], N_0 = N_0,
                                                                                                                   K_IE = K_IE,
                                                                                                                regulation_coeffs = reg_coeff,
                                                                                                                infection = infection_type,
