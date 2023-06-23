@@ -20,7 +20,7 @@ I_0 = 10 # initial detectable levelof infected cells
 N_0 = 50
 K_IE = 7.8*(10**3)
 
-runs = 100
+runs = 500
 reg_weight = 1
 
 def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
@@ -30,7 +30,7 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
     print(f'Running with regs = {list(reg_coeff)}')
     
     # sample distribution of pathogen killing rate and size of naive repertoire
-    dIs = sample_grid(l_bounds = d_S, u_bounds = [1.25], runs = runs)
+    dIs = sample_grid(d = 1, l_bounds = d_S, u_bounds = 1.0, runs = runs)
 
     # choose which parameter to vary
     print('Running simulation')

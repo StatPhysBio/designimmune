@@ -16,7 +16,7 @@ import pandas as pd
 S_0 = 10_000_000 #susceptible cells
 d_S = 0.05
 I_0 = 10 # initial detectable levelof infected cells
-beta, c, pi = 2*(10**(-7)), 2.3, 100
+beta, c, pi = 2*(10**(-7)), 2.3, 50
 b_I = beta*pi/c # harm per unit virion
 d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
 K_IE = 7.8*(10**3) # effector avidity (half-max) for infected cells at low infection concetrations (Chao et al. 2004)
@@ -32,7 +32,7 @@ K_Ain = K_IE/10
 H_0, H_max = 0.0, 1.0
 K_IH = 0.05*S_0*d_S # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_HE = 1/3 # half-max level of inflammation required to trigger lymphocyte response
-d_H = 0.5
+d_H = 0.2
 b_H = 1 
 d_IH = d_S
 l_H = 2 # cooperativity
@@ -40,7 +40,8 @@ l_H = 2 # cooperativity
 # Immune cells
 N_0 = 50
 max_Na = 4
-t_act, t_unbind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt = 1/6, 3/4, 1/4, 1/3, 1/2, 2.0, 1.0, 5.0, 1.0
+max_expand = 20_000
+t_act, t_unbind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt = 1/6, 3/4, 1/4, 1/3, 1/2, 2.0, 1.0, 5, 1.0
 n_act, n_unbind, n_Na_div, n_E_div, n_cM_div, n_eM_diff, n_E_out, n_E_die, n_E_cyt = 1, 3, 8, 8, 8, 3, 2, 8, 4
 E_min = 1 # minimum detectable cell counts
 
@@ -127,13 +128,13 @@ sim_steps = 0.5*(10**4)
 
 def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH,
                     Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_Ain = K_Ain, K_HE = K_HE,
-                    N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh,
+                    N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh, max_expand = max_expand,
                     char_times = [t_act, t_unbind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt],
                     trans_steps = [n_act, n_unbind, n_Na_div, n_E_div, n_cM_div, n_eM_diff, n_E_out, n_E_die, n_E_cyt],
                     regulation_coeffs = psis,
                     alpha = alpha,
                     infection = "prim",
-                    vir_model = "indep_harm",
+                    vir_model = "dep_harm",
                     reg_model = "mwc_like",
                     duration = sim_duration, 
                     steps = sim_steps):
@@ -173,8 +174,6 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     p_tcr = np.ones(N_0_var)#*np.random.beta(((1-mu_tcr)/var_tcr - 1/mu_tcr)*(mu_tcr**2), mu_tcr*(1-mu_tcr)**2/var_tcr + mu_tcr - 1, size = N_0_var) #np.random.uniform(low = 0.75, high = 1.0, size = N_0_var); np.random.beta(mu_tcr**2*((1-mu_tcr)/var_tcr - 1/mu_tcr), mu_tcr*(1-mu_tcr)**2/var_tcr + mu_tcr - 1, size = N_0_var)
     p_cyt = np.ones(N_0_var)#*np.random.beta(((1-mu_cyt)/var_cyt - 1/mu_cyt)*(mu_cyt**2), mu_cyt*(1-mu_cyt)**2/var_cyt + mu_cyt - 1, size = N_0_var) #np.random.uniform(low = 0.75, high = 1.0, size = N_0_var); np.random.beta(mu_cyt**2*((1-mu_cyt)/var_cyt - 1/mu_cyt), mu_cyt*(1-mu_cyt)**2/var_cyt + mu_cyt - 1, size = N_0_var)
     
-    max_Na = max_Na # maximum population of activated naive cells before fate specification
-    
     for k in np.arange(0, infection_count):
         
         # define variables for storage
@@ -195,7 +194,10 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             #print("These lineages did not respond to a primary infection: {}".format(N_m[0,:]))
             pM_m[0,:] = cM_m[np.argmin(keep)-1,:] + eM_m[np.argmin(keep)-1,:]
             #print("These lineages produced memory during the primary infection: {}".format(pM_m[0,:]))
-            
+        
+        div_cM_count = np.zeros(N_0_var)
+        div_E_count = np.zeros(N_0_var)
+        
         Na_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
         pMa_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
         
@@ -319,7 +321,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
                 # (a) New central memory cells divide
                 div_cM_timer[j] = div_cM_timer[j] + np.random.binomial(1, dt*b_cM_div*trans_steps[4], cM_m[i-1,j])*(myccM[j] > myc_thresh) if cM_m[i-1,j] > 0 else np.zeros(0, dtype = int)
-                div_cM = 1*(div_cM_timer[j] >= trans_steps[4])
+                div_cM = 1*(div_cM_timer[j] >= trans_steps[4])*(div_cM_count[j] < max_expand)
 
                 # (b) Memory cells from a prior infection activate quickly and divide
                 act_pM = np.random.binomial(pM_m[i-1,j], b_act_t*dt, pM_m[i-1,j]) if pM_m[i-1,j] > 0 else np.zeros(0, dtype = int) 
@@ -332,7 +334,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
                 # (c) Effector cells divide, differentiate, gain cytolytic function, die
                 div_Ein_timer[j] = div_Ein_timer[j] + np.random.binomial(1, dt*b_E_div*trans_steps[3], Ein_m[i-1,j])*(mycEin[j] > myc_thresh) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
-                div_Ein = 1*(div_Ein_timer[j] >= trans_steps[3])
+                div_Ein = 1*(div_Ein_timer[j] >= trans_steps[3])*(div_E_count[j] < max_expand)
 
                 if k == 1: # cytolytic function is almost instant in secondary infection
                     cyt_Ein[j] = np.ones(Ein_m[i-1,j]) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
@@ -359,7 +361,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 diff_Eout_eM = 1*(diff_Eout_eM_timer[j] >= trans_steps[5])
 
                 div_Eout_timer[j] = div_Eout_timer[j] + np.random.binomial(1, dt*b_E_div*trans_steps[3], Eout_m[i-1,j])* (mycEout[j] > myc_thresh) if Eout_m[i-1,j] > 0 else np.zeros(0, dtype = int)
-                div_Eout = 1*(div_Eout_timer[j] >= trans_steps[3])
+                div_Eout = 1*(div_Eout_timer[j] >= trans_steps[3])*(div_E_count[j] < max_expand)
 
                 die_Eout_timer[j] = die_Eout_timer[j] + np.random.binomial(1, dt*d_E_die*trans_steps[7], Eout_m[i-1,j]) if Eout_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 die_Eout = 1*(die_Eout_timer[j] >= trans_steps[7])
@@ -368,7 +370,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 N_m[i,j] = N_m[i-1,j] - np.sum(act_N)
                 Na_m[i,j] = Na_m[i-1,j] + np.sum(div_Na) + np.sum(act_N) - (1 - Na_div_flag[j])*Na_m[i-1, j]
                 pM_m[i,j] = pM_m[i-1,j] - np.sum(act_pM)
-                pMa_m[i,j] = pMa_m[i-1,j] - np.sum(div_pMa) - np.sum(act_pM)
+                pMa_m[i,j] = pMa_m[i-1,j] - np.sum(div_pMa) + np.sum(act_pM)
                 cM_m[i,j] = cM_m[i-1,j] + np.sum(div_cM) +  np.sum((1 - diff_Na_E)*(1 - Na_div_flag[j])) + np.sum(div_pMa*(1 - diff_pMa_E))
                 Ein_m[i,j] = Ein_m[i-1,j] + np.sum(div_Ein) + np.sum(diff_Na_E)*(1 - Na_div_flag[j]) + np.sum(div_pMa*(1 + diff_pMa_E)) - np.sum(diff_Ein_eM + out_Ein + die_Ein > 0)
                 Eout_m[i,j] = Eout_m[i-1,j] + np.sum(div_Eout) + np.sum(out_Ein*(1 - die_Ein)) - np.sum(die_Eout + diff_Eout_eM > 0)
@@ -416,7 +418,9 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 
                 # Update division flag to allow differentiation to proceed
                 Na_div_flag[j] = 1*(Na_m[i,j] < max_Na) if Na_m[i,j] > 0 else 1
-            
+                div_cM_count[j] += np.sum(div_Na) + np.sum(div_pMa) + np.sum(div_cM)
+                div_E_count[j] += np.sum(div_Na) + np.sum(div_pMa) + np.sum(div_Ein) + np.sum(div_Eout)
+                
                 #### New binding events ####
                 b_act_t = p_tcr[j]*Ain[i]/(char_times[0]*(K_Ain + Ain[i]))
                 b_stim_t = 1/(p_tcr[j]*char_times[1])
@@ -502,7 +506,7 @@ def sum_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, 
             regulation_coeffs = psis,
             signal_weight = alpha,
             infection = "prim",
-            vir_model = "indep_harm",
+            vir_model = "dep_harm",
             sim_kind = "agent",
             reg_model = "mwc_like"):
     
@@ -580,11 +584,19 @@ stat_names = [r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(c)}$", r"$\psi_{E,eM}^{(I)}
               r"$\int H_s dt$"]
 
 param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"$d_{I,H}$", r"$K_{I,E}$", r"$K_{I,H}$",
-               r"$A_{out}^{(0)}$", r"$b_{A^*}$", r"$b_H$", r"$d_H$", r"$K_{A_{in}}$", r"$K_{H,E}$",
+               r"$A_{out}^{(0)}$", r"$b_{A_in}$", r"$b_H$", r"$d_H$", r"$K_{A_{in}}$", r"$K_{H,E}$",
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N^*,A_{in}}^{(+)}$", r"$\tau_{N^*,A_{in}}^{(-)}$", r"$\tau_{N^*}$", r"$\tau_E$", r"$\tau_{cM}$", r"$\tau_{eM}$", r"$\tau_{E_{out}}$", r"$\tau_{E_{die}}$", r"$\tau_{E_{cyt}}$",
                r"$n_{N^*,A_{in}}^{(+)}$", r"$n_{N^*,A_{in}}^{(-)}$", r"$n_{N^*}$", r"$n_E$", r"$n_{cM}$", r"$n_{eM}$", r"$n_{E_{out}}$", r"$n_{E_{die}}$", r"$n_{E_{cyt}}$"]
 
+
+param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',
+                      'K_IH', 'Aout_0', 'b_Ain', 'b_H', 'd_H', 'K_Ain', 'K_HE',
+                      'N_0', 'max_Na', 'b_myc', 'd_myc', 'myc_thresh',
+                      't_act', 't_unbind', 't_Na_div', 't_E_div', 't_cM_div', 
+                      't_eM_diff', 't_E_out', 't_E_die', 't_E_cyt',
+                      'n_act', 'n_unbind', 'n_Na_div', 'n_E_div', 'n_cM_div',
+                      'n_eM_diff', 'n_E_out', 'n_E_die', 'n_E_cyt']
 stat_names_for_df = ['psi_NE_I', 'psi_NE_c', 'psi_EeM_I', 'psi_EeM_c', 'psi_pME_I', 'psi_pME_c',
                      'p_load', 's_load','T_max_pI', 'T_max_sI', 'harm_pI', 'harm_sI', 
                      'harm_pE', 'harm_sE', 'max_pE', 'max_sE','T_max_pE', 'T_max_sE', 
