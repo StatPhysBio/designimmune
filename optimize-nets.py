@@ -8,19 +8,20 @@ from stoch_sim_model import *
 ### (1) Define function to run simulations and compute MI
 
 # Make grid
-infection_type = 'prim' # 'prim' or 'sec'
+infection_type = 'sec' # 'prim' or 'sec'
 sim_kind = "agent"
-reg_model = "mwc_like" # "mwc_like", "hill_and", "hill_or"
+reg_model = "hill_or" # "mwc_like", "hill_and", "hill_or"
 comment = "no-cell-var"
 
 S_0 = 10_000_000 #susceptible cells
 d_S = 0.05
 I_0 = 10 # initial detectable levelof infected cells
 #b_I = 1*(10**(-6)) # harm per unit virion
-N_0 = 50
+N_0 = 100
 K_IE = 7.8*(10**3)
+d_I = 10*d_S
 
-runs = 500
+runs = 100
 reg_weight = 1
 
 def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
@@ -30,7 +31,7 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
     print(f'Running with regs = {list(reg_coeff)}')
     
     # sample distribution of pathogen killing rate and size of naive repertoire
-    dIs = sample_grid(d = 1, l_bounds = d_S, u_bounds = 1.0, runs = runs)
+    dIs = d_S*np.array([1, 2, 10, 20] * int(runs/4)) #sample_grid(d = 1, l_bounds = d_S, u_bounds = 1.0, runs = runs)
 
     # choose which parameter to vary
     print('Running simulation')
