@@ -31,13 +31,14 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
     print(f'Running with regs = {list(reg_coeff)}')
     
     # sample distribution of pathogen killing rate and size of naive repertoire
-    dIs = d_S*np.array([1, 2, 10, 20] * int(runs/4)) #sample_grid(d = 1, l_bounds = d_S, u_bounds = 1.0, runs = runs)
+    vir_prop = np.array(np.meshgrid(d_S*np.array([1, 5, 10, 20, 40]), K_IE*np.array([0.1,1,10, 100, 1000]))).T.reshape(-1,2)
+    dIs = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1)) #d_S*np.array([1, 2, 5, 10, 20] * int(runs/5)) #sample_grid(d = 2, l_bounds = d_S, u_bounds = 1.0, runs = int(runs/2))
 
     # choose which parameter to vary
     print('Running simulation')
-    run_data = np.vstack(Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(dIs)/20),1))(delayed(sum_sim)(d_I = param, 
+    run_data = np.vstack(Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(dIs)/20),1))(delayed(sum_sim)(d_I = param[0], 
                                                                                                                N_0 = N_0,
-                                                                                                               K_IE = K_IE,
+                                                                                                               K_IE = param[1],
                                                                                                                regulation_coeffs = reg_coeff,
                                                                                                                infection = infection_type,
                                                                                                                vir_model = 'dep_harm',
