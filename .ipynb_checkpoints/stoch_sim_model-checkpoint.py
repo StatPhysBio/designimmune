@@ -19,7 +19,7 @@ I_0 = 10 # initial detectable levelof infected cells
 beta, c, pi = 2*(10**(-7)), 2.3, 50/10
 b_I = beta*pi/c # harm per unit virion
 d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
-K_IE = 7.8*(10**6) # effector avidity (half-max) for infected cells at low infection concetrations (Chao et al. 2004)
+K_IE = 7.8*(10**4) # effector avidity (half-max) for infected cells at low infection concetrations (Chao et al. 2004)
 d_I = np.minimum(10*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
 
 # APC dynamics
@@ -32,7 +32,7 @@ K_Ain = Aout_0/100
 H_0, H_max = 0.01, 1.0
 K_IH = S_0*d_S # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_HE = 1/3 # half-max level of inflammation required to trigger lymphocyte response
-d_H = 0.2
+d_H = 0.1
 b_H = 2 
 l_H = 2 # cooperativity
 ep = 0.0001 # off-target rate of harm
