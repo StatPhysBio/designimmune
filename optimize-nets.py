@@ -24,14 +24,23 @@ d_I = 10*d_S
 runs = 100
 reg_weight = 1
 
-def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
+def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], reg_log = np.array([0,0,0]), outdir=''):
     
     reg_coeff = reg_weight*(np.array(regs) - 1)
+    reg_models = np.array([reg_logic[reg_log[0]], reg_logic[reg_log[1]], reg_logic[reg_log[2]]])
     
     print(f'Running with regs = {list(reg_coeff)}')
+    print(f'Running with logic = {list(reg_models)}')
+    
+    outfile = ('-'.join((regs * 1).astype('U1'))
+               + f'-{runs}-{infection_type}-'
+               + '-'.join((reg_log * 1).astype('U1'))
+               + '-{comment}.npy')
+    outfile = os.path.join(outdir, outfile) # what is outfile?
+    print(f'Will save to {outfile}.')
     
     # sample distribution of pathogen killing rate and size of naive repertoire
-    vir_prop = np.array(np.meshgrid(d_S*np.array([1, 5, 10, 20, 40]), K_IE*np.array([0.1,1,10, 100, 1000]))).T.reshape(-1,2)
+    vir_prop = np.array(np.meshgrid(d_S*np.array([2, 4, 6, 8, 10]), K_IE*np.array([0.1,1,10, 100, 1000]))).T.reshape(-1,2)
     dIs = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1)) #d_S*np.array([1, 2, 5, 10, 20] * int(runs/5)) #sample_grid(d = 2, l_bounds = d_S, u_bounds = 1.0, runs = int(runs/2))
 
     # choose which parameter to vary
@@ -43,12 +52,9 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], outdir=''):
                                                                                                                infection = infection_type,
                                                                                                                vir_model = 'dep_harm',
                                                                                                                sim_kind = sim_kind,
-                                                                                                               reg_model = reg_model)
+                                                                                                               reg_model = reg_models)
                                                     for param in dIs ))
 
-    outfile = '-'.join((regs * 1).astype('U1')) + f'-{runs}-{infection_type}-{reg_model}-{comment}.npy'
-    
-    outfile = os.path.join(outdir, outfile) # what is outfile?
     print('Saving')
     np.save(outfile, run_data)
     print(f'Saved {outfile}')
@@ -60,6 +66,8 @@ def main():
         description='')
     parser.add_argument('--reg_coefs', dest='regs', nargs='+', type=float, required=True,
                         help='regulatory weights of the network')
+    parser.add_argument('--reg_logs', dest='reg_log', nargs='+', type=int, required=True,
+                        help='regulatory logic of the network')
     parser.add_argument('--outdir', dest='outdir', type=str, required=False, default='',
                         help='/PATH/TO/WHERE/OUTPUT/IS/SAVED')
 
@@ -67,7 +75,7 @@ def main():
 
     os.chdir(args.outdir)
     
-    run(np.array(args.regs), args.outdir)
+    run(np.array(args.regs), np.array(args.reg_log), args.outdir)
 
 
 if __name__ == '__main__':

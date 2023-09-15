@@ -10,14 +10,22 @@
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out
 
 SLURM_OUTDIR=/gscratch/scrubbed/oukogu/slurm_output/
-
 d="/mmfs1/home/oukogu/github/infoimmune/opt_nets/"
 
 if [ ! -d "$d" ]; then
   mkdir $d
 fi
 
+# Collect all the arguments after the first into an array
+args=${@:2}
+
+# The list contains numbers separated by spaces. To capture the first 6 digits,
+# 12 characters must be taken.
+reg_coeffs=${args:0:11}
+# The rest of the digits separated by spaces are the reg log parameters.
+reg_logs=${args:11}
+
 COMMAND="apptainer run --bind /gscratch /gscratch/spe/$USER/apptainer_images/maximmune.sif python"
-$COMMAND optimize-nets.py --reg_coefs ${@:2} --outdir $d
+$COMMAND optimize-nets.py --reg_coefs $reg_coeffs --reg_logs $reg_logs --outdir $d
 
 mv ${SLURM_OUTDIR}${SLURM_JOB_ID}.out ${SLURM_OUTDIR}net-${1}.out
