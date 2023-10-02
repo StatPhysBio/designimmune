@@ -4,7 +4,7 @@ DECIMAL_TO_2=({0..1}{0..1}{0..1})
 
 for i in {0..728};
 do
-    for j in {6..7}; # goes from 0 to 7
+    for j in {0..1}; # goes from 0 to 7
     do
         # Convert the number from decimal to base 3.
         REG="${DECIMAL_TO_3[i]}${DECIMAL_TO_2[j]}"

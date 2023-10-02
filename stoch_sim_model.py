@@ -4,6 +4,7 @@ import itertools
 import numpy as np
 from scipy.stats import qmc
 from scipy import special
+from scipy import stats
 from math import erf
 import numba as nb
 import os as os
@@ -13,50 +14,50 @@ import pandas as pd
 # Define simulation parameters
 
 # infection dynamics
-S_0 = 10_000_000 #susceptible cells
+S_0 = 10**7 #susceptible cells
 d_S = 0.05
 I_0 = 10 # initial detectable levelof infected cells
-beta, c, pi = 2*(10**(-7)), 2.3, 50/10
+beta, c, pi = (10**(-7)), 5, 50 # (Chao et al. 2004)
 b_I = beta*pi/c # harm per unit virion
 d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
-K_IE = 7.8*(10**4) # effector avidity (half-max) for infected cells at low infection concetrations (Chao et al. 2004)
+K_IE = 10**4 # effector avidity (half-max) for infected cells at low infection concetrations (Mayer et al 2019; Chao et al. 2004)
 d_I = np.minimum(10*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
 
 # APC dynamics
-Aout_0 = 6*(10**4)
-d_A = 0.2
-b_Ain = 3
-delta = 100 # relative avidity of APCs for T cells compared to infected cells
+Aout_0 = 10**4
+d_A = 0.3
+b_Ain = 1
+delta = 10 # relative avidity of APCs for T cells compared to infected cells
 K_Ain = K_IE/delta
 
 # Inflammatory response
-H_0, H_max = 0.01, 1.0
-K_IH = S_0*d_S # half-max level of instantaneous damage required to trigger innate/inflammatory response
+H_0, H_max = 0.0, 1.0
+K_IH = 0.01*S_0*d_S # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_HE = 1/3 # half-max level of inflammation required to trigger lymphocyte response
-d_H = 0.1
-b_H = 2 
+d_H = 0.5
+b_H = 3 
 l_H = 2 # cooperativity
-ep = 0.0001 # off-target rate of harm
-K_SE = 7.8*(10**3)/ep
-kappa = 0.5 # maximal reduction in replication rate due to inflammatory response
+ep = 0.001 # off-target rate of harm
+K_SE = 2.5*(10**8)
+kappa = 0.9 # maximal reduction in replication rate due to inflammatory response
 d_IH = d_IE*ep
 
 # Immune cells
 N_0 = 50
 max_Na = 4
-max_expand = 10_000
-t_act, t_unbind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt = 1/6, 3/4, 1/4, 1/3, 1/2, 6.5, 1.0, 3.75, 1.0
-n_act, n_unbind, n_Na_div, n_E_div, n_cM_div, n_eM_diff, n_E_out, n_E_die, n_E_cyt = 1, 4, 8, 8, 8, 4, 2, 8, 4
+max_expand = 20_000
+t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff = 1/2, 3/4, 1/4, 1/3, 1/2, 8, 1.0, 3.0, 1.0, 1/2
+n_act, n_bind, n_Na_div, n_E_div, n_cM_div, n_eM_diff, n_E_out, n_E_die, n_E_cyt, n_NaE_diff = 4, 4, 4, 8, 8, 4, 2, 8, 4, 4
 E_min = 1 # minimum detectable cell counts
 
 # Division timer
-b_myc = 1.0*(10**3)
+b_myc = (10**3)
 d_myc = np.log(2)*24/7
 myc_thresh = 10**(2.6)
 
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
-zeta = 0.1 # fraction of maximal rate unregulated by signals
+zeta = 0.05 # fraction of maximal rate unregulated by signals
 psis = np.array([1.0, 1.0, -1.0, -1.0, 1.0, 1.0]) # regulatory weights: psi_NE_I, psi_NE_c, psi_EeM_I, psi_EeM_c, psi_pME_I, psi_pME_c
 reg_logic = np.array(["hill_and", "hill_or"])
 
@@ -100,27 +101,27 @@ def p_XtoY(I_stim, H_stim, psi_I, psi_H, F_0, K_I, K_H, reg_model = "mwc_like", 
         else:
             I_sig = 1
 
-        if psi_H > 0:
+        if psi_H > 0.0:
             H_sig = H_stim
-        elif psi_H < 0:
+        elif psi_H < 0.0:
             H_sig = 1 - H_stim
         else:
             H_sig = 1
         
-        out = (psi_I**2 + psi_H**2 > 0)*np.nan_to_num(I_sig, nan = 0.0)*np.nan_to_num(H_sig, nan = 0.0)
+        out = np.nan_to_num(I_sig, nan = 0.0)*np.nan_to_num(H_sig, nan = 0.0)
         
     elif reg_model == "hill_or":
         I_sig = I_stim**(psi_I)/(K_I**(psi_I) + I_stim**(psi_I))
-        if psi_H > 0:
+        if psi_H > 0.0:
             H_sig = H_stim
-        elif psi_H < 0:
+        elif psi_H < 0.0:
             H_sig = 1 - H_stim
         else:
             H_sig = 0.5
         
         out = (psi_I**2 > 0.0)*(alpha + (1-alpha)*(1-np.sign(psi_H)**2))*np.nan_to_num(I_sig, nan = 0.0) + (psi_H**2 > 0.0)*(alpha*(1-np.sign(psi_I)**2) + (1-alpha))*np.nan_to_num(H_sig, nan = 0.0)
         
-    return zeta + (1-zeta)*out
+    return zeta + (1-zeta)*out if (psi_I**2 + psi_H**2) > 0 else 0.5
 
 
 def init_list(length, size):
@@ -142,19 +143,19 @@ def sample_grid(d = 2, l_bounds = [d_S, 0.5], u_bounds = [S_0*b_I, 1.0], runs = 
 #######################
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
 #######################
-sim_duration = 15
+sim_duration = 20
 sim_steps = 0.5*(10**4)
 
 def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH,
                     Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_HE = K_HE,
                     N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh, max_expand = max_expand,
-                    char_times = [t_act, t_unbind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt],
-                    trans_steps = [n_act, n_unbind, n_Na_div, n_E_div, n_cM_div, n_eM_diff, n_E_out, n_E_die, n_E_cyt],
+                    char_times = [t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff],
+                    trans_steps = [n_act, n_bind, n_Na_div, n_E_div, n_cM_div, n_eM_diff, n_E_out, n_E_die, n_E_cyt, n_NaE_diff],
                     regulation_coeffs = psis,
                     alpha = alpha,
                     infection = "prim",
                     vir_model = "dep_harm",
-                    reg_model = np.array(["hill_and", "hill_and", "hill_and"]),
+                    reg_logs = np.array([0,0,0]),
                     duration = sim_duration, 
                     steps = sim_steps):
     
@@ -162,8 +163,8 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     # S_0 := S_0, I_0 := I_0, b_S := b_S, b_I := b_I, d_S := d_S, d_I := d_I, d_IE := d_IE, d_IH := d_IH, K_IE := K_IE, K_IH := K_IH,
     # Aout_0 := Aout_0, b_Ain := b_Ain, b_H := b_H, d_H := d_H, K_HE := K_HE,
     # N_0 := N_0, max_Na := max_Na, b_myc := b_myc, d_myc := d_myc, myc_thresh := myc_thresh,
-    # char_times := [t_act, t_unbind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt],
-    # trans_steps := [n_act, n_unbind, n_Na_div, n_E_div, n_cM_div, n_eM_diff, n_E_out, n_E_die, n_E_cyt])
+    # char_times := [t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt],
+    # trans_steps := [n_act, n_bind, n_Na_div, n_E_div, n_cM_div, n_eM_diff, n_E_out, n_E_die, n_E_cyt])
     
     #################################
     ### SET META-VARIABLES FOR SIMULATION ###
@@ -185,6 +186,8 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     
     # draw population of reponding cells for agent-based simulations
     psi_NE_I, psi_NE_c, psi_EeM_I, psi_EeM_c, psi_pME_I, psi_pME_c = regulation_coeffs
+    reg_model = np.array([reg_logic[reg_logs[0]], reg_logic[reg_logs[1]], reg_logic[reg_logs[2]]])
+    
     mu_tcr = 0.8
     var_tcr = mu_tcr*(1-mu_tcr)*0.9
     mu_cyt = 0.8
@@ -210,12 +213,12 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             N_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
             N_m[0,:] +=1
         elif k == 1: # secondary infection
-            N_m[0,:] = N_m[np.argmin(keep)-1,:]
+            N_m[0,:] = N_m[keep,:] #+ (1-N_m[np.argmin(keep)-1,:])*np.random.binomial(n=1, p = 0.5, size= N_0_var)
             #print("These lineages did not respond to a primary infection: {}".format(N_m[0,:]))
             cM_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
-            cM_m[0,:] = cMa_m[np.argmin(keep)-1,:]
+            cM_m[0,:] = cMa_m[keep,:]
             eM_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
-            eM_m[0,:] = eMa_m[np.argmin(keep)-1,:]
+            eM_m[0,:] = eMa_m[keep,:]
             act_cM = [np.zeros(cM_m[0,j], dtype = int) for j in np.arange(N_0_var)]
             act_eM = [np.zeros(eM_m[0,j], dtype = int) for j in np.arange(N_0_var)]
             #print("These lineages produced memory during the primary infection: {}".format(pM_m[0,:]))
@@ -237,7 +240,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         
         Ein_m = np.zeros((int(steps)+1, N_0_var), dtype = int) # effector in lympoid organ
         Eout_m = np.zeros((int(steps)+1, N_0_var), dtype = int) # effector in periphary
-        p_XE = np.zeros((int(steps)+1, 5))
+        bias_t = np.zeros((int(steps)+1, 5))
         
         # Define event timer variables
         unbind_Na_timer = np.zeros(N_0_var, dtype =int)
@@ -280,19 +283,19 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             p_cME = np.zeros(N_0_var)
             p_eME = np.zeros(N_0_var)
         
-        b_stim_t = 0.0
-        b_act_t = 0.0
-        b_Na_div = 0.0
-        b_NaE_diff = 0.0
-        b_E_div = 0.0
-        b_cMa_div = 0.0
-        b_EineM_diff = 0.0
-        b_EouteM_diff = 0.0
-        b_cM_diff = 0.0
-        b_eM_diff = 0.0
-        b_E_out = 0.0
-        d_E_die = 0.0
-        b_E_cyt = 0.0
+        b_unbind_t = np.zeros(N_0_var)
+        b_act_t = np.zeros(N_0_var)
+        b_Na_div = np.zeros(N_0_var)
+        b_NaE_diff = np.zeros(N_0_var)
+        b_E_div = np.zeros(N_0_var)
+        b_cMa_div = np.zeros(N_0_var)
+        b_EineM_diff = np.zeros(N_0_var)
+        b_EouteM_diff = np.zeros(N_0_var)
+        b_cM_diff = np.zeros(N_0_var)
+        b_eM_diff = np.zeros(N_0_var)
+        b_E_out = np.zeros(N_0_var)
+        d_E_die = np.zeros(N_0_var)
+        b_E_cyt = np.zeros(N_0_var)
         
         #################################
         ### RUN POPULATION SIMULATION ###
@@ -310,22 +313,24 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         for i in np.arange(1, int(steps) + 1):
             # Compute total population of cell types
             Na_pop, Ein_pop, Eout_pop, cMa_pop, eMa_pop = np.sum(Na_m[i-1]), np.sum(Ein_m[i-1]), np.sum(Eout_m[i-1]), np.sum(cMa_m[i-1]), np.sum(eMa_m[i-1])
-            
+            if k == 1:
+                cM_pop, eM_pop = np.sum(cM_m[i-1]), np.sum(eM_m[i-1])
+                
             #### Run infection dynamics: replication and effector clearance ####
             # check simulation stopping conditions
-            if I[i-1] <= E_min and (Ein_pop + Eout_pop) <= E_min:
+            if I[i-1] < E_min and (Ein_pop + Eout_pop) < E_min:
                 break
             
             # Update state of susceptible, infected, APCs, and inflammation
-            S[i] = S[i-1] + dt*(b_S - d_S*S[i-1] - (I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]) - S[i-1]*(d_IH*H[i-1] + d_IE*(Eout_pop)/(K_SE + Eout_pop)))*(S[i-1] >= 0.0)
-            I[i] = I[i-1] + dt*((I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]) - d_IH*I[i-1]*H[i-1] - d_IE*I[i-1]*(Eout_pop)/(K_IE + Eout_pop) - d_I*I[i-1])*(I[i-1] >= 0.0)
+            S[i] = S[i-1] + dt*(b_S - d_S*S[i-1] - (I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]) - S[i-1]*(d_IH*H[i-1] + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop)))*(S[i-1] >= 0.0)
+            I[i] = I[i-1] + dt*((I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]) - d_IH*I[i-1]*H[i-1] - d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop) - d_I*I[i-1])*(I[i-1] >= 0.0)
             H[i] = H[i-1] + dt*(b_H*((d_I*I[i-1])**l_H)*(1 - H[i-1])/(K_IH**l_H + (d_I*I[i-1])**l_H) - d_H*(H[i-1]-H_0))*(H[i-1] >= 0.0)
-            Aout[i] = Aout[i-1] - b_Ain*Aout[i-1]*((d_I*I[i-1])**l_H)/(K_IH**l_H + ((d_I*I[i-1])**l_H))*dt*(Aout[i-1] >= 0.0)
-            Ain[i] = Ain[i-1] + dt*(b_Ain*Aout[i-1]*((d_I*I[i-1])**l_H)/(K_IH**l_H + ((d_I*I[i-1])**l_H)) - d_A*Ain[i-1] - d_IE*Ain[i-1]*(cMa_pop)/(K_IE/delta + Ain[i-1] + cMa_pop))*(Ain[i-1] >= 0.0)
+            Aout[i] = Aout[i-1] - b_Ain*Aout[i-1]*H[i-1]*dt*(Aout[i-1] >= 0.0)
+            Ain[i] = Ain[i-1] + dt*(b_Ain*Aout[i-1]*H[i-1] - d_A*Ain[i-1] - d_IE*Ain[i-1]*(cMa_pop)/(K_IE/delta + Ain[i-1] + cMa_pop))*(Ain[i-1] >= 0.0)
             
             I_d_I[i] = I_d_I[i-1] + dt*(I[i-1] >= I_0)*d_I*I[i-1] # cells killed by infection
-            I_d_IE[i] = I_d_IE[i-1] + dt*(I[i-1] >= I_0)*(d_IH*I[i-1]*H[i-1] + d_IE*I[i-1]*(Eout_pop)/(K_IE + Eout_pop)) # cells killed by immune response
-            I_d_S[i] = I_d_S[i-1] + dt*S[i-1]*(d_IH*H[i-1] + d_IE*(Eout_pop)/(K_SE + Eout_pop))
+            I_d_IE[i] = I_d_IE[i-1] + dt*(I[i-1] >= I_0)*(d_IH*I[i-1]*H[i-1] + d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop)) # cells killed by immune response
+            I_d_S[i] = I_d_S[i-1] + dt*S[i-1]*(d_IH*H[i-1] + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop))
             
             # Set negative values to zero, in 
             if (Ain[i-1] < 0.0 or Ain[i] < 0.0):
@@ -341,75 +346,74 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 ## I. Recruitment/Priming
 
                 # Phase 1: Naive cells encounter and bind APCs
-                act_N = np.random.binomial(N_m[i-1, j], b_act_t*dt, 1) if N_m[i-1, j] > 0 else 0
+                act_N = np.random.binomial(N_m[i-1, j], b_act_t[j]*dt, 1) if N_m[i-1, j] > 0 else 0
 
                 # Phase 2: Activated naive cells are bound to APCs and receive stimulation
                 # See section with binding times
 
                 # Phase 3: Unbound activated naive cells divide
-                div_Na_timer[j] = div_Na_timer[j] + np.random.binomial(unbound_Na[j]*Na_div_flag[j], dt*b_Na_div*trans_steps[2], Na_m[i-1,j]) if Na_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                div_Na_timer[j] = div_Na_timer[j] + np.random.binomial(unbound_Na[j]*Na_div_flag[j], dt*b_Na_div[j]*trans_steps[2], Na_m[i-1,j]) if Na_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 div_Na = (div_Na_timer[j] >= trans_steps[2])*Na_div_flag[j]
 
                 # After a few quick divisions, activated naive cells can differentiate
-                diff_Na_E_steps = int(trans_steps[2]/4)
-                diff_Na_E_timer[j] = diff_Na_E_timer[j] + np.random.binomial(1, dt*b_NaE_diff*diff_Na_E_steps, Na_m[i-1,j]) if Na_m[i-1,j] > 0 else np.zeros(0, dtype = int)
-                diff_Na_E = 1*(diff_Na_E_timer[j] >= diff_Na_E_steps)
+                diff_Na_E_timer[j] = (diff_Na_E_timer[j] + np.random.binomial(1, dt*b_NaE_diff[j]*trans_steps[9], Na_m[i-1,j])) if Na_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                diff_Na_E = 1*(diff_Na_E_timer[j] >= trans_steps[9])
                 
                 ## II. Expansion
 
                 # (a) New central memory cells divide
-                div_cMa_timer[j] = div_cMa_timer[j] + np.random.binomial(1, dt*b_cMa_div*trans_steps[4], cMa_m[i-1,j])*(myccMa[j] > myc_thresh) if cMa_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                div_cMa_timer[j] = div_cMa_timer[j] + np.random.binomial(1, dt*b_cMa_div[j]*trans_steps[4], cMa_m[i-1,j])*(myccMa[j] > myc_thresh) if cMa_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 div_cMa = 1*(div_cMa_timer[j] >= trans_steps[4])*(div_cMa_count[j] < max_expand)
 
                 # (b) Memory cells from a prior infection activate quickly and divide
                 if k == 1:
-                    act_cM[j] += np.random.binomial(1-act_cM[j], b_act_t*dt, cM_m[i-1,j]) if cM_m[i-1,j] > 0 else np.zeros(0, dtype = int)
-                    act_eM[j] += np.random.binomial(1-act_eM[j], b_act_t*dt, eM_m[i-1,j]) if eM_m[i-1,j] > 0 else np.zeros(0, dtype = int) 
+                    act_cM[j] += np.random.binomial(1-act_cM[j], b_act_t[j]*dt, cM_m[i-1,j]) if cM_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                    act_eM[j] += np.random.binomial(1-act_eM[j], b_act_t[j]*dt, eM_m[i-1,j]) if eM_m[i-1,j] > 0 else np.zeros(0, dtype = int) 
 
-                    div_cM_timer[j] = div_cM_timer[j] + np.random.binomial(act_cM[j], dt*b_Na_div*trans_steps[2], cM_m[i-1,j]) if cM_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                    div_cM_timer[j] = div_cM_timer[j] + np.random.binomial(act_cM[j], dt*b_Na_div[j]*trans_steps[2], cM_m[i-1,j]) if cM_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                     div_cM = 1*(div_cM_timer[j] >= trans_steps[2])
 
-                    diff_cM_E_timer[j] = diff_cM_E_timer[j] + np.random.binomial(act_cM[j], dt*b_cM_diff*trans_steps[2], cM_m[i-1,j]) if cM_m[i-1,j] > 0 else np.zeros(0, dtype = int)
-                    diff_cM_E = 1*(diff_cM_E_timer[j] >= trans_steps[2])
+                    diff_cM_E_timer[j] = diff_cM_E_timer[j] + np.random.binomial(act_cM[j], dt*b_cM_diff[j]*trans_steps[9], cM_m[i-1,j]) if cM_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                    diff_cM_E = 1*(diff_cM_E_timer[j] >= trans_steps[9])
 
-                    div_eM_timer[j] = div_eM_timer[j] + np.random.binomial(act_eM[j], dt*b_Na_div*trans_steps[2], eM_m[i-1,j]) if eM_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                    div_eM_timer[j] = div_eM_timer[j] + np.random.binomial(act_eM[j], dt*b_Na_div[j]*trans_steps[2], eM_m[i-1,j]) if eM_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                     div_eM = 1*(div_eM_timer[j] >= trans_steps[2])
 
-                    diff_eM_E_timer[j] = diff_eM_E_timer[j] + np.random.binomial(act_eM[j], dt*b_eM_diff*trans_steps[2], eM_m[i-1,j]) if eM_m[i-1,j] > 0 else np.zeros(0, dtype = int)
-                    diff_eM_E = 1*(diff_eM_E_timer[j] >= trans_steps[2])
+                    diff_eM_E_timer[j] = diff_eM_E_timer[j] + np.random.binomial(act_eM[j], dt*b_eM_diff[j]*trans_steps[9], eM_m[i-1,j]) if eM_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                    diff_eM_E = 1*(diff_eM_E_timer[j] >= trans_steps[9])
 
                 # (c) Effector cells divide, differentiate, gain cytolytic function, die
-                div_Ein_timer[j] = div_Ein_timer[j] + np.random.binomial(1, dt*b_E_div*trans_steps[3], Ein_m[i-1,j])*(mycEin[j] > myc_thresh) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                div_Ein_timer[j] = div_Ein_timer[j] + np.random.binomial(1, dt*b_E_div[j]*trans_steps[3], Ein_m[i-1,j])*(mycEin[j] > myc_thresh) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 div_Ein = 1*(div_Ein_timer[j] >= trans_steps[3])*(div_E_count[j] < max_expand)
 
                 if k == 1: # cytolytic function is almost instant in secondary infection
                     cyt_Ein[j] = np.ones(Ein_m[i-1,j]) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 else:
-                    cyt_Ein_timer[j] = cyt_Ein_timer[j] + np.random.binomial(1, dt*b_E_cyt*trans_steps[8], Ein_m[i-1,j]) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                    cyt_Ein_timer[j] = cyt_Ein_timer[j] + np.random.binomial(1, dt*b_E_cyt[j]*trans_steps[8], Ein_m[i-1,j]) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                     cyt_Ein[j] = 1*(cyt_Ein_timer[j] >= trans_steps[8])
 
-                out_Ein_timer[j] = out_Ein_timer[j] + np.random.binomial(1, dt*b_E_out*trans_steps[6], Ein_m[i-1,j]) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                out_Ein_timer[j] = out_Ein_timer[j] + np.random.binomial(1, dt*b_E_out[j]*trans_steps[6], Ein_m[i-1,j]) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 out_Ein = 1*(out_Ein_timer[j] >= trans_steps[6])
 
-                diff_Ein_eM_timer[j] = diff_Ein_eM_timer[j] + np.random.binomial(1, dt*b_EineM_diff*trans_steps[5], Ein_m[i-1,j]) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                diff_Ein_eM_timer[j] = diff_Ein_eM_timer[j] + np.random.binomial(1, dt*b_EineM_diff[j]*trans_steps[5], Ein_m[i-1,j]) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 diff_Ein_eM = 1*(diff_Ein_eM_timer[j] >= trans_steps[5])
 
-                die_Ein_timer[j] = die_Ein_timer[j] + np.random.binomial(1, dt*d_E_die*trans_steps[7], Ein_m[i-1,j]) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                die_Ein_timer[j] = die_Ein_timer[j] + np.random.binomial(1, dt*d_E_die[j]*trans_steps[7], Ein_m[i-1,j]) if Ein_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 die_Ein = 1*(die_Ein_timer[j] >= trans_steps[7])
 
                 if k == 1: # cytolytic function is almost instant in secondary infection
                     cyt_Eout[j] = np.ones(Eout_m[i-1,j]) if Eout_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 else:
-                    cyt_Eout_timer[j] = cyt_Eout_timer[j] + np.random.binomial(1, dt*b_E_cyt*trans_steps[8], Eout_m[i-1,j]) if Eout_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                    cyt_Eout_timer[j] = cyt_Eout_timer[j] + np.random.binomial(1, dt*b_E_cyt[j]*trans_steps[8], Eout_m[i-1,j]) if Eout_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                     cyt_Eout[j] = 1*(cyt_Eout_timer[j] >= trans_steps[8])
 
-                diff_Eout_eM_timer[j] = diff_Eout_eM_timer[j] + np.random.binomial(1, dt*b_EouteM_diff*trans_steps[5], Eout_m[i-1,j]) if Eout_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                diff_Eout_eM_timer[j] = diff_Eout_eM_timer[j] + np.random.binomial(1, dt*b_EouteM_diff[j]*trans_steps[5], Eout_m[i-1,j]) if Eout_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 diff_Eout_eM = 1*(diff_Eout_eM_timer[j] >= trans_steps[5])
 
-                div_Eout_timer[j] = div_Eout_timer[j] + np.random.binomial(1, dt*b_E_div*trans_steps[3], Eout_m[i-1,j])* (mycEout[j] > myc_thresh) if Eout_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                div_Eout_timer[j] = div_Eout_timer[j] + np.random.binomial(1, dt*b_E_div[j]*trans_steps[3], Eout_m[i-1,j])* (mycEout[j] > myc_thresh) if Eout_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 div_Eout = 1*(div_Eout_timer[j] >= trans_steps[3])*(div_E_count[j] < max_expand)
 
-                die_Eout_timer[j] = die_Eout_timer[j] + np.random.binomial(1, dt*d_E_die*trans_steps[7], Eout_m[i-1,j]) if Eout_m[i-1,j] > 0 else np.zeros(0, dtype = int)
+                die_Eout_timer[j] = die_Eout_timer[j] + np.random.binomial(1, dt*d_E_die[j]*trans_steps[7], Eout_m[i-1,j]) if Eout_m[i-1,j] > 0 else np.zeros(0, dtype = int)
                 die_Eout = 1*(die_Eout_timer[j] >= trans_steps[7])
                 
                 #### Update population dynamics: implicit is that differentiation supercedes death if they coincide ####
@@ -418,19 +422,19 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 if k == 1:
                     cM_m[i,j] = cM_m[i-1,j] - np.sum(div_cM)
                     eM_m[i,j] = eM_m[i-1,j] - np.sum(div_eM)
-                cMa_m[i,j] = cMa_m[i-1,j] + np.sum(div_cMa) +  np.sum((1 - diff_Na_E)*(1 - Na_div_flag[j])) + ((np.sum(div_cM*(1 - diff_cM_E)) + np.sum(div_eM*(1 - diff_eM_E))) if k == 1 else 0)
-                Ein_m[i,j] = Ein_m[i-1,j] + np.sum(div_Ein) + np.sum(diff_Na_E)*(1 - Na_div_flag[j]) + ( (np.sum(div_cM*(1 + diff_cM_E)) + np.sum(div_eM*(1 + diff_eM_E))) if k == 1 else 0 ) - np.sum(diff_Ein_eM + out_Ein + die_Ein > 0)
+                cMa_m[i,j] = cMa_m[i-1,j] + np.sum(div_cMa) +  np.sum((1 - diff_Na_E)*(1 - Na_div_flag[j])) + (2*np.sum(div_cM*(1 - diff_cM_E)) if k == 1 else 0)
+                Ein_m[i,j] = Ein_m[i-1,j] + np.sum(div_Ein) + np.sum(diff_Na_E)*(1 - Na_div_flag[j]) + ( (2*np.sum(div_cM*(diff_cM_E)) + 2*np.sum(div_eM*(diff_eM_E))) if k == 1 else 0 ) - np.sum(diff_Ein_eM + out_Ein + die_Ein > 0)
                 Eout_m[i,j] = Eout_m[i-1,j] + np.sum(div_Eout) + np.sum(out_Ein*(1 - die_Ein)) - np.sum(die_Eout + diff_Eout_eM > 0)
-                eMa_m[i,j] = eMa_m[i-1,j] + np.sum(diff_Eout_eM) + np.sum(diff_Ein_eM)
+                eMa_m[i,j] = eMa_m[i-1,j] + np.sum(diff_Eout_eM) + np.sum(diff_Ein_eM) + (2*np.sum(div_eM*(1 - diff_eM_E)) if k == 1 else 0)
                 
                 #### Update and refresh timer variables for division ####
                 div_Na_timer[j] = np.hstack( [div_Na_timer[j], np.zeros( int(act_N), dtype = int), div_Na_timer[j][div_Na == 1]] ) % trans_steps[2] if Na_m[i,j] > 0 else np.zeros(0, dtype = int)
             
                 diff_Na_E_timer[j] = np.hstack( [diff_Na_E_timer[j], np.zeros( int( act_N), dtype = int), diff_Na_E_timer[j][div_Na == 1]] ) if Na_m[i,j] > 0 else np.zeros(0, dtype = int)
             
-                myccMa[j] = np.hstack( [myccMa[j], myccMa[j][div_cMa  > 0], mycNa[j][(1 - diff_Na_E)*(1 - Na_div_flag[j]) > 0], myccM[j][div_cM*(1 - diff_cM_E) == 1] if k == 1 else np.zeros(0, dtype = int), myceM[j][div_eM*(1 - diff_eM_E) == 1] if k == 1 else np.zeros(0, dtype = int)] )
+                myccMa[j] = np.hstack( [myccMa[j], myccMa[j][div_cMa  > 0], mycNa[j][(1 - diff_Na_E)*(1 - Na_div_flag[j]) > 0], np.tile(myccM[j][div_cM*(1 - diff_cM_E) == 1],2) if k == 1 else np.zeros(0, dtype = int)] )
             
-                div_cMa_timer[j] = np.hstack( [div_cMa_timer[j], div_cMa_timer[j][div_cMa > 0], np.zeros( int( ( (np.sum(div_cM*(1 - diff_cM_E)) + np.sum(div_eM*(1 - diff_eM_E))) if k == 1 else 0 ) + np.sum((1 - diff_Na_E)*(1 - Na_div_flag[j])) ), dtype = int)] ) % trans_steps[4]
+                div_cMa_timer[j] = np.hstack( [div_cMa_timer[j], div_cMa_timer[j][div_cMa > 0], np.zeros( int( ( 2*np.sum(div_cM*(1 - diff_cM_E)) if k == 1 else 0 ) + np.sum((1 - diff_Na_E)*(1 - Na_div_flag[j])) ), dtype = int)] ) % trans_steps[4]
                 
                 if k == 1: # update only during secondary infections
                     div_cM_timer[j] = div_cM_timer[j][div_cM == 0] if cM_m[i,j] > 0 else np.zeros(0, dtype = int)
@@ -443,11 +447,11 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
                 div_Eout_timer[j] = np.hstack( [div_Eout_timer[j][die_Eout + diff_Eout_eM == 0], div_Eout_timer[j][div_Eout > 0], div_Ein_timer[j][out_Ein*(1-die_Ein) > 0]] ) % trans_steps[3]
 
-                div_Ein_timer[j] = np.hstack( [div_Ein_timer[j][out_Ein + die_Ein + diff_Ein_eM == 0], div_Ein_timer[j][div_Ein > 0], np.zeros( int(( (np.sum(div_cM*(1 + diff_cM_E)) + np.sum(div_eM*(1 + diff_eM_E))) if k == 1 else 0 ) + (1 - Na_div_flag[j])*np.sum(diff_Na_E)), dtype = int)] ) % trans_steps[3]
+                div_Ein_timer[j] = np.hstack( [div_Ein_timer[j][out_Ein + die_Ein + diff_Ein_eM == 0], div_Ein_timer[j][div_Ein > 0], np.zeros( int(( (2*np.sum(div_cM*(diff_cM_E)) + 2*np.sum(div_eM*(diff_eM_E))) if k == 1 else 0 ) + (1 - Na_div_flag[j])*np.sum(diff_Na_E)), dtype = int)] ) % trans_steps[3]
 
                 mycEout[j] = np.hstack( [mycEout[j][die_Eout + diff_Eout_eM == 0], mycEout[j][div_Eout > 0], mycEin[j][out_Ein*(1-die_Ein) > 0]] )
 
-                mycEin[j] = np.hstack( [mycEin[j][out_Ein + die_Ein + diff_Ein_eM == 0], mycEin[j][div_Ein > 0], mycNa[j][(1 - Na_div_flag[j])*diff_Na_E > 0], myccM[j][div_cM == 1] if k == 1 else np.zeros(0, dtype = int), myccM[j][div_cM*diff_cM_E == 1] if k == 1 else np.zeros(0, dtype = int), myceM[j][div_eM == 1] if k == 1 else np.zeros(0, dtype = int), myceM[j][div_eM*diff_eM_E == 1] if k == 1 else np.zeros(0, dtype = int) ] )
+                mycEin[j] = np.hstack( [mycEin[j][out_Ein + die_Ein + diff_Ein_eM == 0], mycEin[j][div_Ein > 0], mycNa[j][(1 - Na_div_flag[j])*diff_Na_E > 0], np.tile(myccM[j][div_cM*diff_cM_E == 1],2) if k == 1 else np.zeros(0, dtype = int), np.tile(myceM[j][div_eM*diff_eM_E == 1],2) if k == 1 else np.zeros(0, dtype = int) ] )
 
                 mycNa[j] = np.hstack( [mycNa[j], np.zeros( int(act_N), dtype = int), mycNa[j][div_Na == 1]] )
                 
@@ -465,15 +469,15 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
                     cyt_Ein_timer[j] = np.hstack( [cyt_Ein_timer[j][out_Ein + die_Ein + diff_Ein_eM == 0], cyt_Ein_timer[j][div_Ein > 0], np.zeros( int((1 - Na_div_flag[j])*np.sum(diff_Na_E)), dtype = int)] )
 
-                out_Ein_timer[j] = np.hstack( [out_Ein_timer[j][out_Ein + die_Ein + diff_Ein_eM == 0], out_Ein_timer[j][div_Ein > 0], np.zeros( int(( (np.sum(div_cM*(1 + diff_cM_E)) + np.sum(div_eM*(1 + diff_eM_E))) if k == 1 else 0 ) + (1 - Na_div_flag[j])*np.sum(diff_Na_E)), dtype = int)] )
+                out_Ein_timer[j] = np.hstack( [out_Ein_timer[j][out_Ein + die_Ein + diff_Ein_eM == 0], out_Ein_timer[j][div_Ein > 0], np.zeros( int(( (2*np.sum(div_cM*(diff_cM_E)) + 2*np.sum(div_eM*(diff_eM_E))) if k == 1 else 0 ) + (1 - Na_div_flag[j])*np.sum(diff_Na_E)), dtype = int)] )
 
                 diff_Eout_eM_timer[j] = np.hstack( [diff_Eout_eM_timer[j][die_Eout + diff_Eout_eM == 0], diff_Eout_eM_timer[j][div_Eout > 0], diff_Ein_eM_timer[j][out_Ein*(1-die_Ein) > 0]] )
 
-                diff_Ein_eM_timer[j] = np.hstack( [diff_Ein_eM_timer[j][out_Ein + die_Ein + diff_Ein_eM == 0], diff_Ein_eM_timer[j][div_Ein > 0], np.zeros( int(( (np.sum(div_cM*(1 + diff_cM_E)) + np.sum(div_eM*(1 + diff_eM_E))) if k == 1 else 0 ) + (1 - Na_div_flag[j])*np.sum(diff_Na_E)), dtype = int)] )
+                diff_Ein_eM_timer[j] = np.hstack( [diff_Ein_eM_timer[j][out_Ein + die_Ein + diff_Ein_eM == 0], diff_Ein_eM_timer[j][div_Ein > 0], np.zeros( int(( (2*np.sum(div_cM*(diff_cM_E)) + 2*np.sum(div_eM*(diff_eM_E))) if k == 1 else 0 ) + (1 - Na_div_flag[j])*np.sum(diff_Na_E)), dtype = int)] )
 
                 die_Eout_timer[j] = np.hstack( [die_Eout_timer[j][die_Eout + diff_Eout_eM == 0], die_Eout_timer[j][div_Eout > 0], die_Ein_timer[j][out_Ein*(1-die_Ein) > 0]] )
 
-                die_Ein_timer[j] = np.hstack( [die_Ein_timer[j][out_Ein + die_Ein + diff_Ein_eM == 0], die_Ein_timer[j][div_Ein > 0], np.zeros( int(( (np.sum(div_cM*(1 + diff_cM_E)) + np.sum(div_eM*(1 + diff_eM_E))) if k == 1 else 0 ) + (1 - Na_div_flag[j])*np.sum(diff_Na_E)), dtype = int)] )
+                die_Ein_timer[j] = np.hstack( [die_Ein_timer[j][out_Ein + die_Ein + diff_Ein_eM == 0], die_Ein_timer[j][div_Ein > 0], np.zeros( int(( (2*np.sum(div_cM*(diff_cM_E)) + 2*np.sum(div_eM*(diff_eM_E))) if k == 1 else 0 ) + (1 - Na_div_flag[j])*np.sum(diff_Na_E)), dtype = int)] )
                 
                 # Update division flag to allow differentiation to proceed
                 Na_div_flag[j] = 1*(Na_m[i,j] < max_Na) if Na_m[i,j] > 0 else 1
@@ -481,50 +485,54 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 div_E_count[j] += np.sum(div_Na) + ((np.sum(div_cM) + np.sum(div_eM)) if k == 1 else 0) + np.sum(div_Ein) + np.sum(div_Eout)
                 
                 #### New binding events ####
-                b_act_t = p_tcr[j]*Ain[i]/(char_times[0]*(K_IE/delta + Ain[i]))
-                b_stim_t = 1/(p_tcr[j]*char_times[1])
+                b_act_t[j] = Ain[i]/(char_times[0]*(0.5*Aout_0 + Ain[i] + np.sum(N_m[i-1] + Na_m[i-1] + cMa_m[i] + Ein_m[i])))
+                b_unbind_t[j] = np.fmin((K_IE/delta + np.sum(N_m[i-1] + Na_m[i-1] + cMa_m[i] + Ein_m[i]) + p_tcr[j]*Ain[i])/(p_tcr[j]*char_times[1]*Ain[i]), 1/(dt*trans_steps[1])) # set fastest rate of unbinding events
                 
-                unbind_Na_timer[j] = unbind_Na_timer[j] + np.random.binomial(1-unbound_Na[j], dt*b_stim_t*trans_steps[1]) if Na_m[i,j] == 1 else 0
+                unbind_Na_timer[j] = unbind_Na_timer[j] + np.random.binomial(1-unbound_Na[j], dt*b_unbind_t[j]*trans_steps[1]) if Na_m[i,j] == 1 and Ain[i] >= 1 else 0
 
-                unbound_Na[j] = 1*(unbind_Na_timer[j] >= trans_steps[1]) if Na_m[i,j] == 1 else 1
+                unbound_Na[j] = 1*(unbind_Na_timer[j] >= trans_steps[1]) if Na_m[i,j] == 1 and Ain[i] >= 1 else 1
                 
                 #### MYC Dynamics ####
                 mycNa[j] = mycNa[j] + dt*(b_myc*(1-unbound_Na[j]) - (1-p_cyt[j]*np.minimum(1-unbound_Na[j] + 0*H[i], 1))*mycNa[j]*d_myc) if Na_m[i,j] > 0 else np.zeros(0)
 
-                mycEin[j] = mycEin[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + Ain[i]) - (1-p_cyt[j]*H[i])*mycEin[j]*d_myc) if Ein_m[i,j] > 0 else np.zeros(0)
+                mycEin[j] = mycEin[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + Ein_pop + Ain[i]) - (1-p_cyt[j]*H[i])*mycEin[j]*d_myc) if Ein_m[i,j] > 0 else np.zeros(0)
 
-                mycEout[j] = mycEout[j] + dt*(b_myc*I[i]/(K_IE/p_tcr[j] + I[i]) - (1-p_cyt[j]*H[i])*mycEout[j]*d_myc) if Eout_m[i,j] > 0 else np.zeros(0)
+                mycEout[j] = mycEout[j] + dt*(b_myc*I[i]/(K_IE/p_tcr[j] + Eout_pop + I[i]) - (1-p_cyt[j]*H[i])*mycEout[j]*d_myc) if Eout_m[i,j] > 0 else np.zeros(0)
 
-                myccMa[j] = myccMa[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + Ain[i]) - (1-p_cyt[j]*H[i]*Ain[i]/(K_IE/(delta*p_tcr[j]) + Ain[i]))*myccMa[j]*d_myc) if cMa_m[i,j] > 0 else np.zeros(0)
+                myccMa[j] = myccMa[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cMa_pop + Ain[i]) - (1-p_cyt[j]*H[i]*Ain[i]/(K_IE/(delta*p_tcr[j]) + cMa_pop + Ain[i]))*myccMa[j]*d_myc) if cMa_m[i,j] > 0 else np.zeros(0)
                 
                 if k == 1:
-                    myccM[j] = myccM[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + Ain[i]) - (1-p_cyt[j]*H[i]*Ain[i]/(K_IE/(delta*p_tcr[j]) + Ain[i]))*myccM[j]*d_myc) if cM_m[i,j] > 0 else np.zeros(0)
+                    myccM[j] = myccM[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cM_pop + Ain[i]) - (1-p_cyt[j]*H[i]*Ain[i]/(K_IE/(delta*p_tcr[j]) + cM_pop + Ain[i]))*myccM[j]*d_myc) if cM_m[i,j] > 0 else np.zeros(0)
 
-                    myceM[j] = myceM[j] + dt*(b_myc*I[i]/(K_IE/p_tcr[j] + I[i]) - (1-p_cyt[j]*H[i])*myceM[j]*d_myc) if eM_m[i,j] > 0 else np.zeros(0)
+                    myceM[j] = myceM[j] + dt*(b_myc*I[i]/(K_IE/p_tcr[j] + eM_pop + I[i]) - (1-p_cyt[j]*H[i])*myceM[j]*d_myc) if eM_m[i,j] > 0 else np.zeros(0)
 
                 #### transition probabilities modulated by antigen and cytokine signals ####
-                p_NaE[j] = p_XtoY(1-unbound_Na[j], p_cyt[j]*np.minimum(1-unbound_Na[j] + 0*H[i], 1.0), psi_NE_I, psi_NE_c, F_0 = 0.0, K_I = unbound_Na[j], K_H = K_HE, reg_model = reg_model[0]) if Na_m[i,j] > 0 else float("nan")
-                p_EineM[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], psi_EeM_I, psi_EeM_c, F_0 = 0.0, K_I = K_IE/delta, K_H = K_HE, reg_model = reg_model[1]) if Ein_m[i,j] > 0 else float("nan")
-                p_EouteM[j] = p_XtoY(p_tcr[j]*I[i], p_cyt[j]*H[i], psi_EeM_I, psi_EeM_c, F_0 = 0.0, K_I = K_IE, K_H = K_HE, reg_model = reg_model[2]) if Eout_m[i,j] > 0 else float("nan")
-                if k == 1:
-                    p_cME[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*np.minimum(Ain[i]/(K_IE/(delta*p_tcr[j]) + Ain[i]) + H[i], 1), psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE/delta, K_H = K_HE, reg_model = reg_model[0]) if cM_m[i,j] > 0 else float("nan")
-                    p_eME[j] = p_XtoY(p_tcr[j]*I[i], p_cyt[j]*H[i], psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE, K_H = K_HE, reg_model = reg_model[0]) if eM_m[i,j] > 0 else float("nan")
-
-                #### Time-dependent rates modulated by antigen and cytokine signals ####
-                b_Na_div = 1/char_times[2]
-                b_NaE_diff = p_NaE[j]/(char_times[2]) if Na_m[i,j] > 0 else 0.0
-                b_E_div = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[3]
-                b_cMa_div = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[4]
-                b_EineM_diff = p_EineM[j]/char_times[5] if Ein_m[i,j] > 0 else 0.0
-                b_EouteM_diff = p_EouteM[j]/char_times[5] if Eout_m[i,j] > 0 else 0.0
+                p_NaE[j] = p_XtoY((1-unbound_Na[j]) + Ain[i]*unbound_Na[j], p_cyt[j]*np.minimum(1-unbound_Na[j] + H[i], 1.0), psi_NE_I, psi_NE_c, F_0 = 0.0, K_I = unbound_Na[j] + (K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]))*unbound_Na[j], K_H = 1-H[i], reg_model = reg_model[0]) if Na_m[i,j] > 0 else float("nan")
+                p_EineM[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], psi_EeM_I, psi_EeM_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]), K_H = K_HE, reg_model = reg_model[1], zeta = zeta) if Ein_m[i,j] > 0 else float("nan")
+                p_EouteM[j] = p_XtoY(p_tcr[j]*I[i], p_cyt[j]*H[i], psi_EeM_I, psi_EeM_c, F_0 = 0.0, K_I = K_IE + np.sum(Eout_m[i] +eMa_m[i]), K_H = K_HE, reg_model = reg_model[2], zeta = zeta) if Eout_m[i,j] > 0 else float("nan")
                 
                 if k == 1:
-                    b_cM_diff = (1 + k)*p_cME[j]/char_times[2] if cM_m[i,j] > 0 else 0.0
-                    b_eM_diff = (1 + k)*p_eME[j]/char_times[2] if eM_m[i,j] > 0 else 0.0
+                    p_cME[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*np.minimum(H[i], 1), psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = K_HE, reg_model = reg_model[0]) if cM_m[i,j] > 0 else float("nan")
+                    p_eME[j] = p_XtoY(p_tcr[j]*I[i], p_cyt[j]*H[i], psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = K_HE, reg_model = reg_model[0]) if eM_m[i,j] > 0 else float("nan")
+
+                #### Time-dependent rates modulated by antigen and cytokine signals ####
+                b_Na_div[j] = 1/char_times[2]
+                # if len(diff_Na_E_timer[j]) > 0 and unbound_Na[j] == 0:
+                #     print(j, diff_Na_E_timer[j], t, dt*b_NaE_diff[j]*trans_steps[9], Na_m[i-1,j],  np.minimum(1/(char_times[9]), 1/(dt*trans_steps[9]))*dt*trans_steps[9], Na_div_flag)
                     
-                b_E_out = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[6] # evidence that this is inversely proportional to stimulation
-                d_E_die = 1/char_times[7]
-                b_E_cyt = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[8]# rate of T cells becoming cytotoxic
+                b_NaE_diff[j] = p_NaE[j]*np.minimum(1/(char_times[9]), 1/(dt*trans_steps[9])) if Na_m[i,j] > 0 else 0.0
+                b_E_div[j] = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[3]
+                b_cMa_div[j] = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[4]
+                b_EineM_diff[j] = p_EineM[j]*np.minimum(1/char_times[5], 1/(dt*trans_steps[5])) if Ein_m[i,j] > 0 else 0.0
+                b_EouteM_diff[j] = p_EouteM[j]*np.minimum(1/char_times[5], 1/(dt*trans_steps[5])) if Eout_m[i,j] > 0 else 0.0
+                
+                if k == 1:
+                    b_cM_diff[j] = p_cME[j]/char_times[2] if cM_m[i,j] > 0 else 0.0
+                    b_eM_diff[j] = p_eME[j]/char_times[2] if eM_m[i,j] > 0 else 0.0
+                    
+                b_E_out[j] = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[6] # evidence that this is inversely proportional to stimulation
+                d_E_die[j] = 1/char_times[7]
+                b_E_cyt[j] = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[8]# rate of T cells becoming cytotoxic
 
                 #### Store myc levels ####
                 mycNa_m[i,j] = np.mean(mycNa[j]) if Na_m[i,j] > 0 else 0.0
@@ -536,7 +544,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                     myceM_m[i,j] = np.mean(myceM[j]) if eM_m[i,j] > 0 else 0.0
             
             #### Store differentiation biases
-            p_XE[i] = np.array([np.nanmean(np.hstack(p_NaE)) if Na_m[i].any() > 0 else 0.0, 
+            bias_t[i] = np.array([np.nanmean(np.hstack(p_NaE)) if Na_m[i].any() > 0 else 0.0, 
                                 np.nanmean(np.hstack(p_EineM)) if Ein_m[i].any() > 0 else 0.0, 
                                 np.nanmean(np.hstack(p_EouteM)) if Eout_m[i].any() > 0 else 0.0,
                                 np.nanmean(np.hstack(p_cME)) if k == 1 and cM_m[i].any() > 0 else 0.0,
@@ -550,37 +558,36 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         if k == 1:
             cM, eM = np.sum(cM_m, axis = 1), np.sum(eM_m, axis = 1)
         # determine which entries to keep
-        keep = (E > E_min) + (I > E_min)
+        keep = np.minimum(np.argmin(1*(E > E_min) + 1*(I > E_min)), E.shape[0]-1) if np.argmin(1*(E > E_min) + 1*(I > E_min)) > 0 else E.shape[0]-1
     
-        lineage_comp = np.vstack([N_m[0],
-                                  np.amax(cMa_m, axis = 0),
+        lineage_comp = np.vstack([np.amax(cMa_m + N_m[keep] if k == 0 else cM_m[keep] + cMa_m, axis = 0) ,
                                   np.amax(Ein_m + Eout_m, axis = 0),
-                                  np.amax(eMa_m, axis = 0),
+                                  np.amax(eMa_m if k == 0 else eM_m[keep] + eMa_m, axis = 0),
                                   p_tcr,
                                   p_cyt])
         
         if k == 0: # primary infection
-            dyn_data = np.array([S, I, Ain, Na, E, cMa, eMa, H, I_d_I + I_d_IE, I_d_S])
+            dyn_data = np.array([S, I, Ain, Na, E, cMa, eMa, H, I_d_I + I_d_IE + I[-1], I_d_S])
         elif k == 1: # secondary infection
             dyn_data = np.vstack((dyn_data, np.array([S, I, Ain, Na + cM + eM, E, cMa, eMa, H, I_d_I+ I_d_IE, I_d_S]) ))
                                  
     ts = np.linspace(0, duration, int(steps) + 1)
     
-    return np.array(regulation_coeffs), dyn_data.T, ts, lineage_comp, p_XE, (Ein_m + Eout_m), myccM_m if k == 1 else mycNa_m, myccMa_m, mycEin_m, mycEout_m
+    return np.array(regulation_coeffs), dyn_data.T, ts, lineage_comp, bias_t, (Ein_m + Eout_m), myccM_m if k == 1 else mycNa_m, myccMa_m, mycEin_m, mycEout_m
 
 
 ### (4) Parallelize simulation runs
 def sum_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH,
             Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_HE = K_HE,
             N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh,
-            char_times = np.array([t_act, t_unbind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt]),
-            trans_steps = np.array([n_act, n_unbind, n_Na_div, n_E_div, n_cM_div, n_eM_diff, n_E_out, n_E_die, n_E_cyt]),
+            char_times = np.array([t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff]),
+            trans_steps = np.array([n_act, n_bind, n_Na_div, n_E_div, n_cM_div, n_eM_diff, n_E_out, n_E_die, n_E_cyt, n_NaE_diff]),
             regulation_coeffs = psis,
             signal_weight = alpha,
             infection = "prim",
             vir_model = "dep_harm",
             sim_kind = "agent",
-            reg_model = np.array(["hill_and", "hill_and", "hill_and"])):
+            reg_logs = np.array([0,0,0])):
     
     # compute state and costate dynamics
     if sim_kind == "agent":
@@ -593,12 +600,13 @@ def sum_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, 
                                                                            alpha = signal_weight,
                                                                            infection = infection,
                                                                            vir_model = vir_model,
-                                                                           reg_model = reg_model)
+                                                                           reg_logs = reg_logs)
     # extract primary/secondary infection dynamics
-        pI, sI, Ain, N, pE, sE, pcM, scM, peM, seM, pH, sH, pI_d_I, sI_d_I, pI_d_S, sI_d_S = dyn[:,1], dyn[:,-9], dyn[:,-8], dyn[:,-7], dyn[:, 4], dyn[:,-6], dyn[:,5], dyn[:, -5], dyn[:,6], dyn[:,-4], dyn[:,7], dyn[:,-3], dyn[:,8], dyn[:,-2], dyn[:,9], dyn[:,-1]
+        pS, sS, pI, sI, Ain, N, pE, sE, pcM, scM, peM, seM, pH, sH, pI_d_I, sI_d_I, pI_d_S, sI_d_S = dyn[:,0], dyn[:,-10], dyn[:,1], dyn[:,-9], dyn[:,-8], dyn[:,-7], dyn[:, 4], dyn[:,-6], dyn[:,5], dyn[:, -5], dyn[:,6], dyn[:,-4], dyn[:,7], dyn[:,-3], dyn[:,8], dyn[:,-2], dyn[:,9], dyn[:,-1]
         
         dt = ts[1]-ts[0]
-        keep_sec = np.maximum(np.minimum(np.argmin((sE > E_min) + (sI > E_min)), sE.shape[0]-1),0)
+        keep_sec = np.minimum(np.argmin(1*(sE > E_min) + 1*(sI > E_min)), sE.shape[0]-1) if np.argmin(1*(sE > E_min) + 1*(sI > E_min)) > 0 else sE.shape[0]-1
+        keep_prim = np.minimum(np.argmin(1*(pE > E_min) + 1*(pI > E_min)), pE.shape[0]-1) if np.argmin(1*(pE > E_min) + 1*(pI > E_min)) > 0 else pE.shape[0]-1
         
         parameters = np.concatenate((np.array([S_0, I_0, b_I, d_S, d_I, d_IE, d_IH, K_IE, K_IH,
                   Aout_0, b_Ain, b_H, d_H, K_HE,
@@ -606,7 +614,7 @@ def sum_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, 
                   char_times,
                   trans_steps))
     
-        run_data = np.concatenate((regulation_coeffs, 
+        run_data = np.concatenate((regulation_coeffs, reg_logs, 
                           np.array([np.sum(pI*dt)/sim_duration, 
                            np.sum(sI*dt)/sim_duration,
                            np.argmax(pI)*dt,
@@ -626,7 +634,12 @@ def sum_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, 
                            np.max(peM),
                            seM[keep_sec],
                            np.sum(pH*dt)/sim_duration,
-                           np.sum(sH*dt)/sim_duration])))
+                           np.sum(sH*dt)/sim_duration,
+                           np.amin(pS[0:keep_prim]),
+                           np.amin(sS[0:keep_sec]),
+                           stats.spearmanr(pI[0:keep_prim], pH[0:keep_prim]).statistic,
+                           stats.spearmanr(sI[0:keep_sec], sH[0:keep_sec]).statistic],
+                           )))
         
     else:
         raise ValueError("simulation type not provided: enter 'agent' ")
@@ -639,6 +652,9 @@ stat_names = [r"$\psi_{N,E}^{(I)}$",
               r"$\psi_{E,eM}^{(c)}$", 
               r"$\psi_{pM,E}^{(I)}$", 
               r"$\psi_{pM,E}^{(c)}$",
+              r"$[N,E]_{reg}$",
+              r"$[E,eM]_{reg}$",
+              r"$[pM,E]_{reg}$",
               r"$\frac{1}{T_{sim}}\int_0^{T_{sim}} I_{p}dt$",
               r"$\frac{1}{T_{sim}}\int_0^{T_{sim}} I_{s}dt$",
               r"$T_{I_p}^{max}$",
@@ -658,27 +674,32 @@ stat_names = [r"$\psi_{N,E}^{(I)}$",
               r"$(eM_p)^\infty}$",
               r"$(eM_s)^\infty}$",
               r"$\int H_p dt$",
-              r"$\int H_s dt$"]
+              r"$\int H_s dt$",
+              r"$S_p^{min}$",
+              r"$S_s^{min}$",
+              r"$C(I_p,H_p)$",
+              r"$C(I_s,H_s)$"]
 
 param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"$d_{I,H}$", r"$K_{I,E}$", r"$K_{I,H}$",
-               r"$A_{out}^{(0)}$", r"$b_{A_in}$", r"$b_H$", r"$d_H$", r"$K_{A_{in}}$", r"$K_{H,E}$",
+               r"$A_{out}^{(0)}$", r"$b_{A_in}$", r"$b_H$", r"$d_H$", r"$K_{H,E}$",
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N^*,A_{in}}^{(+)}$", r"$\tau_{N^*,A_{in}}^{(-)}$", r"$\tau_{N^*}$", r"$\tau_E$", r"$\tau_{cM}$", r"$\tau_{eM}$", r"$\tau_{E_{out}}$", r"$\tau_{E_{die}}$", r"$\tau_{E_{cyt}}$",
                r"$n_{N^*,A_{in}}^{(+)}$", r"$n_{N^*,A_{in}}^{(-)}$", r"$n_{N^*}$", r"$n_E$", r"$n_{cM}$", r"$n_{eM}$", r"$n_{E_{out}}$", r"$n_{E_{die}}$", r"$n_{E_{cyt}}$"]
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',
-                      'K_IH', 'Aout_0', 'b_Ain', 'b_H', 'd_H', 'K_Ain','K_HE',
+                      'K_IH', 'Aout_0', 'b_Ain', 'b_H', 'd_H', 'K_HE',
                       'N_0', 'max_Na', 'b_myc', 'd_myc', 'myc_thresh',
-                      't_act', 't_unbind', 't_Na_div', 't_E_div', 't_cM_div', 
-                      't_eM_diff', 't_E_out', 't_E_die', 't_E_cyt',
-                      'n_act', 'n_unbind', 'n_Na_div', 'n_E_div', 'n_cM_div',
-                      'n_eM_diff', 'n_E_out', 'n_E_die', 'n_E_cyt']
+                      't_act', 't_bind', 't_Na_div', 't_E_div', 't_cM_div', 
+                      't_eM_diff', 't_E_out', 't_E_die', 't_E_cyt', 't_NaE_diff',
+                      'n_act', 'n_bind', 'n_Na_div', 'n_E_div', 'n_cM_div',
+                      'n_eM_diff', 'n_E_out', 'n_E_die', 'n_E_cyt','n_NaE_diff']
 stat_names_for_df = ['psi_NE_I', 'psi_NE_c', 'psi_EeM_I', 'psi_EeM_c', 'psi_pME_I', 'psi_pME_c',
+                     'NE_logic','EeM_logic','pME_logic',
                      'p_load', 's_load','T_max_pI', 'T_max_sI', 'harm_pI', 'harm_sI', 
                      'harm_pS', 'harm_sS', 'max_pE', 'max_sE','T_max_pE', 'T_max_sE', 
                      'inf_pcM', 'inf_scM', 'int_pE', 'int_sE','inf_peM', 'inf_seM',
-                     'int_pH', 'int_sH']
+                     'int_pH', 'int_sH', 'min_pS', 'min_sS', 'corr_pSig', 'corr_sSig']
 
 ### (5) define basic mutual information function
 from sklearn.metrics import mutual_info_score
