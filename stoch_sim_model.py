@@ -508,12 +508,12 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
                 #### transition probabilities modulated by antigen and cytokine signals ####
                 p_NaE[j] = p_XtoY((1-unbound_Na[j]) + Ain[i]*unbound_Na[j], p_cyt[j]*np.minimum(1-unbound_Na[j] + H[i], 1.0), psi_NE_I, psi_NE_c, F_0 = 0.0, K_I = unbound_Na[j] + (K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]))*unbound_Na[j], K_H = 1-H[i], reg_model = reg_model[0]) if Na_m[i,j] > 0 else float("nan")
-                p_EineM[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], psi_EeM_I, psi_EeM_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]), K_H = K_HE, reg_model = reg_model[1], zeta = zeta) if Ein_m[i,j] > 0 else float("nan")
-                p_EouteM[j] = p_XtoY(p_tcr[j]*I[i], p_cyt[j]*H[i], psi_EeM_I, psi_EeM_c, F_0 = 0.0, K_I = K_IE + np.sum(Eout_m[i] +eMa_m[i]), K_H = K_HE, reg_model = reg_model[2], zeta = zeta) if Eout_m[i,j] > 0 else float("nan")
+                p_EineM[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], psi_EeM_I, psi_EeM_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]), K_H = 1-H[i], reg_model = reg_model[1], zeta = zeta) if Ein_m[i,j] > 0 else float("nan")
+                p_EouteM[j] = p_XtoY(p_tcr[j]*I[i], p_cyt[j]*H[i], psi_EeM_I, psi_EeM_c, F_0 = 0.0, K_I = K_IE + np.sum(Eout_m[i] +eMa_m[i]), K_H = 1-H[i], reg_model = reg_model[2], zeta = zeta) if Eout_m[i,j] > 0 else float("nan")
                 
                 if k == 1:
-                    p_cME[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*np.minimum(H[i], 1), psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = K_HE, reg_model = reg_model[0]) if cM_m[i,j] > 0 else float("nan")
-                    p_eME[j] = p_XtoY(p_tcr[j]*I[i], p_cyt[j]*H[i], psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = K_HE, reg_model = reg_model[0]) if eM_m[i,j] > 0 else float("nan")
+                    p_cME[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*np.minimum(H[i], 1), psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = 1-H[i], reg_model = reg_model[0]) if cM_m[i,j] > 0 else float("nan")
+                    p_eME[j] = p_XtoY(p_tcr[j]*I[i], p_cyt[j]*H[i], psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = 1-H[i], reg_model = reg_model[0]) if eM_m[i,j] > 0 else float("nan")
 
                 #### Time-dependent rates modulated by antigen and cytokine signals ####
                 b_Na_div[j] = 1/char_times[2]
@@ -647,11 +647,11 @@ def sum_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, 
     return np.concatenate((parameters, run_data))
 
 stat_names = [r"$\psi_{N,E}^{(I)}$", 
-              r"$\psi_{N,E}^{(c)}$", 
+              r"$\psi_{N,E}^{(H)}$", 
               r"$\psi_{E,eM}^{(I)}$", 
-              r"$\psi_{E,eM}^{(c)}$", 
+              r"$\psi_{E,eM}^{(H)}$", 
               r"$\psi_{pM,E}^{(I)}$", 
-              r"$\psi_{pM,E}^{(c)}$",
+              r"$\psi_{pM,E}^{(H)}$",
               r"$[N,E]_{reg}$",
               r"$[E,eM]_{reg}$",
               r"$[pM,E]_{reg}$",

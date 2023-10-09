@@ -28,4 +28,4 @@ reg_logs=${args:11}
 COMMAND="apptainer run --bind /gscratch /gscratch/spe/$USER/apptainer_images/maximmune.sif python"
 $COMMAND optimize-nets.py --reg_coefs $reg_coeffs --reg_logs $reg_logs --outdir $d
 
-mv ${SLURM_OUTDIR}${SLURM_JOB_ID}.out ${SLURM_OUTDIR}net-${1}.out
+mv ${SLURM_OUTDIR}${SLURM_JOB_ID}.out ${SLURM_OUTDIR}net-${1}-${reg_logs}.out
