@@ -39,7 +39,7 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], reg_logs = np.array([0,0,0]), o
     print(f'Will save to {outfile}.')
     
     # sample distribution of pathogen killing rate and size of naive repertoire
-    vir_prop = np.array(np.meshgrid(d_S*np.array([4, 8, 12, 16, 20]), K_IE*np.array([0.1,0.5,1, 2, 10]))).T.reshape(-1,2)
+    vir_prop = np.array(np.meshgrid(d_S*np.array([0, 5, 10, 20]), K_IE*np.array([1, 5, 10, 20]))).T.reshape(-1,2)
     dIs = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1))
     
     # choose which parameter to vary

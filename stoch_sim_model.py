@@ -32,13 +32,13 @@ K_Ain = K_IE/delta
 
 # Inflammatory response
 H_0, H_max = 0.0, 1.0
-K_IH = 0.01*S_0*d_S # half-max level of instantaneous damage required to trigger innate/inflammatory response
+K_IH = 0.1*S_0*d_S # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_HE = 1/3 # half-max level of inflammation required to trigger lymphocyte response
 d_H = 0.5
 b_H = 3 
 l_H = 2 # cooperativity
-ep = 0.001 # off-target rate of harm
-K_SE = 2.5*(10**8)
+ep = 1.5*(10**(-4)) # off-target rate of harm
+K_SE = 1*(10**8)
 kappa = 0.9 # maximal reduction in replication rate due to inflammatory response
 d_IH = d_IE*ep
 
@@ -146,7 +146,7 @@ def sample_grid(d = 2, l_bounds = [d_S, 0.5], u_bounds = [S_0*b_I, 1.0], runs = 
 sim_duration = 20
 sim_steps = 0.5*(10**4)
 
-def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH,
+def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH, K_SE = K_SE,
                     Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_HE = K_HE,
                     N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh, max_expand = max_expand,
                     char_times = [t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff],
@@ -172,6 +172,15 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     dt =  duration/steps
     N_0_var = int(N_0)
     b_S = S_0*d_S
+    
+    # in case of autoimmune response
+    if d_I == 0.0:
+        d_Sauto = 2*d_S
+        K_IE = K_SE/100
+        K_SE = K_IE
+        I_0 = 0.0
+    else:
+        d_Sauto = 0.0
     
     # set infection scenario: primary or secondary
     infection_count = 0
@@ -318,19 +327,22 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 
             #### Run infection dynamics: replication and effector clearance ####
             # check simulation stopping conditions
-            if I[i-1] < E_min and (Ein_pop + Eout_pop) < E_min:
+            if I[i-1] < E_min and (Ein_pop + Eout_pop) < E_min and d_I > 0.0:
                 break
             
             # Update state of susceptible, infected, APCs, and inflammation
-            S[i] = S[i-1] + dt*(b_S - d_S*S[i-1] - (I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]) - S[i-1]*(d_IH*H[i-1] + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop)))*(S[i-1] >= 0.0)
+            S[i] = S[i-1] + dt*(b_S - (d_S + d_Sauto*np.exp(-t/2))*S[i-1] - (I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]) - S[i-1]*(d_IH*H[i-1] + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop)))*(S[i-1] >= 0.0)
+            
             I[i] = I[i-1] + dt*((I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]) - d_IH*I[i-1]*H[i-1] - d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop) - d_I*I[i-1])*(I[i-1] >= 0.0)
-            H[i] = H[i-1] + dt*(b_H*((d_I*I[i-1])**l_H)*(1 - H[i-1])/(K_IH**l_H + (d_I*I[i-1])**l_H) - d_H*(H[i-1]-H_0))*(H[i-1] >= 0.0)
+            
+            cell_lysis_rate = d_I*I[i-1] + d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop) + S[i-1]*(d_Sauto*np.exp(-t/2) + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop))
+            H[i] = H[i-1] + dt*(b_H*((cell_lysis_rate)**l_H)*(1 - H[i-1])/(K_IH**l_H + (cell_lysis_rate)**l_H) - d_H*(H[i-1]-H_0))*(H[i-1] >= 0.0)
             Aout[i] = Aout[i-1] - b_Ain*Aout[i-1]*H[i-1]*dt*(Aout[i-1] >= 0.0)
             Ain[i] = Ain[i-1] + dt*(b_Ain*Aout[i-1]*H[i-1] - d_A*Ain[i-1] - d_IE*Ain[i-1]*(cMa_pop)/(K_IE/delta + Ain[i-1] + cMa_pop))*(Ain[i-1] >= 0.0)
             
-            I_d_I[i] = I_d_I[i-1] + dt*(I[i-1] >= I_0)*d_I*I[i-1] # cells killed by infection
-            I_d_IE[i] = I_d_IE[i-1] + dt*(I[i-1] >= I_0)*(d_IH*I[i-1]*H[i-1] + d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop)) # cells killed by immune response
-            I_d_S[i] = I_d_S[i-1] + dt*S[i-1]*(d_IH*H[i-1] + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop))
+            I_d_I[i] = I_d_I[i-1] + dt*(I[i-1] >= I_0)*d_I*I[i-1] + (I[i] if i == int(steps) else 0) # cells killed by infection
+            I_d_IE[i] = I_d_IE[i-1] + dt*(I[i-1] >= I_0)*(d_IH*I[i-1]*H[i-1] + d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop)) # cells killed by immune response    
+            I_d_S[i] = I_d_S[i-1] + dt*S[i-1]*(d_IH*H[i-1] + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop) + d_Sauto*np.exp(-t/2))
             
             # Set negative values to zero, in 
             if (Ain[i-1] < 0.0 or Ain[i] < 0.0):
@@ -497,23 +509,23 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
                 mycEin[j] = mycEin[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + Ein_pop + Ain[i]) - (1-p_cyt[j]*H[i])*mycEin[j]*d_myc) if Ein_m[i,j] > 0 else np.zeros(0)
 
-                mycEout[j] = mycEout[j] + dt*(b_myc*I[i]/(K_IE/p_tcr[j] + Eout_pop + I[i]) - (1-p_cyt[j]*H[i])*mycEout[j]*d_myc) if Eout_m[i,j] > 0 else np.zeros(0)
+                mycEout[j] = mycEout[j] + dt*(b_myc*(I[i] + S[i]*(d_I == 0.0))/(K_IE/p_tcr[j] + Eout_pop + (I[i] + S[i]*(d_I == 0.0))) - (1-p_cyt[j]*H[i])*mycEout[j]*d_myc) if Eout_m[i,j] > 0 else np.zeros(0)
 
                 myccMa[j] = myccMa[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cMa_pop + Ain[i]) - (1-p_cyt[j]*H[i]*Ain[i]/(K_IE/(delta*p_tcr[j]) + cMa_pop + Ain[i]))*myccMa[j]*d_myc) if cMa_m[i,j] > 0 else np.zeros(0)
                 
                 if k == 1:
                     myccM[j] = myccM[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cM_pop + Ain[i]) - (1-p_cyt[j]*H[i]*Ain[i]/(K_IE/(delta*p_tcr[j]) + cM_pop + Ain[i]))*myccM[j]*d_myc) if cM_m[i,j] > 0 else np.zeros(0)
 
-                    myceM[j] = myceM[j] + dt*(b_myc*I[i]/(K_IE/p_tcr[j] + eM_pop + I[i]) - (1-p_cyt[j]*H[i])*myceM[j]*d_myc) if eM_m[i,j] > 0 else np.zeros(0)
+                    myceM[j] = myceM[j] + dt*(b_myc*(I[i] + S[i]*(d_I == 0.0))/(K_IE/p_tcr[j] + eM_pop + (I[i] + S[i]*(d_I == 0.0))) - (1-p_cyt[j]*H[i])*myceM[j]*d_myc) if eM_m[i,j] > 0 else np.zeros(0)
 
                 #### transition probabilities modulated by antigen and cytokine signals ####
                 p_NaE[j] = p_XtoY((1-unbound_Na[j]) + Ain[i]*unbound_Na[j], p_cyt[j]*np.minimum(1-unbound_Na[j] + H[i], 1.0), psi_NE_I, psi_NE_c, F_0 = 0.0, K_I = unbound_Na[j] + (K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]))*unbound_Na[j], K_H = 1-H[i], reg_model = reg_model[0]) if Na_m[i,j] > 0 else float("nan")
                 p_EineM[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], psi_EeM_I, psi_EeM_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]), K_H = 1-H[i], reg_model = reg_model[1], zeta = zeta) if Ein_m[i,j] > 0 else float("nan")
-                p_EouteM[j] = p_XtoY(p_tcr[j]*I[i], p_cyt[j]*H[i], psi_EeM_I, psi_EeM_c, F_0 = 0.0, K_I = K_IE + np.sum(Eout_m[i] +eMa_m[i]), K_H = 1-H[i], reg_model = reg_model[2], zeta = zeta) if Eout_m[i,j] > 0 else float("nan")
+                p_EouteM[j] = p_XtoY(p_tcr[j]*(I[i] + S[i]*(d_I == 0.0)), p_cyt[j]*H[i], psi_EeM_I, psi_EeM_c, F_0 = 0.0, K_I = K_IE + np.sum(Eout_m[i] +eMa_m[i]), K_H = 1-H[i], reg_model = reg_model[2], zeta = zeta) if Eout_m[i,j] > 0 else float("nan")
                 
                 if k == 1:
                     p_cME[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*np.minimum(H[i], 1), psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = 1-H[i], reg_model = reg_model[0]) if cM_m[i,j] > 0 else float("nan")
-                    p_eME[j] = p_XtoY(p_tcr[j]*I[i], p_cyt[j]*H[i], psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = 1-H[i], reg_model = reg_model[0]) if eM_m[i,j] > 0 else float("nan")
+                    p_eME[j] = p_XtoY(p_tcr[j]*(I[i] + S[i]*(d_I == 0.0)), p_cyt[j]*H[i], psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = 1-H[i], reg_model = reg_model[0]) if eM_m[i,j] > 0 else float("nan")
 
                 #### Time-dependent rates modulated by antigen and cytokine signals ####
                 b_Na_div[j] = 1/char_times[2]
@@ -567,7 +579,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                                   p_cyt])
         
         if k == 0: # primary infection
-            dyn_data = np.array([S, I, Ain, Na, E, cMa, eMa, H, I_d_I + I_d_IE + I[-1], I_d_S])
+            dyn_data = np.array([S, I, Ain, Na, E, cMa, eMa, H, I_d_I + I_d_IE, I_d_S])
         elif k == 1: # secondary infection
             dyn_data = np.vstack((dyn_data, np.array([S, I, Ain, Na + cM + eM, E, cMa, eMa, H, I_d_I+ I_d_IE, I_d_S]) ))
                                  
