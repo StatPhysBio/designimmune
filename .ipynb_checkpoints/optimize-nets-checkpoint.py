@@ -21,10 +21,14 @@ N_0 = 100
 K_IE = 10**4
 d_I = 10*d_S
 
+# sample distribution of pathogen killing rate and size of naive repertoire
 runs = 100
+vir_prop = np.array(np.meshgrid(d_S*np.array([0, 5, 20]), K_IE*np.array([1, 10]))).T.reshape(-1,2)
+vir_samp = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1))
+
 reg_weight = 1
 
-def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], reg_logs = np.array([0,0,0]), outdir=''):
+def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], reg_logs = np.array([0,0,0]), outdir='', virus_sample = vir_samp):
     
     reg_coeff = reg_weight*(np.array(regs) - 1)
     
@@ -38,24 +42,24 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], reg_logs = np.array([0,0,0]), o
     outfile = os.path.join(outdir, outfile) # what is outfile?
     print(f'Will save to {outfile}.')
     
-    # sample distribution of pathogen killing rate and size of naive repertoire
-    vir_prop = np.array(np.meshgrid(d_S*np.array([0, 5, 10, 20]), K_IE*np.array([1, 5, 10, 20]))).T.reshape(-1,2)
-    dIs = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1))
-    
-    # choose which parameter to vary
+    # Run simulations over different infections
     print('Running simulation')
-    run_data = np.vstack(Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(dIs)/20),1))(delayed(sum_sim)(d_I = param[0], 
+    runs_list = Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(virus_sample)/20),1))(delayed(agent_stoch_sim)(d_I = param[0], 
                                                                                                                N_0 = N_0,
                                                                                                                K_IE = param[1],
                                                                                                                regulation_coeffs = reg_coeff,
                                                                                                                infection = infection_type,
                                                                                                                vir_model = 'dep_harm',
-                                                                                                               sim_kind = sim_kind,
                                                                                                                reg_logs = reg_logs)
-                                                    for param in dIs ))
+                                                    for param in virus_sample )
+
+    # Store data in dictionary
+    runs_dict = {}
+    for k in runs_list[0].keys():
+      runs_dict[k] = list(d[k] for d in runs_list)
 
     print('Saving')
-    np.save(outfile, run_data)
+    np.save(outfile, runs_dict)
     print(f'Saved {outfile}')
 
 def main():

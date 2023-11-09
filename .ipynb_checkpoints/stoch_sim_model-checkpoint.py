@@ -222,12 +222,12 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             N_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
             N_m[0,:] +=1
         elif k == 1: # secondary infection
-            N_m[0,:] = N_m[keep,:] #+ (1-N_m[np.argmin(keep)-1,:])*np.random.binomial(n=1, p = 0.5, size= N_0_var)
+            N_m[0,:] = N_m[-1,:] #+ (1-N_m[np.argmin(keep)-1,:])*np.random.binomial(n=1, p = 0.5, size= N_0_var)
             #print("These lineages did not respond to a primary infection: {}".format(N_m[0,:]))
             cM_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
-            cM_m[0,:] = cMa_m[keep,:]
+            cM_m[0,:] = cMa_m[-1,:]
             eM_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
-            eM_m[0,:] = eMa_m[keep,:]
+            eM_m[0,:] = eMa_m[-1,:]
             act_cM = [np.zeros(cM_m[0,j], dtype = int) for j in np.arange(N_0_var)]
             act_eM = [np.zeros(eM_m[0,j], dtype = int) for j in np.arange(N_0_var)]
             #print("These lineages produced memory during the primary infection: {}".format(pM_m[0,:]))
@@ -326,9 +326,6 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 cM_pop, eM_pop = np.sum(cM_m[i-1]), np.sum(eM_m[i-1])
                 
             #### Run infection dynamics: replication and effector clearance ####
-            # check simulation stopping conditions
-            if I[i-1] < E_min and (Ein_pop + Eout_pop) < E_min and d_I > 0.0:
-                break
             
             # Update state of susceptible, infected, APCs, and inflammation
             S[i] = S[i-1] + dt*(b_S - (d_S + d_Sauto*np.exp(-t/2))*S[i-1] - (I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]) - S[i-1]*(d_IH*H[i-1] + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop)))*(S[i-1] >= 0.0)
@@ -569,12 +566,10 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         N, Na, cMa, E, eMa = np.sum(N_m, axis = 1), np.sum(Na_m, axis = 1), np.sum(cMa_m, axis = 1), np.sum(Ein_m + Eout_m, axis = 1), np.sum(eMa_m, axis = 1)
         if k == 1:
             cM, eM = np.sum(cM_m, axis = 1), np.sum(eM_m, axis = 1)
-        # determine which entries to keep
-        keep = np.minimum(np.argmin(1*(E > E_min) + 1*(I > E_min)), E.shape[0]-1) if np.argmin(1*(E > E_min) + 1*(I > E_min)) > 0 else E.shape[0]-1
     
-        lineage_comp = np.vstack([np.amax(cMa_m + N_m[keep] if k == 0 else cM_m[keep] + cMa_m, axis = 0) ,
+        lineage_comp = np.vstack([np.amax(cMa_m + N_m if k == 0 else cM_m + cMa_m, axis = 0) ,
                                   np.amax(Ein_m + Eout_m, axis = 0),
-                                  np.amax(eMa_m if k == 0 else eM_m[keep] + eMa_m, axis = 0),
+                                  np.amax(eMa_m if k == 0 else eM_m + eMa_m, axis = 0),
                                   p_tcr,
                                   p_cyt])
         
@@ -584,79 +579,51 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             dyn_data = np.vstack((dyn_data, np.array([S, I, Ain, Na + cM + eM, E, cMa, eMa, H, I_d_I+ I_d_IE, I_d_S]) ))
                                  
     ts = np.linspace(0, duration, int(steps) + 1)
-    
-    return np.array(regulation_coeffs), dyn_data.T, ts, lineage_comp, bias_t, (Ein_m + Eout_m), myccM_m if k == 1 else mycNa_m, myccMa_m, mycEin_m, mycEout_m
 
+    # Compute summary statistics from simulations
+    ## extract primary/secondary infection dynamics
+    pS, sS, pI, sI, Ain, N, pE, sE, pcM, scM, peM, seM, pH, sH, pI_d_I, sI_d_I, pI_d_S, sI_d_S = dyn_data[:,0], dyn_data[:,-10], dyn_data[:,1], dyn_data[:,-9], dyn_data[:,-8], dyn_data[:,-7], dyn_data[:, 4], dyn_data[:,-6], dyn_data[:,5], dyn_data[:, -5], dyn_data[:,6], dyn_data[:,-4], dyn_data[:,7], dyn_data[:,-3], dyn_data[:,8], dyn_data[:,-2], dyn_data[:,9], dyn_data[:,-1]
+        
+    dt = ts[1]-ts[0]
+    
+    parameters = np.concatenate((np.array([S_0, I_0, b_I, d_S, d_I, d_IE, d_IH, K_IE, K_IH,
+              Aout_0, b_Ain, b_H, d_H, K_HE,
+              N_0, max_Na, b_myc, d_myc, myc_thresh]),
+              char_times,
+              trans_steps,
+              regulation_coeffs, 
+              reg_logs))
 
-### (4) Parallelize simulation runs
-def sum_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH,
-            Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_HE = K_HE,
-            N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh,
-            char_times = np.array([t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff]),
-            trans_steps = np.array([n_act, n_bind, n_Na_div, n_E_div, n_cM_div, n_eM_diff, n_E_out, n_E_die, n_E_cyt, n_NaE_diff]),
-            regulation_coeffs = psis,
-            signal_weight = alpha,
-            infection = "prim",
-            vir_model = "dep_harm",
-            sim_kind = "agent",
-            reg_logs = np.array([0,0,0])):
+    sim_summary = np.concatenate((regulation_coeffs, reg_logs, 
+                      np.array([np.sum(pI*dt)/sim_duration, 
+                       np.sum(sI*dt)/sim_duration,
+                       np.argmax(pI)*dt,
+                       np.argmax(sI)*dt,
+                       np.amax(pI_d_I)/sim_duration, 
+                       np.amax(sI_d_I)/sim_duration, 
+                       np.amax(pI_d_S)/sim_duration,
+                       np.amax(sI_d_S)/sim_duration,
+                       np.max(pE),
+                       np.max(sE),
+                       np.argmax(pE)*dt,
+                       np.argmax(sE)*dt,
+                       np.max(pcM),
+                       scM[-1], 
+                       np.sum(pE*dt)/sim_duration, 
+                       np.sum(sE*dt)/sim_duration,
+                       np.max(peM),
+                       seM[-1],
+                       np.sum(pH*dt)/sim_duration,
+                       np.sum(sH*dt)/sim_duration,
+                       np.amin(pS),
+                       np.amin(sS),
+                       stats.spearmanr(pI, pH).statistic,
+                       stats.spearmanr(sI, sH).statistic],
+                       )))
+
+    out_dict = {"reg_coeffs": np.array(regulation_coeffs), "cell_time_series": dyn_data.T, "time": ts, "lineage_diff": lineage_comp, "diff_bias": bias_t, "eff_by_lin": (Ein_m + Eout_m), "Na_myc_by_lin": myccM_m if k == 1 else mycNa_m, "cMa_myc_by_lin":myccMa_m, "Ein_myc_by_lin": mycEin_m, "Eout_myc_by_lin": mycEout_m, "parameters": parameters, "sumary_stats": sim_summary}
     
-    # compute state and costate dynamics
-    if sim_kind == "agent":
-        rates, dyn, ts, lin_comp, p_diff, _,_, _, _, _ = agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH,
-                                                                           Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_HE = K_HE,
-                                                                           N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh,
-                                                                           char_times = char_times,
-                                                                           trans_steps =  trans_steps,
-                                                                           regulation_coeffs = regulation_coeffs,
-                                                                           alpha = signal_weight,
-                                                                           infection = infection,
-                                                                           vir_model = vir_model,
-                                                                           reg_logs = reg_logs)
-    # extract primary/secondary infection dynamics
-        pS, sS, pI, sI, Ain, N, pE, sE, pcM, scM, peM, seM, pH, sH, pI_d_I, sI_d_I, pI_d_S, sI_d_S = dyn[:,0], dyn[:,-10], dyn[:,1], dyn[:,-9], dyn[:,-8], dyn[:,-7], dyn[:, 4], dyn[:,-6], dyn[:,5], dyn[:, -5], dyn[:,6], dyn[:,-4], dyn[:,7], dyn[:,-3], dyn[:,8], dyn[:,-2], dyn[:,9], dyn[:,-1]
-        
-        dt = ts[1]-ts[0]
-        keep_sec = np.minimum(np.argmin(1*(sE > E_min) + 1*(sI > E_min)), sE.shape[0]-1) if np.argmin(1*(sE > E_min) + 1*(sI > E_min)) > 0 else sE.shape[0]-1
-        keep_prim = np.minimum(np.argmin(1*(pE > E_min) + 1*(pI > E_min)), pE.shape[0]-1) if np.argmin(1*(pE > E_min) + 1*(pI > E_min)) > 0 else pE.shape[0]-1
-        
-        parameters = np.concatenate((np.array([S_0, I_0, b_I, d_S, d_I, d_IE, d_IH, K_IE, K_IH,
-                  Aout_0, b_Ain, b_H, d_H, K_HE,
-                  N_0, max_Na, b_myc, d_myc, myc_thresh]),
-                  char_times,
-                  trans_steps))
-    
-        run_data = np.concatenate((regulation_coeffs, reg_logs, 
-                          np.array([np.sum(pI*dt)/sim_duration, 
-                           np.sum(sI*dt)/sim_duration,
-                           np.argmax(pI)*dt,
-                           np.argmax(sI)*dt,
-                           np.amax(pI_d_I)/sim_duration, 
-                           np.amax(sI_d_I)/sim_duration, 
-                           np.amax(pI_d_S)/sim_duration,
-                           np.amax(sI_d_S)/sim_duration,
-                           np.max(pE),
-                           np.max(sE),
-                           np.argmax(pE)*dt,
-                           np.argmax(sE)*dt,
-                           np.max(pcM),
-                           scM[keep_sec], 
-                           np.sum(pE*dt)/sim_duration, 
-                           np.sum(sE*dt)/sim_duration,
-                           np.max(peM),
-                           seM[keep_sec],
-                           np.sum(pH*dt)/sim_duration,
-                           np.sum(sH*dt)/sim_duration,
-                           np.amin(pS[0:keep_prim]),
-                           np.amin(sS[0:keep_sec]),
-                           stats.spearmanr(pI[0:keep_prim], pH[0:keep_prim]).statistic,
-                           stats.spearmanr(sI[0:keep_sec], sH[0:keep_sec]).statistic],
-                           )))
-        
-    else:
-        raise ValueError("simulation type not provided: enter 'agent' ")
-    
-    return np.concatenate((parameters, run_data))
+    return out_dict
 
 stat_names = [r"$\psi_{N,E}^{(I)}$", 
               r"$\psi_{N,E}^{(H)}$", 
@@ -713,7 +680,7 @@ stat_names_for_df = ['psi_NE_I', 'psi_NE_c', 'psi_EeM_I', 'psi_EeM_c', 'psi_pME_
                      'inf_pcM', 'inf_scM', 'int_pE', 'int_sE','inf_peM', 'inf_seM',
                      'int_pH', 'int_sH', 'min_pS', 'min_sS', 'corr_pSig', 'corr_sSig']
 
-### (5) define basic mutual information function
+### (4) define basic mutual information function
 from sklearn.metrics import mutual_info_score
 from sklearn.linear_model import LinearRegression
 
