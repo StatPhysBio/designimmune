@@ -60,6 +60,7 @@ alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 zeta = 0.05 # fraction of maximal rate unregulated by signals
 psis = np.array([1.0, 1.0, -1.0, -1.0, 1.0, 1.0]) # regulatory weights: psi_NE_I, psi_NE_c, psi_EeM_I, psi_EeM_c, psi_pME_I, psi_pME_c
 reg_logic = np.array(["hill_and", "hill_or"])
+vir_prop = np.array(np.meshgrid(d_S*np.array([0, 5, 20]), K_IE*np.array([1, 10]))).T.reshape(-1,2)
 
 ### (2) Define functions for simulations
 # Define functions for simulations
@@ -594,7 +595,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
               regulation_coeffs, 
               reg_logs))
 
-    sim_summary = np.concatenate((regulation_coeffs, reg_logs, 
+    sim_summary = np.concatenate((parameters,
                       np.array([np.sum(pI*dt)/sim_duration, 
                        np.sum(sI*dt)/sim_duration,
                        np.argmax(pI)*dt,
@@ -663,7 +664,9 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
                r"$A_{out}^{(0)}$", r"$b_{A_in}$", r"$b_H$", r"$d_H$", r"$K_{H,E}$",
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N^*,A_{in}}^{(+)}$", r"$\tau_{N^*,A_{in}}^{(-)}$", r"$\tau_{N^*}$", r"$\tau_E$", r"$\tau_{cM}$", r"$\tau_{eM}$", r"$\tau_{E_{out}}$", r"$\tau_{E_{die}}$", r"$\tau_{E_{cyt}}$",
-               r"$n_{N^*,A_{in}}^{(+)}$", r"$n_{N^*,A_{in}}^{(-)}$", r"$n_{N^*}$", r"$n_E$", r"$n_{cM}$", r"$n_{eM}$", r"$n_{E_{out}}$", r"$n_{E_{die}}$", r"$n_{E_{cyt}}$"]
+               r"$n_{N^*,A_{in}}^{(+)}$", r"$n_{N^*,A_{in}}^{(-)}$", r"$n_{N^*}$", r"$n_E$", r"$n_{cM}$", r"$n_{eM}$", r"$n_{E_{out}}$", r"$n_{E_{die}}$", r"$n_{E_{cyt}}$",
+               r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(H)}$", r"$\psi_{E,eM}^{(I)}$", r"$\psi_{E,eM}^{(H)}$", r"$\psi_{pM,E}^{(I)}$", r"$\psi_{pM,E}^{(H)}$",
+              r"$[N,E]_{reg}$", r"$[E,eM]_{reg}$", r"$[pM,E]_{reg}$"]
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',

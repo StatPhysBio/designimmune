@@ -2,6 +2,7 @@ import os
 
 from joblib import Parallel, delayed
 import numpy as np
+import pickle
 
 from stoch_sim_model import *
 
@@ -23,7 +24,7 @@ d_I = 10*d_S
 
 # sample distribution of pathogen killing rate and size of naive repertoire
 runs = 100
-vir_prop = np.array(np.meshgrid(d_S*np.array([0, 5, 20]), K_IE*np.array([1, 10]))).T.reshape(-1,2)
+
 vir_samp = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1))
 
 reg_weight = 1
@@ -38,7 +39,7 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], reg_logs = np.array([0,0,0]), o
     outfile = ('-'.join((regs * 1).astype('U1'))
                + f'-{runs}-{infection_type}-'
                + '-'.join((reg_logs * 1).astype('U1'))
-               + f'-{comment}.npy')
+               + f'-{comment}.pkl')
     outfile = os.path.join(outdir, outfile) # what is outfile?
     print(f'Will save to {outfile}.')
     
@@ -55,11 +56,15 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], reg_logs = np.array([0,0,0]), o
 
     # Store data in dictionary
     runs_dict = {}
-    for k in runs_list[0].keys():
+    select_keys = ['reg_coeffs','cell_time_series','time','diff_bias', 'lineage_diff', 'parameters', 'sumary_stats']
+    for k in select_keys:
       runs_dict[k] = list(d[k] for d in runs_list)
 
     print('Saving')
-    np.save(outfile, runs_dict)
+
+    with open(outfile, 'wb') as f:
+    # Pickle the 'data' dictionary using the highest protocol available.
+        pickle.dump(runs_dict, f, pickle.HIGHEST_PROTOCOL)
     print(f'Saved {outfile}')
 
 def main():

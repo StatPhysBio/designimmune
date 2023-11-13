@@ -4,7 +4,7 @@
 #SBATCH -p ckpt 
 #SBATCH -A amath 
 #SBATCH --nodes=1
-#SBATCH --mem=2G
+#SBATCH --mem=20G
 #SBATCH --ntasks-per-node=20
 #SBATCH --time=3:59:00
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out
@@ -15,7 +15,7 @@ mamba activate maximmune
 
 SLURM_OUTDIR=/gscratch/scrubbed/oukogu/slurm_output/
 #d="/mmfs1/home/oukogu/github/infoimmune/opt_nets/"
-d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/"
+d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/raw/"
 
 if [ ! -d "$d" ]; then
   mkdir $d
