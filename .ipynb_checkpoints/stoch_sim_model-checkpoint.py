@@ -60,7 +60,7 @@ alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 zeta = 0.05 # fraction of maximal rate unregulated by signals
 psis = np.array([1.0, 1.0, -1.0, -1.0, 1.0, 1.0]) # regulatory weights: psi_NE_I, psi_NE_c, psi_EeM_I, psi_EeM_c, psi_pME_I, psi_pME_c
 reg_logic = np.array(["hill_and", "hill_or"])
-vir_prop = np.array(np.meshgrid(d_S*np.array([0, 5, 20]), K_IE*np.array([1, 10]))).T.reshape(-1,2)
+vir_prop = np.array([[0, K_SE/100], [5*d_S, K_IE], [5*d_S, 10*K_IE],[20*d_S, K_IE], [20*d_S, 10*K_IE]])
 
 ### (2) Define functions for simulations
 # Define functions for simulations
@@ -177,7 +177,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     # in case of autoimmune response
     if d_I == 0.0:
         d_Sauto = 2*d_S
-        K_IE = K_SE/100
+        #K_IE = K_SE/100
         K_SE = K_IE
         I_0 = 0.0
     else:
@@ -575,9 +575,9 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                                   p_cyt])
         
         if k == 0: # primary infection
-            dyn_data = np.array([S, I, Ain, Na, E, cMa, eMa, H, I_d_I + I_d_IE, I_d_S])
+            dyn_data = np.array([S, I, Ain, Na, E, cMa, eMa, H, I_d_I + I_d_IE, I_d_S]).T
         elif k == 1: # secondary infection
-            dyn_data = np.vstack((dyn_data, np.array([S, I, Ain, Na + cM + eM, E, cMa, eMa, H, I_d_I+ I_d_IE, I_d_S]) ))
+            dyn_data = np.hstack((dyn_data, np.array([S, I, Ain, Na + cM + eM, E, cMa, eMa, H, I_d_I+ I_d_IE, I_d_S]).T ))
                                  
     ts = np.linspace(0, duration, int(steps) + 1)
 
@@ -622,7 +622,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                        stats.spearmanr(sI, sH).statistic],
                        )))
 
-    out_dict = {"reg_coeffs": np.array(regulation_coeffs), "cell_time_series": dyn_data.T, "time": ts, "lineage_diff": lineage_comp, "diff_bias": bias_t, "eff_by_lin": (Ein_m + Eout_m), "Na_myc_by_lin": myccM_m if k == 1 else mycNa_m, "cMa_myc_by_lin":myccMa_m, "Ein_myc_by_lin": mycEin_m, "Eout_myc_by_lin": mycEout_m, "parameters": parameters, "sumary_stats": sim_summary}
+    out_dict = {"reg_coeffs": np.array(regulation_coeffs), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "diff_bias": bias_t, "eff_by_lin": (Ein_m + Eout_m), "Na_myc_by_lin": myccM_m if k == 1 else mycNa_m, "cMa_myc_by_lin":myccMa_m, "Ein_myc_by_lin": mycEin_m, "Eout_myc_by_lin": mycEout_m, "parameters": parameters, "sumary_stats": sim_summary}
     
     return out_dict
 
@@ -647,12 +647,12 @@ stat_names = [r"$\psi_{N,E}^{(I)}$",
               r"$E_s^{max}$",
               r"$T_{E_p}^{max}$",
               r"$T_{E_s}^{max}$",
-              r"$(cM_p)^\infty}$",
-              r"$(cM_s)^\infty}$",
+              r"$(cM_p)^\infty$",
+              r"$(cM_s)^\infty$",
               r"$\int E_p dt$",
               r"$\int E_s dt$",
-              r"$(eM_p)^\infty}$",
-              r"$(eM_s)^\infty}$",
+              r"$(eM_p)^\infty$",
+              r"$(eM_s)^\infty$",
               r"$\int H_p dt$",
               r"$\int H_s dt$",
               r"$S_p^{min}$",
@@ -675,10 +675,10 @@ param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',
                       't_act', 't_bind', 't_Na_div', 't_E_div', 't_cM_div', 
                       't_eM_diff', 't_E_out', 't_E_die', 't_E_cyt', 't_NaE_diff',
                       'n_act', 'n_bind', 'n_Na_div', 'n_E_div', 'n_cM_div',
-                      'n_eM_diff', 'n_E_out', 'n_E_die', 'n_E_cyt','n_NaE_diff']
-stat_names_for_df = ['psi_NE_I', 'psi_NE_c', 'psi_EeM_I', 'psi_EeM_c', 'psi_pME_I', 'psi_pME_c',
-                     'NE_logic','EeM_logic','pME_logic',
-                     'p_load', 's_load','T_max_pI', 'T_max_sI', 'harm_pI', 'harm_sI', 
+                      'n_eM_diff', 'n_E_out', 'n_E_die', 'n_E_cyt','n_NaE_diff',
+                      'psi_NE_I', 'psi_NE_c', 'psi_EeM_I', 'psi_EeM_c', 'psi_pME_I', 'psi_pME_c',
+                      'NE_logic','EeM_logic','pME_logic']
+stat_names_for_df = ['p_load', 's_load','T_max_pI', 'T_max_sI', 'harm_pI', 'harm_sI', 
                      'harm_pS', 'harm_sS', 'max_pE', 'max_sE','T_max_pE', 'T_max_sE', 
                      'inf_pcM', 'inf_scM', 'int_pE', 'int_sE','inf_peM', 'inf_seM',
                      'int_pH', 'int_sH', 'min_pS', 'min_sS', 'corr_pSig', 'corr_sSig']
