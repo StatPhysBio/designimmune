@@ -56,7 +56,7 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], reg_logs = np.array([0,0,0]), o
 
     # Store data in dictionary
     runs_dict = {}
-    select_keys = ['reg_coeffs','cell_time_series','time','diff_bias', 'lineage_diff', 'parameters', 'sumary_stats']
+    select_keys = ['reg_coeffs','cell_time_series','time','prim_diff_bias', 'sec_diff_bias','lineage_diff', 'parameters', 'sumary_stats']
     for k in select_keys:
       runs_dict[k] = list(d[k] for d in runs_list)
 

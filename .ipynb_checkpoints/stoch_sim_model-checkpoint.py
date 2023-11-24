@@ -576,8 +576,10 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         
         if k == 0: # primary infection
             dyn_data = np.array([S, I, Ain, Na, E, cMa, eMa, H, I_d_I + I_d_IE, I_d_S]).T
+            prim_bias = bias_t
         elif k == 1: # secondary infection
             dyn_data = np.hstack((dyn_data, np.array([S, I, Ain, Na + cM + eM, E, cMa, eMa, H, I_d_I+ I_d_IE, I_d_S]).T ))
+            sec_bias = bias_t
                                  
     ts = np.linspace(0, duration, int(steps) + 1)
 
@@ -622,7 +624,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                        stats.spearmanr(sI, sH).statistic],
                        )))
 
-    out_dict = {"reg_coeffs": np.array(regulation_coeffs), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "diff_bias": bias_t, "eff_by_lin": (Ein_m + Eout_m), "Na_myc_by_lin": myccM_m if k == 1 else mycNa_m, "cMa_myc_by_lin":myccMa_m, "Ein_myc_by_lin": mycEin_m, "Eout_myc_by_lin": mycEout_m, "parameters": parameters, "sumary_stats": sim_summary}
+    out_dict = {"reg_coeffs": np.array(regulation_coeffs), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "sec_diff_bias": prim_bias if k == 1 else [],"eff_by_lin": (Ein_m + Eout_m), "Na_myc_by_lin": myccM_m if k == 1 else mycNa_m, "cMa_myc_by_lin":myccMa_m, "Ein_myc_by_lin": mycEin_m, "Eout_myc_by_lin": mycEout_m, "parameters": parameters, "sumary_stats": sim_summary}
     
     return out_dict
 
