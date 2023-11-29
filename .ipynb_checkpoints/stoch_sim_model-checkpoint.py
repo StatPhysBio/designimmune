@@ -38,12 +38,12 @@ d_H = 0.5
 b_H = 3 
 l_H = 2 # cooperativity
 ep = 1.5*(10**(-4)) # off-target rate of harm
-K_SE = 1*(10**8)
+K_SE = 1*(10**7)
 kappa = 0.9 # maximal reduction in replication rate due to inflammatory response
 d_IH = d_IE*ep
 
 # Immune cells
-N_0 = 50
+N_0 = 100
 max_Na = 4
 max_expand = 20_000
 t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_eM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff = 1/2, 3/4, 1/4, 1/3, 1/2, 8, 1.0, 3.0, 1.0, 1/2
@@ -60,7 +60,8 @@ alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 zeta = 0.05 # fraction of maximal rate unregulated by signals
 psis = np.array([1.0, 1.0, -1.0, -1.0, 1.0, 1.0]) # regulatory weights: psi_NE_I, psi_NE_c, psi_EeM_I, psi_EeM_c, psi_pME_I, psi_pME_c
 reg_logic = np.array(["hill_and", "hill_or"])
-vir_prop = np.array([[0, K_SE/100], [5*d_S, K_IE], [5*d_S, 10*K_IE],[20*d_S, K_IE], [20*d_S, 10*K_IE]])
+#vir_prop = np.array([[0, K_SE], [5*d_S, K_IE], [5*d_S, 10*K_IE],[20*d_S, K_IE], [20*d_S, 10*K_IE]])
+vir_prop = np.vstack((np.array([0, K_SE]),np.array(np.meshgrid(d_S*np.array([2, 5, 10]), K_IE*np.array([1, 5, 10]))).T.reshape(-1,2)))
 
 ### (2) Define functions for simulations
 # Define functions for simulations
@@ -177,7 +178,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     # in case of autoimmune response
     if d_I == 0.0:
         d_Sauto = 2*d_S
-        #K_IE = K_SE/100
+        #K_IE = K_SE
         K_SE = K_IE
         I_0 = 0.0
     else:
@@ -620,11 +621,11 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                        np.sum(sH*dt)/sim_duration,
                        np.amin(pS),
                        np.amin(sS),
-                       stats.spearmanr(pI, pH).statistic,
-                       stats.spearmanr(sI, sH).statistic],
+                       stats.spearmanr(pI, pH).statistic if np.var(pI)*np.var(pH) > 0.0 else 0.0,
+                       stats.spearmanr(sI, sH).statistic if np.var(sI)*np.var(sH) > 0.0 else 0.0],
                        )))
 
-    out_dict = {"reg_coeffs": np.array(regulation_coeffs), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "sec_diff_bias": prim_bias if k == 1 else [],"eff_by_lin": (Ein_m + Eout_m), "Na_myc_by_lin": myccM_m if k == 1 else mycNa_m, "cMa_myc_by_lin":myccMa_m, "Ein_myc_by_lin": mycEin_m, "Eout_myc_by_lin": mycEout_m, "parameters": parameters, "sumary_stats": sim_summary}
+    out_dict = {"reg_coeffs": np.array(regulation_coeffs), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "sec_diff_bias": sec_bias if k == 1 else [],"eff_by_lin": (Ein_m + Eout_m), "Na_myc_by_lin": myccM_m if k == 1 else mycNa_m, "cMa_myc_by_lin":myccMa_m, "Ein_myc_by_lin": mycEin_m, "Eout_myc_by_lin": mycEout_m, "parameters": parameters, "sumary_stats": sim_summary}
     
     return out_dict
 

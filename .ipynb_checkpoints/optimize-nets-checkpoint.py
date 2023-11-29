@@ -14,16 +14,16 @@ sim_kind = "agent"
 reg_model = "hill_or" # "mwc_like", "hill_and", "hill_or"
 comment = "no-cell-var"
 
-S_0 = 10_000_000 #susceptible cells
-d_S = 0.05
-I_0 = 10 # initial detectable levelof infected cells
+# S_0 = 10_000_000 #susceptible cells
+# d_S = 0.05
+# I_0 = 10 # initial detectable levelof infected cells
 #b_I = 1*(10**(-6)) # harm per unit virion
 N_0 = 100
-K_IE = 10**4
-d_I = 10*d_S
+# K_IE = 10**4
+# d_I = 10*d_S
 
 # sample distribution of pathogen killing rate and size of naive repertoire
-runs = 100
+runs = 400
 
 vir_samp = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1))
 
