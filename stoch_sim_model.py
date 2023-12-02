@@ -60,7 +60,6 @@ alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 zeta = 0.05 # fraction of maximal rate unregulated by signals
 psis = np.array([1.0, 1.0, -1.0, -1.0, 1.0, 1.0]) # regulatory weights: psi_NE_I, psi_NE_c, psi_EeM_I, psi_EeM_c, psi_pME_I, psi_pME_c
 reg_logic = np.array(["hill_and", "hill_or"])
-#vir_prop = np.array([[0, K_SE], [5*d_S, K_IE], [5*d_S, 10*K_IE],[20*d_S, K_IE], [20*d_S, 10*K_IE]])
 vir_prop = np.vstack((np.array([0, K_SE]),np.array(np.meshgrid(d_S*np.array([2, 5, 10]), K_IE*np.array([1, 5, 10]))).T.reshape(-1,2)))
 
 ### (2) Define functions for simulations
@@ -178,7 +177,6 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     # in case of autoimmune response
     if d_I == 0.0:
         d_Sauto = 2*d_S
-        #K_IE = K_SE
         K_SE = K_IE
         I_0 = 0.0
     else:
