@@ -5,7 +5,7 @@ script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 for i in {0..728};
 do
-    for j in {0..1}; # goes from 0 to 7
+    for j in {2..3}; # goes from 0 to 7
     do
         # Convert the number from decimal to base 3.
         REG="${DECIMAL_TO_3[i]}${DECIMAL_TO_2[j]}"
