@@ -5,7 +5,7 @@
 #SBATCH -A amath 
 #SBATCH --nodes=1
 #SBATCH --mem=5G
-#SBATCH --ntasks-per-node=40
+#SBATCH --ntasks-per-node=20
 #SBATCH --time=3:59:00
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out
 
@@ -31,7 +31,7 @@ reg_coeffs=${args:0:11}
 reg_logs=${args:11}
 
 #COMMAND="apptainer run --bind /gscratch /gscratch/spe/$USER/apptainer_images/maximmune.sif python"
-#$COMMAND optimize-nets.py --reg_coefs $reg_coeffs --reg_logs $reg_logs --outdir $d
-python optimize-nets.py --reg_coefs $reg_coeffs --reg_logs $reg_logs --outdir $d
+#$COMMAND optimize_nets.py --reg_coefs $reg_coeffs --reg_logs $reg_logs --outdir $d
+python optimize_nets.py --reg_coefs $reg_coeffs --reg_logs $reg_logs --outdir $d
 
 mv ${SLURM_OUTDIR}${SLURM_JOB_ID}.out ${SLURM_OUTDIR}net-${1}-${reg_logs}.out

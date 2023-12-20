@@ -6,30 +6,15 @@ import pickle
 
 from stoch_sim_model import *
 
-### (1) Define function to run simulations and compute MI
+### Define function to run simulations and compute MI
 
-# Make grid
-infection_type = 'sec' # 'prim' or 'sec'
-sim_kind = "agent"
-reg_model = "hill_or" # "mwc_like", "hill_and", "hill_or"
-comment = "no-cell-var"
-
-# S_0 = 10_000_000 #susceptible cells
-# d_S = 0.05
-# I_0 = 10 # initial detectable levelof infected cells
-#b_I = 1*(10**(-6)) # harm per unit virion
+# Set simulation parameters
+runs = 200
 N_0 = 100
-# K_IE = 10**4
-# d_I = 10*d_S
-
-# sample distribution of pathogen killing rate and size of naive repertoire
-runs = 400
-
-vir_samp = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1))
-
+vir_samp = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1)) # sample distribution of pathogen killing rate and size of naive repertoire
 reg_weight = 1
 
-def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], reg_logs = np.array([0,0,0]), outdir='', virus_sample = vir_samp):
+def run(regs = [2.0, 2.0, 0.0, 0.0, 2.0, 2.0], reg_logs = np.array([0,0,0]), outdir='', virus_sample = vir_samp, infection_type = 'sec', comment = "no-cell-var"):
     
     reg_coeff = reg_weight*(np.array(regs) - 1)
     
@@ -46,13 +31,12 @@ def run(regs = [1.0, 1.0, -1.0, -1.0, 1.0, 1.0], reg_logs = np.array([0,0,0]), o
     # Run simulations over different infections
     print('Running simulation')
     runs_list = Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(virus_sample)/20),1))(delayed(agent_stoch_sim)(d_I = param[0], 
-                                                                                                               N_0 = N_0,
                                                                                                                K_IE = param[1],
                                                                                                                regulation_coeffs = reg_coeff,
                                                                                                                infection = infection_type,
                                                                                                                vir_model = 'dep_harm',
                                                                                                                reg_logs = reg_logs)
-                                                    for param in virus_sample )
+                                                    for param in virus_sample)
 
     # Store data in dictionary
     runs_dict = {}
