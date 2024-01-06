@@ -35,7 +35,7 @@ H_0, H_max = 0.0, 1.0
 d_H = 0.5
 b_H = 2/S_0
 l_H = 2 # cooperativity
-K_IH = b_H*S_0*d_S/d_H # half-max level of instantaneous damage required to trigger innate/inflammatory response
+K_IH = b_H*0.01*S_0*d_S/d_H # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_HE = K_IH # half-max level of inflammation required to trigger lymphocyte response
 ep = 1.5*(10**(-4)) # off-target rate of harm
 K_SE = 1*(10**7)
@@ -59,7 +59,7 @@ myc_thresh = 10**(2.6)
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 zeta = 0.5 # fraction of maximal rate unregulated by signals
 psis = np.array([1.0, 1.0, -1.0, -1.0, 1.0, 1.0]) # regulatory weights: psi_NE_I, psi_NE_c, psi_EeM_I, psi_EeM_c, psi_pME_I, psi_pME_c
-reg_logic = np.array(["hill_and", "hill_or"])
+reg_logic = np.array(["AND", "OR"])
 vir_prop = np.vstack((np.array([0, K_SE]),np.array(np.meshgrid(d_S*np.array([2, 5, 10]), K_IE*np.array([1, 5, 10]))).T.reshape(-1,2)))
 
 ### (2) Define functions for simulations
@@ -78,7 +78,7 @@ def vir(I, d_I, b_I = b_I, model = "dep_harm"):
     return out
 
 
-def p_XtoY(I_sig, H_sig, psi_I, psi_H, F_0, K_I, K_H, reg_model = "mwc_like", alpha = alpha, zeta = zeta):
+def p_XtoY(I_sig, H_sig, psi_I, psi_H, F_0, K_I, K_H, reg_model = "mwc_like", reg_logic = "OR", alpha = alpha, zeta = zeta):
     ### variable
     # I_sig := antigenic stimuli
     # H_sig := inflammatory stimuli
@@ -89,10 +89,10 @@ def p_XtoY(I_sig, H_sig, psi_I, psi_H, F_0, K_I, K_H, reg_model = "mwc_like", al
     # alpha := relative weight of antigen and cytokine signals in Hill-OR model
     
     if reg_model == "mwc_like":
-        F_1 = psi_I*np.log(1 + I_sig/K_I) + psi_H*np.log(1 + H_sig/K_H)
-        out = 1/(1 + np.exp(- F_1 - F_0))
+        F_1 = (reg_logic == "OR")*(psi_I*np.log(1 + I_sig/K_I) + psi_H*np.log(1 + H_sig/K_H)) + np.minimum(psi_I,psi_H)*(reg_logic == "AND")*np.log(1 + (I_sig*H_sig)/(K_I*K_H))
+        out = 1/(1 + np.exp(- (F_1 + F_0)))
         
-    elif reg_model == "hill_and":
+    elif reg_model == "hill" and reg_logic == "AND":
         if psi_I > 0 or psi_I <0:
             I_stim = I_sig**(psi_I)/(K_I**(psi_I) + I_sig**(psi_I))
         else:
@@ -103,15 +103,17 @@ def p_XtoY(I_sig, H_sig, psi_I, psi_H, F_0, K_I, K_H, reg_model = "mwc_like", al
         else:
             H_stim = 1.0
         
-        out = alpha*np.nan_to_num(I_stim, nan = 0.0)*np.nan_to_num(H_stim, nan = 0.0) + (1-alpha)*np.nan_to_num(I_stim, nan = 0.0)*np.nan_to_num(H_stim, nan = 0.0)
+        comb_sig = alpha*np.nan_to_num(I_stim, nan = 0.0)*np.nan_to_num(H_stim, nan = 0.0) + (1-alpha)*np.nan_to_num(I_stim, nan = 0.0)*np.nan_to_num(H_stim, nan = 0.0)
+        out = (zeta + (1-zeta)*comb_sig) if (psi_I**2 + psi_H**2) > 0 else zeta
         
-    elif reg_model == "hill_or":
+    elif reg_model == "hill" and reg_logic == "OR":
         I_stim = I_sig**(psi_I)/(K_I**(psi_I) + I_sig**(psi_I))
         H_stim = H_sig**(psi_H*l_H)/(K_H**(psi_H*l_H) + H_sig**(psi_H*l_H))
         
-        out = (psi_I**2 > 0.0)*(alpha + (1-alpha)*(1-np.sign(psi_H)**2))*np.nan_to_num(I_stim, nan = 0.0) + (psi_H**2 > 0.0)*(alpha*(1-np.sign(psi_I)**2) + (1-alpha))*np.nan_to_num(H_stim, nan = 0.0)
-        
-    return (zeta + (1-zeta)*out) if (psi_I**2 + psi_H**2) > 0 else zeta
+        comb_sig = (psi_I**2 > 0.0)*(alpha + (1-alpha)*(1-np.sign(psi_H)**2))*np.nan_to_num(I_stim, nan = 0.0) + (psi_H**2 > 0.0)*(alpha*(1-np.sign(psi_I)**2) + (1-alpha))*np.nan_to_num(H_stim, nan = 0.0)
+        out = (zeta + (1-zeta)*comb_sig) if (psi_I**2 + psi_H**2) > 0 else zeta
+    
+    return out
 
 
 def init_list(length, size):
@@ -145,6 +147,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                     alpha = alpha,
                     infection = "prim",
                     vir_model = "dep_harm",
+                    reg_model = "mwc_like",
                     reg_logs = np.array([0,0,0]),
                     duration = sim_duration, 
                     steps = sim_steps):
@@ -184,7 +187,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     
     # draw population of reponding cells for agent-based simulations
     psi_NE_I, psi_NE_c, psi_EeM_I, psi_EeM_c, psi_pME_I, psi_pME_c = regulation_coeffs
-    reg_model = np.array([reg_logic[reg_logs[0]], reg_logic[reg_logs[1]], reg_logic[reg_logs[2]]])
+    reg_log = np.array([reg_logic[reg_logs[0]], reg_logic[reg_logs[1]], reg_logic[reg_logs[2]]])
     
     mu_tcr = 0.8
     var_tcr = mu_tcr*(1-mu_tcr)*0.9
@@ -321,7 +324,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             
             I[i] = I[i-1] + dt*((I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H)) - d_IH*I[i-1]*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) - d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop) - d_I*I[i-1])*(I[i-1] >= 0.0)
             
-            cell_lysis_rate = d_I*I[i-1] + d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop) + S[i-1]*(d_Sauto*np.exp(-t/2) + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop) + d_S)
+            cell_lysis_rate = d_I*I[i-1] + d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop) + S[i-1]*(d_Sauto*np.exp(-t/2) + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop))
             H[i] = H[i-1] + dt*(b_H*(cell_lysis_rate) - d_H*H[i-1])*(H[i-1] >= 0.0)
             Aout[i] = Aout[i-1] - b_Ain*Aout[i-1]*H[i-1]**l_H/(K_HE**l_H + H[i-1]**l_H)*dt*(Aout[i-1] >= 0.0)
             Ain[i] = Ain[i-1] + dt*(b_Ain*Aout[i-1]*H[i-1]**l_H/(K_HE**l_H + H[i-1]**l_H) - d_A*Ain[i-1] - d_IE*Ain[i-1]*(cMa_pop)/(K_IE/delta + Ain[i-1] + cMa_pop))*(Ain[i-1] >= 0.0)
@@ -491,27 +494,27 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 unbound_Na[j] = 1*(unbind_Na_timer[j] >= trans_steps[1]) if Na_m[i,j] == 1 and Ain[i] >= 1 else 1
                 
                 #### MYC Dynamics ####
-                mycNa[j] = mycNa[j] + dt*(b_myc*(1-unbound_Na[j]) - (1-p_cyt[j]*np.minimum(1-unbound_Na[j] + 0*H[i-1]**l_H/(K_HE**l_H + H[i-1]**l_H), 1))*mycNa[j]*d_myc) if Na_m[i,j] > 0 else np.zeros(0)
+                mycNa[j] = mycNa[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + Ein_pop + Ain[i]) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*mycNa[j]*d_myc) if Na_m[i,j] > 0 else np.zeros(0)
 
-                mycEin[j] = mycEin[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + Ein_pop + Ain[i]) - (1-p_cyt[j]*H[i-1]**l_H/(K_HE**l_H + H[i-1]**l_H))*mycEin[j]*d_myc) if Ein_m[i,j] > 0 else np.zeros(0)
+                mycEin[j] = mycEin[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + Ein_pop + Ain[i]) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*mycEin[j]*d_myc) if Ein_m[i,j] > 0 else np.zeros(0)
 
-                mycEout[j] = mycEout[j] + dt*(b_myc*(I[i] + S[i]*(d_I == 0.0))/(K_IE/p_tcr[j] + Eout_pop + (I[i] + S[i]*(d_I == 0.0))) - (1-p_cyt[j]*H[i-1]**l_H/(K_HE**l_H + H[i-1]**l_H))*mycEout[j]*d_myc) if Eout_m[i,j] > 0 else np.zeros(0)
+                mycEout[j] = mycEout[j] + dt*(b_myc*(I[i] + S[i]*(d_I == 0.0))/(K_IE/p_tcr[j] + Eout_pop + (I[i] + S[i]*(d_I == 0.0))) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*mycEout[j]*d_myc) if Eout_m[i,j] > 0 else np.zeros(0)
 
-                myccMa[j] = myccMa[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cMa_pop + Ain[i]) - (1-p_cyt[j]*H[i-1]**l_H/(K_HE**l_H + H[i-1]**l_H)*Ain[i]/(K_IE/(delta*p_tcr[j]) + cMa_pop + Ain[i]))*myccMa[j]*d_myc) if cMa_m[i,j] > 0 else np.zeros(0)
+                myccMa[j] = myccMa[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cMa_pop + Ain[i]) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*myccMa[j]*d_myc) if cMa_m[i,j] > 0 else np.zeros(0)
                 
                 if k == 1:
-                    myccM[j] = myccM[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cM_pop + Ain[i]) - (1-p_cyt[j]*H[i-1]**l_H/(K_HE**l_H + H[i-1]**l_H)*Ain[i]/(K_IE/(delta*p_tcr[j]) + cM_pop + Ain[i]))*myccM[j]*d_myc) if cM_m[i,j] > 0 else np.zeros(0)
+                    myccM[j] = myccM[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cM_pop + Ain[i]) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*myccM[j]*d_myc) if cM_m[i,j] > 0 else np.zeros(0)
 
-                    myceM[j] = myceM[j] + dt*(b_myc*(I[i] + S[i]*(d_I == 0.0))/(K_IE/p_tcr[j] + eM_pop + (I[i] + S[i]*(d_I == 0.0))) - (1-p_cyt[j]*H[i-1]**l_H/(K_HE**l_H + H[i-1]**l_H))*myceM[j]*d_myc) if eM_m[i,j] > 0 else np.zeros(0)
+                    myceM[j] = myceM[j] + dt*(b_myc*(I[i] + S[i]*(d_I == 0.0))/(K_IE/p_tcr[j] + eM_pop + (I[i] + S[i]*(d_I == 0.0))) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*myceM[j]*d_myc) if eM_m[i,j] > 0 else np.zeros(0)
 
                 #### transition probabilities modulated by antigen and cytokine signals ####
-                p_NaE[j] = p_XtoY((1-unbound_Na[j]) + Ain[i]*unbound_Na[j], p_cyt[j]*H[i], psi_NE_I, psi_NE_c, F_0 = 0.0, K_I = unbound_Na[j] + (K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]))*unbound_Na[j], K_H = K_HE, reg_model = reg_model[0]) if Na_m[i,j] > 0 else float("nan")
-                p_EineM[j] = 1 - p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], -psi_EeM_I, -psi_EeM_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]), K_H = K_HE, reg_model = reg_model[1], zeta = zeta) if Ein_m[i,j] > 0 else float("nan")
-                p_EouteM[j] = 1 - p_XtoY(p_tcr[j]*(I[i] + S[i]*(d_I == 0.0)), p_cyt[j]*H[i], -psi_EeM_I, -psi_EeM_c, F_0 = 0.0, K_I = K_IE + np.sum(Eout_m[i] +eMa_m[i]), K_H = K_HE, reg_model = reg_model[2], zeta = zeta) if Eout_m[i,j] > 0 else float("nan")
+                p_NaE[j] = p_XtoY(p_tcr[j]*(1-unbound_Na[j])*Ain[i], p_cyt[j]*H[i], psi_NE_I, psi_NE_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]), K_H = K_HE, reg_logic = reg_log[0]) if Na_m[i,j] > 0 else float("nan")
+                p_EineM[j] = 1 - p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], -psi_EeM_I, -psi_EeM_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]), K_H = K_HE, reg_logic = reg_log[1], zeta = zeta) if Ein_m[i,j] > 0 else float("nan")
+                p_EouteM[j] = 1 - p_XtoY(p_tcr[j]*(I[i] + S[i]*(d_I == 0.0)), p_cyt[j]*H[i], -psi_EeM_I, -psi_EeM_c, F_0 = 0.0, K_I = K_IE + np.sum(Eout_m[i] +eMa_m[i]), K_H = K_HE, reg_logic = reg_log[2], zeta = zeta) if Eout_m[i,j] > 0 else float("nan")
                 
                 if k == 1:
-                    p_cME[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = K_HE, reg_model = reg_model[0]) if cM_m[i,j] > 0 else float("nan")
-                    p_eME[j] = p_XtoY(p_tcr[j]*(I[i] + S[i]*(d_I == 0.0)), p_cyt[j]*H[i], psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = K_HE, reg_model = reg_model[0]) if eM_m[i,j] > 0 else float("nan")
+                    p_cME[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = K_HE, reg_logic = reg_log[0]) if cM_m[i,j] > 0 else float("nan")
+                    p_eME[j] = p_XtoY(p_tcr[j]*(I[i] + S[i]*(d_I == 0.0)), p_cyt[j]*H[i], psi_pME_I, psi_pME_c, F_0 = 0.0, K_I = K_IE + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = K_HE, reg_logic = reg_log[0]) if eM_m[i,j] > 0 else float("nan")
 
                 #### Time-dependent rates modulated by antigen and cytokine signals ####
                 b_Na_div[j] = 1/char_times[2]
@@ -583,7 +586,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
               char_times,
               trans_steps,
               regulation_coeffs, 
-              reg_logs))
+              reg_log))
 
     sim_summary = np.concatenate((parameters,
                       np.array([np.sum(pI*dt)/sim_duration, 
@@ -616,7 +619,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     
     return out_dict
 
-# def agent_det_sim(x,t, S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH, K_SE = K_SE,
+# def agent_stoch_sim_nolineage(x,t, S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH, K_SE = K_SE,
 #                     Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_HE = K_HE,
 #                     N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh, max_expand = max_expand,
 #                     char_times = [t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_EeM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff],
