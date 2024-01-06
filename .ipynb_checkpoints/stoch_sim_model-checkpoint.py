@@ -35,7 +35,7 @@ H_0, H_max = 0.0, 1.0
 d_H = 0.5
 b_H = 2/S_0
 l_H = 2 # cooperativity
-K_IH = b_H*0.01*S_0*d_S/d_H # half-max level of instantaneous damage required to trigger innate/inflammatory response
+K_IH = b_H*S_0*d_S/d_H # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_HE = K_IH # half-max level of inflammation required to trigger lymphocyte response
 ep = 1.5*(10**(-4)) # off-target rate of harm
 K_SE = 1*(10**7)
@@ -326,8 +326,8 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             
             cell_lysis_rate = d_I*I[i-1] + d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop) + S[i-1]*(d_Sauto*np.exp(-t/2) + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop))
             H[i] = H[i-1] + dt*(b_H*(cell_lysis_rate) - d_H*H[i-1])*(H[i-1] >= 0.0)
-            Aout[i] = Aout[i-1] - b_Ain*Aout[i-1]*H[i-1]**l_H/(K_HE**l_H + H[i-1]**l_H)*dt*(Aout[i-1] >= 0.0)
-            Ain[i] = Ain[i-1] + dt*(b_Ain*Aout[i-1]*H[i-1]**l_H/(K_HE**l_H + H[i-1]**l_H) - d_A*Ain[i-1] - d_IE*Ain[i-1]*(cMa_pop)/(K_IE/delta + Ain[i-1] + cMa_pop))*(Ain[i-1] >= 0.0)
+            Aout[i] = Aout[i-1] - b_Ain*Aout[i-1]*H[i-1]**l_H/((0.01*K_HE)**l_H + H[i-1]**l_H)*dt*(Aout[i-1] >= 0.0)
+            Ain[i] = Ain[i-1] + dt*(b_Ain*Aout[i-1]*H[i-1]**l_H/((0.01*K_HE)**l_H + H[i-1]**l_H) - d_A*Ain[i-1] - d_IE*Ain[i-1]*(cMa_pop)/(K_IE/delta + Ain[i-1] + cMa_pop))*(Ain[i-1] >= 0.0)
             
             I_d_I[i] = I_d_I[i-1] + dt*(I[i-1] >= I_0)*d_I*I[i-1] + (I[i] if i == int(steps) else 0) # cells killed by infection
             I_d_IE[i] = I_d_IE[i-1] + dt*(I[i-1] >= I_0)*(d_IH*I[i-1]*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) + d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop)) # cells killed by immune response    
