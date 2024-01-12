@@ -9,6 +9,7 @@ from math import erf
 import numba as nb
 import os as os
 import pandas as pd
+import itertools
 
 ### (1) Define simulation parameters
 # Define simulation parameters
@@ -46,8 +47,8 @@ d_IH = d_IE*ep
 N_0 = 100
 max_Na = 4
 max_expand = 20_000
-t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_EeM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff = 1/2, 3/4, 1/4, 1/3, 1/2, 8, 1.0, 3.0, 1.0, 1/2
-n_act, n_bind, n_Na_div, n_E_div, n_cM_div, n_EeM_diff, n_E_out, n_E_die, n_E_cyt, n_NaE_diff = 1, 1, 1, 1, 1, 1, 1, 8, 1, 1
+t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_EeM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff = 1/2, 3/4, 1/4, 1/3, 1/2, 4.5, 1.0, 3.0, 1.0, 1/2
+n_act, n_bind, n_Na_div, n_E_div, n_cM_div, n_EeM_diff, n_E_out, n_E_die, n_E_cyt, n_NaE_diff = 1, 1, 1, 1, 1, 2, 1, 8, 1, 1
 E_min = 1 # minimum detectable cell counts
 
 # Division timer
@@ -58,9 +59,17 @@ myc_thresh = 10**(2.6)
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 zeta = 0.5 # fraction of maximal rate unregulated by signals
-psis = np.array([1.0, 1.0, -1.0, -1.0, 1.0, 1.0]) # regulatory weights: psi_NE_I, psi_NE_c, psi_EeM_I, psi_EeM_c, psi_pME_I, psi_pME_c
+psis = np.array([1.0, 1.0, 0.0, -1.0, -1.0, 0.0, 1.0, 1.0, 0.0]) # regulatory weights: psi_NE_I, psi_NE_H, psi_NE_IH, psi_EeM_I, psi_EeM_H, psi_EeM_IH, psi_pME_I, psi_pME_H, psi_pME_IH
 reg_logic = np.array(["AND", "OR"])
 vir_prop = np.vstack((np.array([0, K_SE]),np.array(np.meshgrid(d_S*np.array([2, 5, 10]), K_IE*np.array([1, 5, 10]))).T.reshape(-1,2)))
+
+# define reg options
+x_all = np.array(list(itertools.product([-1, 0, 1], repeat =3)))
+x_contr = np.vstack((x_all[(np.sum(np.abs(x_all[:,0:2]), axis = 1) == 2)*(x_all[:,-1] == 0)]/2, 
+                     x_all[(np.sum(np.abs(x_all), axis = 1) == 1)*(x_all[:,-1] == 0)],
+                     x_all[(np.sum(np.abs(x_all[:,0:2]), axis = 1) == 0)*(np.abs(x_all[:,-1]) <= 1)]))
+
+reg_opts = [np.hstack(i) for i in list(itertools.product(x_contr, repeat =3))]
 
 ### (2) Define functions for simulations
 # Define functions for simulations
@@ -136,7 +145,7 @@ def sample_grid(d = 2, l_bounds = [d_S, 0.5], u_bounds = [S_0*b_I, 1.0], runs = 
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
 #######################
 sim_duration = 25
-sim_steps = int(0.625*(10**4))
+sim_steps = int(0.5*(10**4))
 
 def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH, K_SE = K_SE,
                     Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_HE = K_HE,
@@ -314,6 +323,8 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         for i in np.arange(1, int(steps) + 1):
             # Compute total population of cell types
             Na_pop, Ein_pop, Eout_pop, cMa_pop, eMa_pop = np.sum(Na_m[i-1]), np.sum(Ein_m[i-1]), np.sum(Eout_m[i-1]), np.sum(cMa_m[i-1]), np.sum(eMa_m[i-1])
+            Ein_cyt_pop = np.sum(np.hstack((cyt_Ein))) if Ein_pop > 0 else 0.0
+            
             if k == 1:
                 cM_pop, eM_pop = np.sum(cM_m[i-1]), np.sum(eM_m[i-1])
                 
@@ -327,7 +338,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             cell_lysis_rate = d_I*I[i-1] + d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop) + S[i-1]*(d_Sauto*np.exp(-t/2) + d_IE*(Eout_pop)/(K_SE + S[i-1] + Eout_pop))
             H[i] = H[i-1] + dt*(b_H*(cell_lysis_rate) - d_H*H[i-1])*(H[i-1] >= 0.0)
             Aout[i] = Aout[i-1] - b_Ain*Aout[i-1]*H[i-1]**l_H/((0.01*K_HE)**l_H + H[i-1]**l_H)*dt*(Aout[i-1] >= 0.0)
-            Ain[i] = Ain[i-1] + dt*(b_Ain*Aout[i-1]*H[i-1]**l_H/((0.01*K_HE)**l_H + H[i-1]**l_H) - d_A*Ain[i-1] - d_IE*Ain[i-1]*(cMa_pop)/(K_IE/delta + Ain[i-1] + cMa_pop))*(Ain[i-1] >= 0.0)
+            Ain[i] = Ain[i-1] + dt*(b_Ain*Aout[i-1]*H[i-1]**l_H/((0.01*K_HE)**l_H + H[i-1]**l_H) - d_A*Ain[i-1] - d_IE*Ain[i-1]*(cMa_pop + Ein_cyt_pop)/(K_IE/delta + cMa_pop + Ein_cyt_pop))*(Ain[i-1] >= 0.0)
             
             I_d_I[i] = I_d_I[i-1] + dt*(I[i-1] >= I_0)*d_I*I[i-1] + (I[i] if i == int(steps) else 0) # cells killed by infection
             I_d_IE[i] = I_d_IE[i-1] + dt*(I[i-1] >= I_0)*(d_IH*I[i-1]*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) + d_IE*I[i-1]*(Eout_pop)/(K_IE + I[i-1] + Eout_pop)) # cells killed by immune response    
@@ -500,7 +511,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
                 mycEout[j] = mycEout[j] + dt*(b_myc*(I[i] + S[i]*(d_I == 0.0))/(K_IE/p_tcr[j] + Eout_pop + (I[i] + S[i]*(d_I == 0.0))) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*mycEout[j]*d_myc) if Eout_m[i,j] > 0 else np.zeros(0)
 
-                myccMa[j] = myccMa[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cMa_pop + Ain[i]) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*myccMa[j]*d_myc) if cMa_m[i,j] > 0 else np.zeros(0)
+                myccMa[j] = myccMa[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cMa_pop + Ain[i]) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*myccMa[j]*d_myc*1.1) if cMa_m[i,j] > 0 else np.zeros(0) # higher decay rate of myc
                 
                 if k == 1:
                     myccM[j] = myccM[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cM_pop + Ain[i]) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*myccM[j]*d_myc) if cM_m[i,j] > 0 else np.zeros(0)
@@ -524,8 +535,8 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 b_NaE_diff[j] = (1 - (1 - p_NaE[j])**(2/max_Na))/(1 - p_NaE[j])**(2/max_Na)*np.minimum(1/(char_times[2]), 1/(dt*trans_steps[2])) if Na_m[i,j] > 0 else 0.0
                 b_E_div[j] = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[3]
                 b_cMa_div[j] = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[4]
-                b_EineM_diff[j] = (1 - (1 - p_EineM[j])**(1/trans_steps[7]))/(1 - p_EineM[j])**(1/trans_steps[7])*np.minimum(trans_steps[7]/char_times[7], 1/(dt*trans_steps[7])) if Ein_m[i,j] > 0 else 0.0
-                b_EouteM_diff[j] = (1 - (1 - p_EouteM[j])**(1/trans_steps[7]))/(1 - p_EouteM[j])**(1/trans_steps[7])*np.minimum(trans_steps[7]/char_times[7], 1/(dt*trans_steps[7])) if Eout_m[i,j] > 0 else 0.0
+                b_EineM_diff[j] = (1 - (1 - p_EineM[j])**(1/trans_steps[5]))/(1 - p_EineM[j])**(1/trans_steps[5])*np.minimum(trans_steps[5]/char_times[5], 1/(dt*trans_steps[5])) if Ein_m[i,j] > 0 else 0.0
+                b_EouteM_diff[j] = (1 - (1 - p_EouteM[j])**(1/trans_steps[5]))/(1 - p_EouteM[j])**(1/trans_steps[5])*np.minimum(trans_steps[5]/char_times[5], 1/(dt*trans_steps[5])) if Eout_m[i,j] > 0 else 0.0
                 
                 if k == 1:
                     b_cM_diff[j] = p_cME[j]/(1 - p_cME[j])*np.minimum(1/(char_times[2]), 1/(dt*trans_steps[2])) if cM_m[i,j] > 0 else 0.0
@@ -586,7 +597,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
               char_times,
               trans_steps,
               regulation_coeffs, 
-              reg_log))
+              reg_logs))
 
     sim_summary = np.concatenate((parameters,
                       np.array([np.sum(pI*dt)/sim_duration, 
