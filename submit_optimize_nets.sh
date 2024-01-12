@@ -21,17 +21,11 @@ if [ ! -d "$d" ]; then
   mkdir $d
 fi
 
-# Collect all the arguments after the first into an array
-args=${@:2}
+arg=$1
 
-# The list contains numbers separated by spaces. To capture the first 6 digits,
-# 12 characters must be taken.
-reg_coeffs=${args:0:11}
-# The rest of the digits separated by spaces are the reg log parameters.
-reg_logs=${args:11}
 
 #COMMAND="apptainer run --bind /gscratch /gscratch/spe/$USER/apptainer_images/maximmune.sif python"
 #$COMMAND optimize_nets.py --reg_coefs $reg_coeffs --reg_logs $reg_logs --outdir $d
-python optimize_nets.py --reg_coefs $reg_coeffs --reg_logs $reg_logs --outdir $d
+python optimize_nets.py --reg_opt $arg --outdir $d
 
-mv ${SLURM_OUTDIR}${SLURM_JOB_ID}.out ${SLURM_OUTDIR}net-${1}-${reg_logs}.out
+mv ${SLURM_OUTDIR}${SLURM_JOB_ID}.out ${SLURM_OUTDIR}net-${1}.out
