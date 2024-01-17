@@ -5,7 +5,7 @@
 #SBATCH -A amath 
 #SBATCH --nodes=1
 #SBATCH --mem=5G
-#SBATCH --ntasks-per-node=20
+#SBATCH --ntasks-per-node=25
 #SBATCH --time=3:59:00
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out
 
@@ -21,7 +21,7 @@ if [ ! -d "$d" ]; then
   mkdir $d
 fi
 
-arg=$1
+arg=${1}
 
 
 #COMMAND="apptainer run --bind /gscratch /gscratch/spe/$USER/apptainer_images/maximmune.sif python"

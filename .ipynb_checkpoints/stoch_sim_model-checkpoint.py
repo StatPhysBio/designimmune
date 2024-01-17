@@ -47,6 +47,7 @@ d_IH = d_IE*ep
 N_0 = 100
 max_Na = 4
 max_expand = 20_000
+max_eM_frac = 0.1
 t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_EeM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff = 1/2, 3/4, 1/4, 1/3, 1/2, 4.5, 1.0, 3.0, 1.0, 1/2
 n_act, n_bind, n_Na_div, n_E_div, n_cM_div, n_EeM_diff, n_E_out, n_E_die, n_E_cyt, n_NaE_diff = 1, 1, 1, 1, 1, 2, 1, 8, 1, 1
 E_min = 1 # minimum detectable cell counts
@@ -475,7 +476,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 
                 #### New binding events ####
                 b_act_t[j] = Ain[i]/(char_times[0]*(0.5*Aout_0 + Ain[i] + np.sum(N_m[i-1] + Na_m[i-1] + cMa_m[i] + Ein_m[i])))
-                b_unbind_t[j] = np.fmin((K_IE/delta + np.sum(N_m[i-1] + Na_m[i-1] + cMa_m[i] + Ein_m[i]) + p_tcr[j]*Ain[i])/(p_tcr[j]*char_times[1]*Ain[i]), 1/(dt*trans_steps[1])) # set fastest rate of unbinding events
+                b_unbind_t[j] = np.fmin((K_IE/delta + np.sum(N_m[i-1] + Na_m[i-1] + cMa_m[i] + Ein_m[i]) + p_tcr[j]*Ain[i])/(p_tcr[j]*char_times[1]*Ain[i]), 1/(dt*trans_steps[1])) if Na_m[i,j] == 1 and Ain[i] >= 1 else 1/dt # set fastest rate of unbinding events
                 
                 unbind_Na_timer[j] = unbind_Na_timer[j] + np.random.binomial(1-unbound_Na[j], dt*b_unbind_t[j]*trans_steps[1]) if Na_m[i,j] == 1 and Ain[i] >= 1 else 0
 
@@ -488,7 +489,7 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
                 mycEout[j] = mycEout[j] + dt*(b_myc*(I[i] + S[i]*(d_I == 0.0))/(K_IE/p_tcr[j] + Eout_pop + (I[i] + S[i]*(d_I == 0.0))) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*mycEout[j]*d_myc) if Eout_m[i,j] > 0 else np.zeros(0)
 
-                myccMa[j] = myccMa[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cMa_pop + Ain[i]) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*myccMa[j]*d_myc*1.1) if cMa_m[i,j] > 0 else np.zeros(0) # higher decay rate of myc
+                myccMa[j] = myccMa[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cMa_pop + Ain[i]) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*myccMa[j]*d_myc*2.0) if cMa_m[i,j] > 0 else np.zeros(0) # higher decay rate of myc
                 
                 if k == 1:
                     myccM[j] = myccM[j] + dt*(b_myc*Ain[i]/(K_IE/(delta*p_tcr[j]) + cM_pop + Ain[i]) - (1-H[i-1]**l_H/((K_HE/p_cyt[j])**l_H + H[i-1]**l_H))*myccM[j]*d_myc) if cM_m[i,j] > 0 else np.zeros(0)
@@ -497,8 +498,8 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
                 #### transition probabilities modulated by antigen and cytokine signals ####
                 p_NaE[j] = p_XtoY(p_tcr[j]*(1-unbound_Na[j])*Ain[i], p_cyt[j]*H[i], psi_NE_I, psi_NE_H, psi_NE_IH, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]), K_H = K_HE) if Na_m[i,j] > 0 else float("nan")
-                p_EineM[j] = 1 - p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], -psi_EeM_I, -psi_EeM_H, -psi_EeM_IH, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]), K_H = K_HE) if Ein_m[i,j] > 0 else float("nan")
-                p_EouteM[j] = 1 - p_XtoY(p_tcr[j]*(I[i] + S[i]*(d_I == 0.0)), p_cyt[j]*H[i], -psi_EeM_I, -psi_EeM_H, -psi_EeM_IH, F_0 = 0.0, K_I = K_IE + np.sum(Eout_m[i] +eMa_m[i]), K_H = K_HE) if Eout_m[i,j] > 0 else float("nan")
+                p_EineM[j] = max_eM_frac*p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], psi_EeM_I, psi_EeM_H, psi_EeM_IH, F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i]), K_H = K_HE) if Ein_m[i,j] > 0 else float("nan")
+                p_EouteM[j] = max_eM_frac*p_XtoY(p_tcr[j]*(I[i] + S[i]*(d_I == 0.0)), p_cyt[j]*H[i], psi_EeM_I, psi_EeM_H, psi_EeM_IH, F_0 = 0.0, K_I = K_IE + np.sum(Eout_m[i] +eMa_m[i]), K_H = K_HE) if Eout_m[i,j] > 0 else float("nan")
                 
                 if k == 1:
                     p_cME[j] = p_XtoY(p_tcr[j]*Ain[i], p_cyt[j]*H[i], psi_pME_I, psi_pME_H, psi_pME_IH,F_0 = 0.0, K_I = K_IE/delta + np.sum(N_m[i] + Na_m[i] + cMa_m[i] + Ein_m[i] + cM_m[i]), K_H = K_HE) if cM_m[i,j] > 0 else float("nan")
@@ -509,15 +510,15 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                 # if len(diff_Na_E_timer[j]) > 0 and unbound_Na[j] == 0:
                 #     print(j, diff_Na_E_timer[j], t, dt*b_NaE_diff[j]*trans_steps[9], Na_m[i-1,j],  np.minimum(1/(char_times[9]), 1/(dt*trans_steps[9]))*dt*trans_steps[9], Na_div_flag)
                     
-                b_NaE_diff[j] = (1 - (1 - p_NaE[j])**(2/max_Na))/(1 - p_NaE[j])**(2/max_Na)*np.minimum(1/(char_times[2]), 1/(dt*trans_steps[2])) if Na_m[i,j] > 0 else 0.0
+                b_NaE_diff[j] = np.fmin(1/(trans_steps[9]*dt), p_NaE[j]**(1/trans_steps[9])/(1 - p_NaE[j])**(1/trans_steps[9])*1/(2*char_times[2]*trans_steps[9])) if Na_m[i,j] > 0 else 0.0
                 b_E_div[j] = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[3]
                 b_cMa_div[j] = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[4]
-                b_EineM_diff[j] = (1 - (1 - p_EineM[j])**(1/trans_steps[5]))/(1 - p_EineM[j])**(1/trans_steps[5])*np.minimum(trans_steps[5]/char_times[5], 1/(dt*trans_steps[5])) if Ein_m[i,j] > 0 else 0.0
-                b_EouteM_diff[j] = (1 - (1 - p_EouteM[j])**(1/trans_steps[5]))/(1 - p_EouteM[j])**(1/trans_steps[5])*np.minimum(trans_steps[5]/char_times[5], 1/(dt*trans_steps[5])) if Eout_m[i,j] > 0 else 0.0
+                b_EineM_diff[j] = np.fmin(1/(trans_steps[5]*dt), p_EineM[j]**(1/trans_steps[5])/(1 - p_EineM[j])**(1/trans_steps[5])*1/(trans_steps[5]*char_times[7])) if Ein_m[i,j] > 0 else 0.0
+                b_EouteM_diff[j] = np.fmin(1/(trans_steps[5]*dt), p_EouteM[j]**(1/trans_steps[5])/(1 - p_EouteM[j])**(1/trans_steps[5])*1/(trans_steps[5]*char_times[7])) if Eout_m[i,j] > 0 else 0.0
                 
                 if k == 1:
-                    b_cM_diff[j] = p_cME[j]/(1 - p_cME[j])*np.minimum(1/(char_times[2]), 1/(dt*trans_steps[2])) if cM_m[i,j] > 0 else 0.0
-                    b_eM_diff[j] = p_eME[j]/(1 - p_eME[j])*np.minimum(1/(char_times[2]), 1/(dt*trans_steps[2])) if eM_m[i,j] > 0 else 0.0
+                    b_cM_diff[j] = np.fmin(1/(trans_steps[9]*dt), p_cME[j]**(1/trans_steps[9])/(1 - p_cME[j]**(1/trans_steps[9]))/(char_times[2]*trans_steps[9])) if p_cME[j]*cM_m[i,j] > 0 else 0.0
+                    b_eM_diff[j] = np.fmin(1/(trans_steps[9]*dt), p_eME[j]**(1/trans_steps[9])/(1 - p_eME[j]**(1/trans_steps[9]))/(char_times[2]*trans_steps[9])) if p_eME[j]*eM_m[i,j] > 0 else 0.0
                     
                 b_E_out[j] = (alpha*p_tcr[j] + (1-alpha)*p_cyt[j])/char_times[6] # evidence that this is inversely proportional to stimulation
                 d_E_die[j] = 1/char_times[7]
@@ -646,8 +647,7 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N^*,A_{in}}^{(+)}$", r"$\tau_{N^*,A_{in}}^{(-)}$", r"$\tau_{N^*}$", r"$\tau_E$", r"$\tau_{cM}$", r"$\tau_{eM}$", r"$\tau_{E_{out}}$", r"$\tau_{E_{die}}$", r"$\tau_{E_{cyt}}$",
                r"$n_{N^*,A_{in}}^{(+)}$", r"$n_{N^*,A_{in}}^{(-)}$", r"$n_{N^*}$", r"$n_E$", r"$n_{cM}$", r"$n_{eM}$", r"$n_{E_{out}}$", r"$n_{E_{die}}$", r"$n_{E_{cyt}}$",
-               r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(H)}$", r"$\psi_{E,eM}^{(I)}$", r"$\psi_{E,eM}^{(H)}$", r"$\psi_{pM,E}^{(I)}$", r"$\psi_{pM,E}^{(H)}$",
-              r"$[N,E]_{reg}$", r"$[E,eM]_{reg}$", r"$[pM,E]_{reg}$"]
+               r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(H)}$", r"$\psi_{N,E}^{(I,H)}$", r"$\psi_{E,eM}^{(I)}$", r"$\psi_{E,eM}^{(H)}$", r"$\psi_{E,eM}^{(I,H)}$", r"$\psi_{pM,E}^{(I)}$", r"$\psi_{pM,E}^{(H)}$", r"$\psi_{pM,E}^{(I,H)}$"]
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',

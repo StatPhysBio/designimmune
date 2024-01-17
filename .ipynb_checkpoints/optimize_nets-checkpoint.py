@@ -15,8 +15,10 @@ vir_samp = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1)) # sample distribut
 reg_weight = 1
 
 def run(reg_opt = 0, outdir='', virus_sample = vir_samp, infection_type = 'sec', comment = "ncv"):
+
+    print(f'Entered reg_opt = {reg_opt[0]}')
     
-    reg_coeff = reg_opts[reg_opt]
+    reg_coeff = reg_opts[int(reg_opt[0])]
     
     print(f'Running with regs = {list(reg_coeff)}')
     
