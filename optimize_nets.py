@@ -12,7 +12,7 @@ from stoch_sim_model import *
 runs = 400
 N_0 = 100
 vir_samp = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1)) # sample distribution of pathogen killing rate and size of naive repertoire
-reg_weight = 3
+reg_weight = 1
 
 def run(reg_opt = 0, outdir='', virus_sample = vir_samp, infection_type = 'sec', comment = "ncv"):
 

@@ -25,10 +25,10 @@ K_IE = 10**4 # effector avidity (half-max) for infected cells at low infection c
 d_I = np.minimum(10*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
 
 # APC dynamics
-Aout_0 = 10**4
-d_A = 0.3
-b_Ain = 2
-delta_Ain = 100 # relative avidity of APCs for T cells compared to infected cells
+Aout_0 = 6*(10**4)
+d_A = 0.4
+b_Ain = 1
+delta_Ain = 10 # relative avidity of APCs for T cells compared to infected cells
 K_Ain = K_IE/delta_Ain
 
 # Inflammatory response
@@ -48,18 +48,17 @@ N_0 = 100
 max_Na = 4
 max_expand = 10_000
 max_eM_frac = 0.20
-t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_EeM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff = 1/2, 3/4, 1/4, 1/3, 1/2, 4.0, 2/3, 3.0, 2/3, 1/2
+t_act, t_bind, t_Na_div, t_E_div, t_cM_div, t_EeM_diff, t_E_out, t_E_die, t_E_cyt, t_NaE_diff = 1/2, 3/4, 1/4, 1/3, 1/2, 3.0, 2/3, 3.0, 2/3, 1/2
 n_act, n_bind, n_Na_div, n_E_div, n_cM_div, n_EeM_diff, n_E_out, n_E_die, n_E_cyt, n_NaE_diff = 1, 1, 1, 1, 1, 3, 1, 6, 1, 3
 E_min = 1 # minimum detectable cell counts
 
 # Division timer
-b_myc = 1.5*(10**3)
+b_myc = 1.0*(10**3)
 d_myc = np.log(2)*24/7
 myc_thresh = 10**(2.6)
 
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
-zeta = 0.5 # fraction of maximal rate unregulated by signals
 psis = np.array([0.5, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, 0.5, 0.0]) # regulatory weights: psi_NE_I, psi_NE_H, psi_NE_IH, psi_EeM_I, psi_EeM_H, psi_EeM_IH, psi_pME_I, psi_pME_H, psi_pME_IH
 vir_prop = np.vstack((np.array([0, K_SE]),np.array(np.meshgrid(d_S*np.array([2, 5, 10]), K_IE*np.array([1, 5, 10]))).T.reshape(-1,2)))
 
@@ -574,26 +573,26 @@ def agent_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
               regulation_coeffs))
 
     sim_summary = np.concatenate((parameters,
-                      np.array([np.sum(pI*dt)/sim_duration, 
-                       np.sum(sI*dt)/sim_duration,
+                      np.array([np.sum(pI*dt), 
+                       np.sum(sI*dt),
                        np.argmax(pI)*dt,
                        np.argmax(sI)*dt,
-                       np.amax(pI_d_I)/sim_duration, 
-                       np.amax(sI_d_I)/sim_duration, 
-                       np.amax(pI_d_S)/sim_duration,
-                       np.amax(sI_d_S)/sim_duration,
+                       np.amax(pI_d_I), 
+                       np.amax(sI_d_I), 
+                       np.amax(pI_d_S),
+                       np.amax(sI_d_S),
                        np.max(pE),
                        np.max(sE),
                        np.argmax(pE)*dt,
                        np.argmax(sE)*dt,
                        np.max(pcM),
                        scM[-1], 
-                       np.sum(pE*dt)/sim_duration, 
-                       np.sum(sE*dt)/sim_duration,
+                       np.sum(pE*dt), 
+                       np.sum(sE*dt),
                        np.max(peM),
                        seM[-1],
-                       np.sum(pH*dt)/sim_duration,
-                       np.sum(sH*dt)/sim_duration,
+                       np.sum(pH*dt),
+                       np.sum(sH*dt),
                        np.amin(pS),
                        np.amin(sS),
                        stats.spearmanr(pI, pH).statistic if np.var(pI)*np.var(pH) > 0.0 else 0.0,
@@ -614,14 +613,14 @@ stat_names = [r"$\psi_{N,E}^{(I)}$",
               r"$\psi_{pM,E}^{(I)}$", 
               r"$\psi_{pM,E}^{(H)}$",
               r"$\psi_{pM,E}^{(I,H)}$",
-              r"$\frac{1}{T_{sim}}\int_0^{T_{sim}} I_{p}dt$",
-              r"$\frac{1}{T_{sim}}\int_0^{T_{sim}} I_{s}dt$",
+              r"$\int_0^{T_{sim}} I_{p}dt$",
+              r"$\int_0^{T_{sim}} I_{s}dt$",
               r"$T_{I_p}^{max}$",
               r"$T_{I_s}^{max}$",
-              r"$\frac{1}{T_{sim}}\int_0^{T_{sim}} (d_I+d_{I,E})I_{p}dt$",
-              r"$\frac{1}{T_{sim}}\int_0^{T_{sim}} (d_I+d_{I,E})I_{s}dt$",
-              r"$\frac{1}{T_{sim}}\int_0^{T_{sim}} d_{I,S}\cdot S_{p}dt$",
-              r"$\frac{1}{T_{sim}}\int_0^{T_{sim}} d_{I,S}\cdot S_{s}dt$",
+              r"$\int_0^{T_{sim}} (d_I+d_{I,E})I_{p}dt$",
+              r"$\int_0^{T_{sim}} (d_I+d_{I,E})I_{s}dt$",
+              r"$\int_0^{T_{sim}} d_{I,S}\cdot S_{p}dt$",
+              r"$\int_0^{T_{sim}} d_{I,S}\cdot S_{s}dt$",
               r"$E_p^{max}$",
               r"$E_s^{max}$",
               r"$T_{E_p}^{max}$",
