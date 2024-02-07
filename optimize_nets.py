@@ -9,7 +9,7 @@ from stoch_sim_model import *
 ### Define function to run simulations and compute MI
 
 # Set simulation parameters
-runs = 400
+runs = 500
 N_0 = 100
 vir_samp = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1)) # sample distribution of pathogen killing rate and size of naive repertoire
 reg_weight = 3
