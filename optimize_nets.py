@@ -9,11 +9,11 @@ from stoch_sim_model import *
 ### Define function to run simulations and compute MI
 
 # Set simulation parameters
-runs = 500
+runs = 2000
 N_0 = 100
 vir_samp = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1)) # sample distribution of pathogen killing rate and size of naive repertoire
-reg_weight = 3
-num_cpu = 5
+reg_weight = 1
+num_cpu = 20
 
 def run(reg_opt = 0, outdir='', virus_sample = vir_samp, infection_type = 'sec', comment = "lin-based"):
     
@@ -28,6 +28,8 @@ def run(reg_opt = 0, outdir='', virus_sample = vir_samp, infection_type = 'sec',
 
     runs_list = Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(virus_sample)/num_cpu),1))(delayed(lin_stoch_sim)(d_I = param[0], 
                                                                                                                K_IE = param[1],
+                                                                                                               K_EI = param[1]*param[2],
+                                                                                                               K_EH = K_IH*param[3],
                                                                                                                regulation_coeffs = reg_coeff,
                                                                                                                infection = infection_type,
                                                                                                                vir_model = 'dep_harm')
