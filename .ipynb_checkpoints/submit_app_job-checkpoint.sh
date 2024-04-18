@@ -3,8 +3,8 @@
 #SBATCH --account=spe
 #SBATCH --partition=ckpt
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=20
-#SBATCH --mem=100GB
+#SBATCH --cpus-per-task=10
+#SBATCH --mem=25GB
 #SBATCH --time=4:00:00
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out
 

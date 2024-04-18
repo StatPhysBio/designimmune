@@ -9,9 +9,9 @@ from stoch_sim_model import *
 ### Define function to run simulations and compute MI
 
 # Set simulation parameters
-runs = 2000
+runs = 5
 N_0 = 300
-vir_samp = np.tile(vir_prop, (int(runs/vir_prop.shape[0]),1)) # sample distribution of pathogen killing rate and size of naive repertoire
+vir_samp = np.tile(vir_prop, (runs,1)) # sample distribution of pathogen killing rate and size of naive repertoire
 reg_weight = 1
 num_cpu = 20
 
@@ -37,7 +37,7 @@ def run(reg_opt = 0, outdir='', virus_sample = vir_samp, infection_type = 'sec',
 
     # Store data in dictionary
     runs_dict = {}
-    select_keys = ['reg_coeffs','cell_time_series','time','prim_diff_bias', 'sec_diff_bias','lineage_diff', 'parameters', 'sumary_stats']
+    select_keys = ['reg_coeffs','cell_time_series','time','prim_diff_bias', 'sec_diff_bias','lineage_diff', 'parameters', 'summary_stats']
     for k in select_keys:
       runs_dict[k] = list(d[k] for d in runs_list)
 
