@@ -327,7 +327,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             
             #### New binding events ####
             b_N_act = p_tcr*Ain[i]/(char_times[0]*(N_0 + Ain[i]))*(Ain[i] >= 1)
-            b_unbind_t = 2*(Na_m[i] == 1)*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(1/K_IE, H[i], psi_I = psi_max/4, psi_H = psi_max/4, psi_IH = psi_max/2, F_0 = 0.0, K_I = 1/(10*K_IE_min), K_H = K_EH)*char_times[1])**2 if np.sum(Na_m[i]) >= 1 else 0.0
+            b_unbind_t = np.fmin(2*(Na_m[i] == 1)*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(1/K_IE, H[i], psi_I = psi_max/4, psi_H = psi_max/4, psi_IH = psi_max/2, F_0 = 0.0, K_I = 1/(10*K_IE_min), K_H = K_EH)*char_times[1])**2, 1/dt) if np.sum(Na_m[i]) >= 1 else 0.0
             # np.exp(-np.log10(np.sqrt(2))*np.log(K_IE/K_IE_min))
             unbound_Na += np.random.binomial(1-unbound_Na, b_unbind_t*dt)
             
