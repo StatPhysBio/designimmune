@@ -193,7 +193,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             N_m[0,:] +=1
         elif k == 1: # secondary infection
             N_m[0,:] = 0*N_m[-1,:] # no naive cells during secondary infection
-            M_survive = np.random.binomial( np.ones(Ma[-1], dtype =int), np.exp(-1/rel_persist_M - (1 -1/rel_persist_M)*T_EcytM/char_times[6]) )
+            M_survive = np.random.binomial( np.ones(len(T_EcytM), dtype =int), np.exp(-1/rel_persist_M - (1 -1/rel_persist_M)*T_EcytM/char_times[6]) )
             M_count = int(np.sum(M_survive))
             T_EcytM = T_EcytM[M_survive > 0]
             M_m = np.zeros((int(steps)+1, M_count), dtype = int)
@@ -367,7 +367,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             # store time an effector spends in cytotoxic state
             if k == 0 and np.sum(Na_m[i] + E_m[i]) > 0:
                 T_Ecyt = np.char.add(T_Ecyt, 
-                                     np.array([(',' if len(T_Ecyt[l]) > 0 else '')+','.join( np.hstack((np.full(int( (diff_NaM + diff_EM)[l] ), 
+                                     np.array([(',' if len(T_Ecyt[l])*(diff_NaM + diff_EM + div_Ma)[l] > 0 else '')+','.join( np.hstack((np.full(int( (diff_NaM + diff_EM)[l] ), 
                                                                                                     np.maximum(0, i*dt - T_E[l] ) if diff_EM[l] > 0 else 0.0, dtype='<U4'),
                                                                                                         np.random.choice(np.fromstring(T_Ecyt[l], dtype = float, sep =','),
                                                                                                                                    int(div_Ma[l])))) )
