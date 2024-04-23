@@ -45,9 +45,9 @@ H_0 = 0.0
 
 # Immune cells
 N_0 = 300
-max_Na = 2**2
+max_Na = 2**3
 max_expand = 2**17 #(Marchingo et al.)
-t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt = 1, 3/4, 1/4, 1/3, 1/2, 14.0, 2.5, 2/3
+t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt = 1, 3/4, 1/4, 1/3, 1/2, 20.0, 2.5, 2/3
 rel_persist_M = 5 # d_eM/d_cM
 
 # Division timer
@@ -61,7 +61,7 @@ vir_prop = np.vstack((np.array([0, K_SE, 1.0, 1.0]), # autoimmune situation
                       np.array([0, K_SE, 0.25, 1.0]),
                       np.array([0, K_SE, 1.0, 0.25]),
                       np.array([0, K_SE, 0.25, 0.25]),
-                      np.array(np.meshgrid(d_S*np.array([2, 10]), # vary d_I
+                      np.array(np.meshgrid(d_S*np.array([2, 5]), # vary d_I
                                             K_IE*np.array([1, 10]), # vary K_IE
                                             np.array([0.25,1.0]), # vary K_EI
                                             np.array([0.25,1.0]))).T.reshape(-1,4))) # vary K_EH
@@ -342,7 +342,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             
             mycE = (mycE - dt*(f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = 0.0, psi_H = -psi_max, psi_IH = 0.0, F_0 = psi_max, K_I = K_EI, K_H = K_EH)*mycE*d_myc))*(E_m[i] >= 1) + (mycNa*(Na_m[i] > 0) if k == 0 else mycM*(M_m[i] > 0))
 
-            mycMa = (mycMa - dt*f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = 0.0, psi_H = -psi_max, psi_IH = 0.0, F_0 = psi_max, K_I = K_EI, K_H = K_EH)*(mycMa*d_myc))*(Ma_m[i] > 0) + (mycNa*(Na_m[i] >= 1) if k == 0 else mycM*(M_m[i] > 0)) # higher decay rate of myc
+            mycMa = (mycMa - dt*f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = 0.0, psi_H = -psi_max, psi_IH = 0.0, F_0 = psi_max, K_I = K_EI, K_H = 2*K_EH)*(mycMa*d_myc))*(Ma_m[i] > 0) + (mycNa*(Na_m[i] >= 1) if k == 0 else mycM*(M_m[i] > 0)) # higher decay rate of myc
             
             if k == 1:
                 mycM = (mycM + 0*dt*(b_myc*Ain[i]/(M_pop + Ain[i])))*(M_m[i] >= 1)
@@ -412,7 +412,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             sec_bias = bias_t # [p_NaM, p_EM, p_MM]
                                  
     ts = np.linspace(0, duration, int(steps) + 1)
-
+    
     # Compute summary statistics from simulations
     ## extract primary/secondary infection dynamics
     pS, sS, pI, sI, Ain, N, pE, sE, pM, sM, pH, sH, pI_d_I, sI_d_I, pI_d_S, sI_d_S = dyn_data[:,0], dyn_data[:,-9], dyn_data[:,1], dyn_data[:,-8], dyn_data[:,2], dyn_data[:, 3], dyn_data[:,4], dyn_data[:,-5], dyn_data[:,5], dyn_data[:,-4], dyn_data[:,6], dyn_data[:,-3], dyn_data[:,7], dyn_data[:,-2], dyn_data[:,8], dyn_data[:,-1]
