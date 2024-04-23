@@ -46,7 +46,7 @@ H_0 = 0.0
 # Immune cells
 N_0 = 300
 max_Na = 2**2
-max_expand = 2**16 #(Marchingo et al.)
+max_expand = 2**17 #(Marchingo et al.)
 t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt = 1, 3/4, 1/4, 1/3, 1/2, 14.0, 2.5, 2/3
 rel_persist_M = 5 # d_eM/d_cM
 
@@ -113,7 +113,7 @@ def f_XtoY(I_sig, H_sig, psi_I, psi_H, psi_IH, F_0, K_I, K_H, reg_model = "mwc_l
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
 #######################
 sim_duration = 20
-sim_steps = int((10**4))
+sim_steps = int(0.5*(10**4))
 
 def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH, K_SE = K_SE,
                     Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_EI = K_EI, K_EH = K_EH, kappa = kappa,
@@ -201,6 +201,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             act_M = np.zeros(M_count, dtype =int)
 
         div_E_count = np.zeros(N_0_var if k == 0 else M_count)
+        diff_EM_count = np.zeros(N_0_var if k == 0 else M_count, dtype =int)
         
         Na_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
         Ma_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count), dtype = int)
@@ -303,7 +304,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             ## II. Expansion
 
             # (a) New central memory cells divide
-            div_Ma = np.random.binomial(Ma_m[i-1], dt*b_Ma_div)
+            div_Ma = np.random.binomial(Ma_m[i-1] - diff_EM_count, dt*b_Ma_div)
 
             # (b) Effector cells divide, differentiate, die
             die_E = np.random.binomial(E_m[i-1], d_E_die*dt)
@@ -323,7 +324,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             
             # Update division flag to allow differentiation to proceed
             Na_div_flag = 1*(Na_m[i] < max_Na)
-            div_E_count += (div_Na if k == 0 else 0) + (div_M if k == 1 else 0) + div_E
+            div_E_count += (div_Na if k == 0 else 0) + (div_M if k == 1 else 0) + div_E + div_Ma
+            diff_EM_count += diff_EM
             
             #### New binding events ####
             b_N_act = p_tcr*Ain[i]/(char_times[0]*(N_0 + Ain[i]))*(Ain[i] >= 1)
@@ -354,7 +356,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
             #### Time-dependent rates modulated by antigen and cytokine signals ####
             b_E_div = (mycE > myc_thresh)*(div_E_count < max_expand)*(alpha*p_tcr + (1-alpha)*p_cyt)/char_times[3]
-            b_Ma_div = (mycMa > myc_thresh)*(alpha*p_tcr + (1-alpha)*p_cyt)/char_times[4]
+            b_Ma_div = (mycMa > myc_thresh)*(div_E_count < max_expand)*(alpha*p_tcr + (1-alpha)*p_cyt)/char_times[4]
             
             # store time cells become effector
             if k == 0:
@@ -369,8 +371,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                 T_Ecyt = np.char.add(T_Ecyt, 
                                      np.array([(',' if len(T_Ecyt[l])*(diff_NaM + diff_EM + div_Ma)[l] > 0 else '')+','.join( np.hstack((np.full(int( (diff_NaM + diff_EM)[l] ), 
                                                                                                     np.maximum(0, i*dt - T_E[l] ) if diff_EM[l] > 0 else 0.0, dtype='<U4'),
-                                                                                                        np.random.choice(np.fromstring(T_Ecyt[l], dtype = float, sep =','),
-                                                                                                                                   int(div_Ma[l])))) )
+                                                                                                        np.zeros(int(div_Ma[l])))) )
                                                if (diff_NaM + diff_EM + div_Ma)[l] > 0 else '' for l in np.arange(0, N_0_var)]))
 
             #### Store myc levels ####
