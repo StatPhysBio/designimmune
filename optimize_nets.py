@@ -9,7 +9,7 @@ from stoch_sim_model import *
 ### Define function to run simulations and compute MI
 
 # Set simulation parameters
-runs = 5
+runs = 2
 N_0 = 300
 vir_samp = np.tile(vir_prop, (runs,1)) # sample distribution of pathogen killing rate and size of naive repertoire
 reg_weight = 1
@@ -21,7 +21,7 @@ def run(reg_opt = 0, outdir='', virus_sample = vir_samp, infection_type = 'sec',
     outfile = ('-'.join((reg_coeff).astype('U4'))
                + f'-{runs}-{infection_type}-'
                + f'-{comment}.pkl')
-    outfile = os.path.join(outdir, outfile) # what is outfile?
+    outfile = os.path.join(outdir, outfile)
     
     # Run simulations over different infections
     print(f'Running simulation with regs = {list(reg_coeff)}')
