@@ -27,18 +27,18 @@ K_EI = K_IE
 d_I = np.minimum(5*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
 
 # APC dynamics
-Aout_0 = 10**4
-b_Aout = 2.0
+Aout_0 = 3*(10**3)
+b_Aout = 1.0
 b_Ain = 0.5
 
 # Inflammatory response
 d_H = 2.0
 b_H = 10 # innate response/inflammation per lysed cell compared to natural death
 l_H = 1 # cooperativity
-K_IH = 0.01*d_S*S_0 # half-max level of instantaneous damage required to trigger innate/inflammatory response
+K_IH = b_H*d_S*K_IE_min/d_H # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_EH = 1*K_IH # half-max level of inflammation required to trigger lymphocyte response
 ep = 10**(-3) # off-target rate of harm
-K_SE = 10**8
+K_SE = 10**9
 kappa = 0.5 # maximal reduction in replication rate due to inflammatory response
 d_IH = d_IE*ep
 H_0 = 0.0
@@ -47,8 +47,8 @@ H_0 = 0.0
 N_0 = 300
 max_Na = 2**3
 max_expand = 2**17 #(Marchingo et al.)
-t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt = 1, 3/4, 1/4, 1/3, 1/2, 20.0, 2.5, 2/3
-rel_persist_M = 5 # d_eM/d_cM
+t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt = 1, 3/4, 1/4, 1/3, 1/2, 25.0, 2.5, 2/3
+rel_persist_M = 7.5 # d_eM/d_cM
 
 # Division timer
 d_myc = np.log(2)*24/7 # *np.log(2)
@@ -61,8 +61,8 @@ vir_prop = np.vstack((np.array([0, K_SE, 1.0, 1.0]), # autoimmune situation
                       np.array([0, K_SE, 0.25, 1.0]),
                       np.array([0, K_SE, 1.0, 0.25]),
                       np.array([0, K_SE, 0.25, 0.25]),
-                      np.array(np.meshgrid(d_S*np.array([2, 5]), # vary d_I
-                                            K_IE*np.array([1, 10]), # vary K_IE
+                      np.array(np.meshgrid(d_S*np.array([1, 10]), # vary d_I
+                                            K_IE*np.array([1, 50]), # vary K_IE
                                             np.array([0.25,1.0]), # vary K_EI
                                             np.array([0.25,1.0]))).T.reshape(-1,4))) # vary K_EH
 
@@ -143,9 +143,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     
     # in case of autoimmune response
     if d_I == 0.0:
-        d_Sauto = 0.01*d_S 
-        K_SE = K_SE/1000
-        K_EI = K_SE
+        d_Sauto = 0.5*d_S 
+        K_SE = 50*K_IE_min
+        K_EI = 50*K_IE_min
         
         I_0 = 0.0
     else:
@@ -226,7 +226,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         mycE = np.zeros(N_0_var if k == 0 else M_count)
         mycMa = np.zeros(N_0_var if k == 0 else M_count)
         if k == 1:
-            mycM = 2*myc_thresh*np.ones(M_count)
+            mycM = 4*myc_thresh*np.ones(M_count)
         
         p_NaM = np.zeros((int(steps)+1, N_0_var))
         p_EM = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count))
@@ -266,23 +266,23 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             #### Run infection dynamics: replication and effector clearance ####
             
             # Update state of susceptible, infected, APCs, and inflammation
-            S[i] = S[i-1] + dt*(b_S - (d_S + d_Sauto*np.exp(-((t-1.0)/t_Hauto)**2))*S[i-1] - (I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H)) - S[i-1]*(d_IH*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) + d_IE*(E_pop)/(K_SE + S[i-1] + E_pop)))*(S[i-1] >= 0.0)
+            S[i] = S[i-1] + dt*(b_S - (d_S + d_Sauto*np.exp(-((t-3.0)/t_Hauto)**2))*S[i-1] - (I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H)) - S[i-1]*(d_IH*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) + d_IE*(E_pop)/(K_SE + S[i-1] + E_pop)))*(S[i-1] >= 0.0)
             
             I[i] = I[i-1] + dt*((I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H)) - d_IH*I[i-1]*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) - d_IE*I[i-1]*(E_pop)/(K_IE + I[i-1] + E_pop) - (d_I)*I[i-1])*(I[i-1] >= 0.0)
             
-            cell_lysed = (d_I)*I[i-1] + 0*d_IE*I[i-1]*(E_pop)/(K_IE + I[i-1] + E_pop) + S[i-1]*(d_Sauto*np.exp(-((t-1.0)/t_Hauto)**2) + 0*d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))
+            cell_lysed = d_I*I[i-1] + 0*d_IE*I[i-1]*(E_pop)/(K_IE + I[i-1] + E_pop) + S[i-1]*(d_Sauto*np.exp(-((t-3.0)/t_Hauto)**2) + 0*d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))
             
             H[i] = H[i-1] + dt*(b_H*(cell_lysed) - d_H*H[i-1])*(H[i-1] >= 0.0)
             
-            Aout[i] = Aout[i-1] + dt*(b_Aout*Ain[i-1] - b_Ain*Aout[i-1]*H[i-1]**l_H/((K_EH)**l_H + H[i-1]**l_H))*(Aout[i-1] >= 0.0)
+            Aout[i] = Aout[i-1] + dt*(b_Aout*(I[i-1] + 1*(d_I == 0))/(I[i-1] + I_0 + 1*(d_I == 0))*Ain[i-1] - b_Ain*Aout[i-1]*f_XtoY(p_tcr*I[i-1], p_cyt*H[i-1], psi_I = 0.0, psi_H = psi_max, psi_IH = 0.0, F_0 = -psi_max, K_I = K_EI, K_H = K_EH))*(Aout[i-1] >= 0.0)
             
-            Ain[i] = Ain[i-1] + dt*(b_Ain*Aout[i-1]*H[i-1]**l_H/((K_EH)**l_H + H[i-1]**l_H) - b_Aout*Ain[i-1] - d_IE*Ain[i-1]*Na_pop/(K_IE + Na_pop))*(Ain[i-1] >= 0.0)
+            Ain[i] = Ain[i-1] + dt*(b_Ain*(I[i-1] + 1*(d_I == 0))/(I[i-1] + I_0 + 1*(d_I == 0))*Aout[i-1]*f_XtoY(p_tcr*I[i-1], p_cyt*H[i-1], psi_I = 0.0, psi_H = psi_max, psi_IH = 0.0, F_0 = -psi_max, K_I = K_EI, K_H = K_EH) - b_Aout*Ain[i-1] - d_IE*Ain[i-1]*Na_pop/(K_IE + Na_pop))*(Ain[i-1] >= 0.0)
             
             I_d_I[i] = I_d_I[i-1] + dt*(I[i-1] >= I_0)*d_I*I[i-1] + (I[i] if i == int(steps) else 0) # cells killed by infection
             
             I_d_IE[i] = I_d_IE[i-1] + dt*(I[i-1] >= I_0)*(d_IH*I[i-1]*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) + d_IE*I[i-1]*(E_pop)/(K_IE + I[i-1] + E_pop)) # cells killed by immune response
             
-            I_d_S[i] = I_d_S[i-1] + dt*S[i-1]*(d_IH*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) + d_IE*(E_pop)/(K_SE + S[i-1] + E_pop) + d_Sauto*np.exp(-((t-1.0)/t_Hauto)**2))
+            I_d_S[i] = I_d_S[i-1] + dt*S[i-1]*(d_IH*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) + d_IE*(E_pop)/(K_SE + S[i-1] + E_pop) + d_Sauto*np.exp(-((t-3.0)/t_Hauto)**2))
             
             ## I. Recruitment/Priming
 
