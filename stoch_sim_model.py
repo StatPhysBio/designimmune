@@ -46,7 +46,7 @@ H_0 = 0.0
 # Immune cells
 N_0 = 300
 max_Na = 2**3
-max_expand = 2**17 #(Marchingo et al.)
+max_expand = 2**16 #(Marchingo et al.)
 t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt = 1, 3/4, 1/4, 1/3, 1/2, 25.0, 2.5, 2/3
 rel_persist_M = 7.5 # d_eM/d_cM
 
@@ -62,9 +62,9 @@ vir_prop = np.vstack((np.array([0, K_SE, 1.0, 1.0]), # autoimmune situation
                       np.array([0, K_SE, 1.0, 0.25]),
                       np.array([0, K_SE, 0.25, 0.25]),
                       np.array(np.meshgrid(d_S*np.array([1, 10]), # vary d_I
-                                            K_IE*np.array([1, 50]), # vary K_IE
-                                            np.array([0.25,1.0]), # vary K_EI
-                                            np.array([0.25,1.0]))).T.reshape(-1,4))) # vary K_EH
+                                           K_IE*np.array([1, 10]), # vary K_IE
+                                           np.array([0.25,1.0]), # vary K_EI
+                                           np.array([0.25,1.0]))).T.reshape(-1,4))) # vary K_EH
 
 # define reg options
 psi_max = 2.0
@@ -144,8 +144,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     # in case of autoimmune response
     if d_I == 0.0:
         d_Sauto = 0.5*d_S 
-        K_SE = 50*K_IE_min
-        K_EI = 50*K_IE_min
+        K_SE = 100*K_IE_min
+        K_EI = 100*K_IE_min
         
         I_0 = 0.0
     else:
