@@ -425,6 +425,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
               N_0, max_Na, b_myc, d_myc, myc_thresh]),
               char_times,
               regulation_coeffs))
+    print([K_IE, K_IH, K_EI, K_EH, regulation_coeffs])
 
     sim_summary = np.array([np.sum(pI*dt), 
                        np.sum(sI*dt),
