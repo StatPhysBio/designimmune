@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=5
 #SBATCH --mem=250GB
-#SBATCH --time=4:00:00
+#SBATCH --time=2:30:00
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out
 
 # The bash file and its arguments need to be passed in surrounded by quotes.
