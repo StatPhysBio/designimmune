@@ -13,7 +13,7 @@ runs = 5
 N_0 = 300
 vir_samp = np.tile(vir_prop, (runs,1)) # sample distribution of pathogen killing rate and size of naive repertoire
 reg_weight = 1
-num_cpu = 5
+num_cpu = runs
 
 def run(reg_opt = 0, outdir='', virus_sample = vir_samp, infection_type = 'sec', comment = "lin-based"):
     
@@ -26,7 +26,7 @@ def run(reg_opt = 0, outdir='', virus_sample = vir_samp, infection_type = 'sec',
     # Run simulations over different infections
     print(f'Running simulation with regs = {list(reg_coeff)}')
 
-    runs_list = Parallel(n_jobs=os.cpu_count(), batch_size = max(int(len(virus_sample)/num_cpu),1))(delayed(lin_stoch_sim)(d_I = param[0], 
+    runs_list = Parallel(n_jobs = num_cpu, batch_size = max(int(len(virus_sample)/num_cpu),1))(delayed(lin_stoch_sim)(d_I = param[0], 
                                                                                                                K_IE = param[1],
                                                                                                                K_EI = param[1]*param[2],
                                                                                                                K_EH = K_IH*param[3],

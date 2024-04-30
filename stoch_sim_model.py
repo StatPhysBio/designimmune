@@ -47,7 +47,7 @@ H_0 = 0.0
 N_0 = 300
 max_Na = 2**3
 max_expand = 2**16 #(Marchingo et al.)
-t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt = 1, 3/4, 1/4, 1/3, 1/2, 25.0, 2.5, 2/3
+t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt = 1, 3/4, 1/4, 1/3, 1/2, 25.0, 2.0, 2/3
 rel_persist_M = 7.5 # d_eM/d_cM
 
 # Division timer
@@ -57,10 +57,10 @@ b_myc = 2*myc_thresh/t_bind
 
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
-vir_prop = np.vstack((np.array([0, K_SE, 1.0, 1.0]), # autoimmune situation
-                      np.array([0, K_SE, 0.25, 1.0]),
-                      np.array([0, K_SE, 1.0, 0.25]),
-                      np.array([0, K_SE, 0.25, 0.25]),
+vir_prop = np.vstack((np.array([0, 100*K_IE_min, 1.0, 1.0]), # autoimmune situation
+                      np.array([0, 100*K_IE_min, 0.25, 1.0]),
+                      np.array([0, 100*K_IE_min, 1.0, 0.25]),
+                      np.array([0, 100*K_IE_min, 0.25, 0.25]),
                       np.array(np.meshgrid(d_S*np.array([1, 10]), # vary d_I
                                            K_IE*np.array([1, 10]), # vary K_IE
                                            np.array([0.25,1.0]), # vary K_EI
@@ -144,8 +144,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     # in case of autoimmune response
     if d_I == 0.0:
         d_Sauto = 0.5*d_S 
-        K_SE = 100*K_IE_min
-        K_EI = 100*K_IE_min
+        K_SE = K_IE
         
         I_0 = 0.0
     else:
@@ -190,25 +189,25 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         I_d_S = np.zeros(int(steps)+1)
         
         if k == 0: # primary infection
-            N_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
+            N_m = np.zeros((int(steps)+1, N_0_var), dtype = np.int32)
             N_m[0,:] +=1
         elif k == 1: # secondary infection
             N_m[0,:] = 0*N_m[-1,:] # no naive cells during secondary infection
-            M_survive = np.random.binomial( np.ones(len(T_EcytM), dtype =int), np.exp(-1/rel_persist_M - (1 -1/rel_persist_M)*T_EcytM/char_times[6]) )
+            M_survive = np.random.binomial( np.ones(len(T_EcytM), dtype =np.int32), np.exp(-1/rel_persist_M - (1 -1/rel_persist_M)*T_EcytM/char_times[6]) )
             M_count = int(np.sum(M_survive))
             T_EcytM = T_EcytM[M_survive > 0]
-            M_m = np.zeros((int(steps)+1, M_count), dtype = int)
+            M_m = np.zeros((int(steps)+1, M_count), dtype = np.int32)
             M_m[0,:] += 1
-            act_M = np.zeros(M_count, dtype =int)
+            act_M = np.zeros(M_count, dtype = np.int32)
 
         div_E_count = np.zeros(N_0_var if k == 0 else M_count)
-        diff_EM_count = np.zeros(N_0_var if k == 0 else M_count, dtype =int)
+        diff_EM_count = np.zeros(N_0_var if k == 0 else M_count, dtype = np.int32)
         
-        Na_m = np.zeros((int(steps)+1, N_0_var), dtype = int)
-        Ma_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count), dtype = int)
-        E_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count), dtype = int) # effector in periphary
+        Na_m = np.zeros((int(steps)+1, N_0_var), dtype = np.int32)
+        Ma_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count), dtype = np.int32)
+        E_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count), dtype = np.int32) # effector in periphary
         T_E = np.zeros(N_0_var if k == 0 else M_count)
-        T_Ecyt = np.array(N_0_var*[''] if k == 0 else M_count*[''])
+        T_Ecyt = [[] for i in np.arange(0, N_0_var if k == 0 else M_count)] #np.array(N_0_var*[''] if k == 0 else M_count*[''])
         
         mycNa_m = np.zeros((int(steps)+1, N_0_var))
         mycMa_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count))
@@ -219,8 +218,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         bias_t = np.zeros((int(steps)+1, 3))
         
         # Define event timer variables
-        unbound_Na = np.zeros(N_0_var, dtype =int)
-        Na_div_flag = np.ones(N_0_var, dtype =int)
+        unbound_Na = np.zeros(N_0_var, dtype =np.int32)
+        Na_div_flag = np.ones(N_0_var, dtype =np.int32)
         
         mycNa = np.zeros(N_0_var)
         mycE = np.zeros(N_0_var if k == 0 else M_count)
@@ -313,15 +312,15 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             diff_EM = np.random.binomial(E_m[i-1] - die_E + div_E, p_EM[i-1])
             
             #### Update population dynamics: ####
-            N_m[i] = N_m[i-1] - act_N
-            Na_m[i] = Na_m[i-1] + div_Na + act_N - (1 - Na_div_flag)*Na_m[i-1]
+            N_m[i] += N_m[i-1] - act_N
+            Na_m[i] += Na_m[i-1] + div_Na + act_N - (1 - Na_div_flag)*Na_m[i-1]
             
             if k == 1:
-                M_m[i] = M_m[i-1] - div_M
+                M_m[i] += M_m[i-1] - div_M
                 act_M += -div_M
                 
-            Ma_m[i] = Ma_m[i-1] + div_Ma + ((1 - Na_div_flag)*(diff_NaM) if k == 0 else 0) + (diff_MM if k == 1 else 0) + diff_EM
-            E_m[i] = E_m[i-1] + div_E + ((1 - Na_div_flag)*(Na_m[i-1] - diff_NaM) if k == 0 else (2*div_M - diff_MM)) - (die_E + diff_EM)
+            Ma_m[i] += Ma_m[i-1] + div_Ma + ((1 - Na_div_flag)*(diff_NaM) if k == 0 else 0) + (diff_MM if k == 1 else 0) + diff_EM
+            E_m[i] += E_m[i-1] + div_E + ((1 - Na_div_flag)*(Na_m[i-1] - diff_NaM) if k == 0 else (2*div_M - diff_MM)) - (die_E + diff_EM)
             
             # Update division flag to allow differentiation to proceed
             Na_div_flag = 1*(Na_m[i] < max_Na)
@@ -331,7 +330,6 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             #### New binding events ####
             b_N_act = p_tcr*Ain[i]/(char_times[0]*(N_0 + Ain[i]))*(Ain[i] >= 1)
             b_unbind_t = np.fmin(2*(Na_m[i] == 1)*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(1/K_IE, H[i], psi_I = psi_max/4, psi_H = psi_max/4, psi_IH = psi_max/2, F_0 = 0.0, K_I = 1/(10*K_IE_min), K_H = K_EH)*char_times[1])**2, 1/dt) if np.sum(Na_m[i]) >= 1 else 0.0
-            # np.exp(-np.log10(np.sqrt(2))*np.log(K_IE/K_IE_min))
             unbound_Na += np.random.binomial(1-unbound_Na, b_unbind_t*dt)
             
             if k == 1:
@@ -349,11 +347,11 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                 mycM = (mycM + 0*dt*(b_myc*Ain[i]/(M_pop + Ain[i])))*(M_m[i] >= 1)
 
             #### transition probabilities modulated by antigen and cytokine signals ####
-            p_NaM[i] = dt*f_XtoY(p_tcr*(1-unbound_Na), p_cyt*H[i], psi_M_I, psi_M_H, psi_M_IH, F_0 = F0_NM, K_I = 1/2, K_H = K_EH)*(1-unbound_Na)*(Na_m[i] == 1)/char_times[5] if k == 0 else 0.0
-            p_EM[i] = dt*f_XtoY(p_tcr*(I[i] + S[i]*(d_I == 0.0)), p_cyt*H[i], psi_M_I, psi_M_H, psi_M_IH, F_0 = F0_EM, K_I = K_EI + np.sum(E_m[i]), K_H = K_EH)*(E_m[i] > 0)/char_times[5]
+            p_NaM[i] += dt*f_XtoY(p_tcr*(1-unbound_Na), p_cyt*H[i], psi_M_I, psi_M_H, psi_M_IH, F_0 = F0_NM, K_I = 1/2, K_H = K_EH)*(1-unbound_Na)*(Na_m[i] == 1)/char_times[5] if k == 0 else 0.0
+            p_EM[i] += dt*f_XtoY(p_tcr*(I[i] + S[i]*(d_I == 0.0)), p_cyt*H[i], psi_M_I, psi_M_H, psi_M_IH, F_0 = F0_EM, K_I = K_EI + np.sum(E_m[i]), K_H = K_EH)*(E_m[i] > 0)/char_times[5]
             
             if k == 1:
-                p_MM[i] = dt*f_XtoY(p_tcr*(I[i] + S[i]*(d_I == 0.0)), p_cyt*H[i], psi_M_I, psi_M_H, psi_M_IH, F_0 = F0_NM, K_I = K_EI + np.sum(M_m[i]), K_H = K_EH)*(M_m[i] > 0)/char_times[5]
+                p_MM[i] += dt*f_XtoY(p_tcr*(I[i] + S[i]*(d_I == 0.0)), p_cyt*H[i], psi_M_I, psi_M_H, psi_M_IH, F_0 = F0_NM, K_I = K_EI + np.sum(M_m[i]), K_H = K_EH)*(M_m[i] > 0)/char_times[5]
 
             #### Time-dependent rates modulated by antigen and cytokine signals ####
             b_E_div = (mycE > myc_thresh)*(div_E_count < max_expand)*(alpha*p_tcr + (1-alpha)*p_cyt)/char_times[3]
@@ -361,30 +359,28 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             
             # store time cells become effector
             if k == 0:
-                T_E += dt*((N_m[i] + Na_m[i]) > 0) if np.sum(Na_m[i]) > 0 else 0.0
-                d_E_die = 2*(E_m[i] > 0)*np.maximum(0, i*dt - T_E)/char_times[6]**2
+                T_E += dt*(E_m[i] > 0) if np.sum(E_m[i]) > 0 else 0.0
+                d_E_die = 2*(E_m[i] > 0)*T_E/char_times[6]**2
             elif k == 1:
-                T_E += dt*(M_m[i] > 0) if np.sum(M_m[i]) > 0 else 0.0
-                d_E_die = 2*(E_m[i] > 0)*np.maximum(0, T_EcytM + i*dt - T_E)/char_times[6]**2
+                T_E += dt*(E_m[i] > 0) if np.sum(E_m[i]) > 0 else 0.0
+                d_E_die = 2*(E_m[i] > 0)*(T_EcytM + T_E)/char_times[6]**2
                
             # store time an effector spends in cytotoxic state
-            if k == 0 and np.sum(Na_m[i] + E_m[i]) > 0:
-                T_Ecyt = np.char.add(T_Ecyt, 
-                                     np.array([(',' if len(T_Ecyt[l])*(diff_NaM + diff_EM + div_Ma)[l] > 0 else '')+','.join( np.hstack((np.full(int( (diff_NaM + diff_EM)[l] ), 
-                                                                                                    np.maximum(0, i*dt - T_E[l] ) if diff_EM[l] > 0 else 0.0, dtype='<U4'),
-                                                                                                        np.zeros(int(div_Ma[l])))) )
-                                               if (diff_NaM + diff_EM + div_Ma)[l] > 0 else '' for l in np.arange(0, N_0_var)]))
+            if k == 0:
+                for l in np.arange(0, N_0_var):
+                    if np.sum(diff_NaM[l] + diff_EM[l] + div_Ma[l]) > 0:
+                        T_Ecyt[l] += int(diff_NaM[l])*[0.0] + int(diff_EM[l])*[T_E[l].item()] + int(div_Ma[l])*[0.0]
 
             #### Store myc levels ####
-            mycNa_m[i] = mycNa
-            mycMa_m[i] = mycMa
-            mycE_m[i] = mycE
+            mycNa_m[i] += mycNa
+            mycMa_m[i] += mycMa
+            mycE_m[i] += mycE
             
             if k == 1:
                 mycM_m[i] = mycM
 
             #### Store differentiation biases
-            bias_t[i] = np.array([np.mean((char_times[5]*p_NaM[i]/dt)[Na_m[i]*(1-unbound_Na) > 0]) if np.sum(Na_m[i]*(1-unbound_Na)) > 0.0 else 0.0, 
+            bias_t[i] += np.array([np.mean((char_times[5]*p_NaM[i]/dt)[Na_m[i]*(1-unbound_Na) > 0]) if np.sum(Na_m[i]*(1-unbound_Na)) > 0.0 else 0.0, 
                                   np.mean((char_times[5]*p_EM[i]/dt)[E_m[i] > 0]) if np.sum(E_m[i]) > 0.0 else 0.0, 
                                   np.mean((char_times[5]*p_MM[i]/dt)[M_m[i] > 0]) if k == 1 else 0.0])
             
@@ -397,7 +393,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             M = np.sum(M_m, axis = 1)
         
         if k == 0:
-            T_EcytM = np.hstack( ([np.fromstring(word, dtype = float, sep =',' ) for word in T_Ecyt]) ) # time that memory spends in effector
+            #print(T_Ecyt)
+            T_EcytM = np.concatenate(T_Ecyt) # time that memory spends in effector
     
         lineage_comp = np.vstack([np.amax(N_m if k == 0 else M_m + Ma_m, axis = 0) ,
                                   np.amax(Ma_m if k == 0 else M_m + Ma_m, axis = 0),
@@ -425,7 +422,6 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
               N_0, max_Na, b_myc, d_myc, myc_thresh]),
               char_times,
               regulation_coeffs))
-    print([K_IE, K_IH, K_EI, K_EH, regulation_coeffs])
 
     sim_summary = np.array([np.sum(pI*dt), 
                        np.sum(sI*dt),
