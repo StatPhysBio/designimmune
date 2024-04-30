@@ -191,6 +191,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         if k == 0: # primary infection
             N_m = np.zeros((int(steps)+1, N_0_var), dtype = np.int32)
             N_m[0,:] +=1
+            T_Ecyt = [[] for i in np.arange(0, N_0_var)]
         elif k == 1: # secondary infection
             N_m[0,:] = 0*N_m[-1,:] # no naive cells during secondary infection
             M_survive = np.random.binomial( np.ones(len(T_EcytM), dtype =np.int32), np.exp(-1/rel_persist_M - (1 -1/rel_persist_M)*T_EcytM/char_times[6]) )
@@ -207,13 +208,13 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         Ma_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count), dtype = np.int32)
         E_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count), dtype = np.int32) # effector in periphary
         T_E = np.zeros(N_0_var if k == 0 else M_count)
-        T_Ecyt = [[] for i in np.arange(0, N_0_var if k == 0 else M_count)] #np.array(N_0_var*[''] if k == 0 else M_count*[''])
         
-        mycNa_m = np.zeros((int(steps)+1, N_0_var))
-        mycMa_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count))
-        mycE_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count))
-        if k == 1:
-            mycM_m = np.zeros((int(steps)+1, M_count))
+        if out_data == "full":
+            mycNa_m = np.zeros((int(steps)+1, N_0_var))
+            mycMa_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count))
+            mycE_m = np.zeros((int(steps)+1, N_0_var if k == 0 else M_count))
+            if k == 1:
+                mycM_m = np.zeros((int(steps)+1, M_count))
         
         bias_t = np.zeros((int(steps)+1, 3))
         
@@ -251,9 +252,6 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         V[0] = 0
         Aout[0] = Aout_0
         H[0] = H_0
-        
-        # errors and troubleshooting
-        error_time = 0
 
         for i in np.arange(1, int(steps) + 1):
             # Compute total population of cell types
@@ -372,12 +370,13 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                         T_Ecyt[l] += int(diff_NaM[l])*[0.0] + int(diff_EM[l])*[T_E[l].item()] + int(div_Ma[l])*[0.0]
 
             #### Store myc levels ####
-            mycNa_m[i] += mycNa
-            mycMa_m[i] += mycMa
-            mycE_m[i] += mycE
-            
-            if k == 1:
-                mycM_m[i] = mycM
+            if out_data == "full":
+                mycNa_m[i] += mycNa
+                mycMa_m[i] += mycMa
+                mycE_m[i] += mycE
+
+                if k == 1:
+                    mycM_m[i] = mycM
 
             #### Store differentiation biases
             bias_t[i] += np.array([np.mean((char_times[5]*p_NaM[i]/dt)[Na_m[i]*(1-unbound_Na) > 0]) if np.sum(Na_m[i]*(1-unbound_Na)) > 0.0 else 0.0, 
@@ -393,7 +392,6 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             M = np.sum(M_m, axis = 1)
         
         if k == 0:
-            #print(T_Ecyt)
             T_EcytM = np.concatenate(T_Ecyt) # time that memory spends in effector
     
         lineage_comp = np.vstack([np.amax(N_m if k == 0 else M_m + Ma_m, axis = 0) ,
