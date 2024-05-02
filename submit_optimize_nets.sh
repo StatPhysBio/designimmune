@@ -4,9 +4,9 @@
 #SBATCH -p ckpt 
 #SBATCH -A amath 
 #SBATCH --nodes=1
-#SBATCH --mem=250G
+#SBATCH --mem=200G
 #SBATCH --ntasks-per-node=5
-#SBATCH --time=2:30:00
+#SBATCH --time=3:00:00
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out
 
 script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )

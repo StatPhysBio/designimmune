@@ -10,7 +10,6 @@ from stoch_sim_model import *
 
 # Set simulation parameters
 runs = 5
-N_0 = 300
 vir_samp = np.tile(vir_prop, (runs,1)) # sample distribution of pathogen killing rate and size of naive repertoire
 reg_weight = 1
 num_cpu = runs
