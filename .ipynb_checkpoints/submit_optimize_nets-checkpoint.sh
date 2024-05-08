@@ -4,9 +4,9 @@
 #SBATCH -p ckpt 
 #SBATCH -A amath 
 #SBATCH --nodes=1
-#SBATCH --mem=200G
-#SBATCH --ntasks-per-node=5
-#SBATCH --time=3:00:00
+#SBATCH --mem=250G
+#SBATCH --ntasks-per-node=25
+#SBATCH --time=4:00:00
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out
 
 script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -15,7 +15,7 @@ mamba activate maximmune
 
 SLURM_OUTDIR=/gscratch/scrubbed/oukogu/slurm_output/
 #d="/mmfs1/home/oukogu/github/infoimmune/opt_nets/"
-d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/raw/"
+d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/"
 
 if [ ! -d "$d" ]; then
   mkdir $d
@@ -25,7 +25,7 @@ arg=${1}
 
 
 #COMMAND="apptainer run --bind /gscratch /gscratch/spe/$USER/apptainer_images/maximmune.sif python"
-#$COMMAND optimize_nets.py --reg_coefs $reg_coeffs --reg_logs $reg_logs --outdir $d
-python optimize_nets.py --reg_opt $arg --outdir $d
+#$COMMAND optimize_nets.py --batch $batch  --outdir $d
+python optimize_nets.py --batch $arg --outdir $d
 
 mv ${SLURM_OUTDIR}${SLURM_JOB_ID}.out ${SLURM_OUTDIR}net-${1}.out

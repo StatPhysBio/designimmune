@@ -35,7 +35,7 @@ b_Ain = 0.5
 d_H = 2.0
 b_H = 10 # innate response/inflammation per lysed cell compared to natural death
 l_H = 1 # cooperativity
-K_IH = b_H*d_S*K_IE_min/d_H # half-max level of instantaneous damage required to trigger innate/inflammatory response
+K_IH = b_H*d_S*K_IE_min/(b_I*S_0 - d_I + d_H) # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_EH = 1*K_IH # half-max level of inflammation required to trigger lymphocyte response
 ep = 10**(-3) # off-target rate of harm
 K_SE = 10**9
@@ -58,20 +58,16 @@ b_myc = 2*myc_thresh/t_bind
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 vir_prop = np.vstack((np.array([0, 100*K_IE_min, 1.0, 1.0]), # autoimmune situation
-                      np.array([0, 100*K_IE_min, 5.0, 1.0]),
-                      np.array([0, 100*K_IE_min, 1.0, 5.0]),
-                      np.array([0, 100*K_IE_min, 5.0, 5.0]),
-                      np.array(np.meshgrid(d_S*np.array([1.0, 10]), # vary d_I
+                      np.array(np.meshgrid(d_S*np.array([1.0, 5]), # vary d_I
                                            K_IE*np.array([1.0, 10]), # vary K_IE
-                                           np.array([1.0,5.0]), # vary K_EI
-                                           np.array([0.25,1.0]))).T.reshape(-1,4))) # vary K_EH
+                                           np.array([1.0]), # vary K_EI
+                                           np.array([1.0]))).T.reshape(-1,4))) # vary K_EH
 
 # define reg options
 psi_max = 2.0
-xv, yv = np.meshgrid(np.linspace(-1, 1, 31), np.linspace(-1, 1, 31))
+xv, yv = np.meshgrid(np.linspace(-1, 1, 11), np.linspace(-1, 1, 11))
 psi_2d = psi_max*np.array([[np.cos(np.pi/4), -np.sin(np.pi/4)],[np.sin(np.pi/4), np.cos(np.pi/4)]]).dot(np.vstack([xv.ravel(), yv.ravel()]))/np.sqrt(2)
-psi_opts = np.vstack((np.array([0,0,0]),
-                      np.vstack([np.array([[x[0], x[1], psi_max - np.abs(x[0]) - np.abs(x[1])], [x[0], x[1], -(psi_max - np.abs(x[0]) - np.abs(x[1]))]]) for x in psi_2d.T])))
+psi_opts = np.vstack((np.vstack([np.array([[x[0], x[1], psi_max - np.abs(x[0]) - np.abs(x[1])], [x[0], x[1], -(psi_max - np.abs(x[0]) - np.abs(x[1]))]]) for x in psi_2d.T])))
 psis = psi_max*np.array([-0.5, -0.5, 0.0]) # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
 F_0s = np.array([0.0, 0.0])
 
@@ -165,7 +161,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     
     # draw population of reponding cells for agent-based simulations
     psi_M_I, psi_M_H, psi_M_IH = regulation_coeffs[0], regulation_coeffs[1], regulation_coeffs[2]/2
-    F0_NM, F0_EM = -np.sum(regulation_coeffs), -np.sum(regulation_coeffs)
+    F0_NM, F0_EM = -np.sum(regulation_coeffs)*np.log(2), -np.sum(regulation_coeffs)*np.log(2)
     
     mu_tcr = 0.8
     var_tcr = mu_tcr*(1-mu_tcr)*0.9
@@ -361,7 +357,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                 d_E_die = 2*(E_m[i] > 0)*T_E/char_times[6]**2
             elif k == 1:
                 T_E += dt*(E_m[i] > 0) if np.sum(E_m[i]) > 0 else 0.0
-                d_E_die = 2*(E_m[i] > 0)*(T_sEcytM + T_E)/char_times[6]**2
+                d_E_die = 2*(E_m[i] > 0)*(T_E)/char_times[6]**2
                
             # store time an effector spends in cytotoxic state
             if k == 0:
