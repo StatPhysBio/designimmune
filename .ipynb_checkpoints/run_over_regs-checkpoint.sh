@@ -1,7 +1,7 @@
 #!/bin/bash
 script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-max_job=5 # change depending on number of inputs
+max_job=585 # change depending on number of inputs
 
 for ((i=0; i<=${max_job}; i++));
 

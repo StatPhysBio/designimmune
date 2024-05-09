@@ -66,10 +66,11 @@ vir_prop = np.vstack((np.array([0, 100*K_IE_min, 1.0, 1.0]), # autoimmune situat
 # define reg options
 psi_max = 2.0
 xv, yv = np.meshgrid(np.linspace(-1, 1, 11), np.linspace(-1, 1, 11))
-psi_2d = psi_max*np.array([[np.cos(np.pi/4), -np.sin(np.pi/4)],[np.sin(np.pi/4), np.cos(np.pi/4)]]).dot(np.vstack([xv.ravel(), yv.ravel()]))/np.sqrt(2)
-psi_opts = np.vstack((np.vstack([np.array([[x[0], x[1], psi_max - np.abs(x[0]) - np.abs(x[1])], [x[0], x[1], -(psi_max - np.abs(x[0]) - np.abs(x[1]))]]) for x in psi_2d.T])))
+grid_2d = psi_max*np.array([[np.cos(np.pi/4), -np.sin(np.pi/4)],[np.sin(np.pi/4), np.cos(np.pi/4)]]).dot(np.vstack([xv.ravel(), yv.ravel()]))/np.sqrt(2)
+psi_2d = np.vstack((np.vstack([np.array([[x[0], x[1], psi_max - np.abs(x[0]) - np.abs(x[1])], [x[0], x[1], -(psi_max - np.abs(x[0]) - np.abs(x[1]))]]) for x in grid_2d.T])))
+psi_opts = np.array(list(itertools.product(psi_2d.tolist(), repeat = 2))).reshape(-1,6)
 psis = psi_max*np.array([-0.5, -0.5, 0.0]) # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
-F_0s = np.array([0.0, 0.0])
+F_0s = np.array([0.0, 0.0, 0.0, 0.0])
 
 ### (2) Define functions for simulations
 # Define functions for simulations
@@ -115,7 +116,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                     Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_EI = K_EI, K_EH = K_EH, kappa = kappa,
                     N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh, max_expand = max_expand,
                     char_times = [t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt],
-                    regulation_coeffs = psis,
+                    memory_regulation = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    activation_regulation = [psi_max/4, psi_max/4, psi_max/2],
+                    expansion_regulation = [0.0, -psi_max, 0.0],
                     regulation_bias = F_0s,
                     alpha = alpha,
                     infection = "prim",
@@ -160,8 +163,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         b_I = b_I + d_I/S_0
     
     # draw population of reponding cells for agent-based simulations
-    psi_M_I, psi_M_H, psi_M_IH = regulation_coeffs[0], regulation_coeffs[1], regulation_coeffs[2]/2
-    F0_NM, F0_EM = -np.sum(regulation_coeffs)*np.log(2), -np.sum(regulation_coeffs)*np.log(2)
+    psi_Nact_I, psi_Nact_H, psi_Nact_IH = activation_regulation[0], activation_regulation[1], activation_regulation[2]/2
+    psi_NM_I, psi_NM_H, psi_NM_IH = memory_regulation[0], memory_regulation[1], memory_regulation[2]/2
+    psi_EM_I, psi_EM_H, psi_EM_IH = memory_regulation[3], memory_regulation[4], memory_regulation[5]/2
+    psi_Ediv_I, psi_Ediv_H, psi_Ediv_IH = expansion_regulation[0], expansion_regulation[1], expansion_regulation[2]/2
+    
+    F0_Nact, F0_NM, F0_EM, F0_Ediv = -np.sum(activation_regulation)*np.log(2), -np.sum(memory_regulation[0:2])*np.log(2), -np.sum(memory_regulation[3:])*np.log(2), -np.sum(expansion_regulation)*np.log(2)
     
     mu_tcr = 0.8
     var_tcr = mu_tcr*(1-mu_tcr)*0.9
@@ -323,7 +330,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             
             #### New binding events ####
             b_N_act = p_tcr*Ain[i]/(char_times[0]*(N_0 + Ain[i]))*(Ain[i] >= 1)
-            b_unbind_t = np.fmin(2*(Na_m[i] == 1)*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(1/K_IE, H[i], psi_I = psi_max/4, psi_H = psi_max/4, psi_IH = psi_max/2, F_0 = 0.0, K_I = 1/(10*K_IE_min), K_H = K_EH)*char_times[1])**2, 1/dt) if np.sum(Na_m[i]) >= 1 else 0.0
+            b_unbind_t = np.fmin(2*(Na_m[i] == 1)*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(1/K_IE, H[i], psi_I = psi_Nact_I, psi_H = psi_Nact_H, psi_IH = psi_Nact_IH, F_0 = 0.0, K_I = 1/(10*K_IE_min), K_H = K_EH)*char_times[1])**2, 1/dt) if np.sum(Na_m[i]) >= 1 else 0.0
             unbound_Na += np.random.binomial(1-unbound_Na, b_unbind_t*dt)
             
             if k == 1:
@@ -333,19 +340,19 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             mycNa = (mycNa + dt*(b_myc*(1-unbound_Na)))*(Na_m[i] > 0)
             # (1-H[i]**l_H/((K_EH/p_cyt)**l_H + H[i]**l_H))
             
-            mycE = (mycE - dt*(f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = 0.0, psi_H = -psi_max, psi_IH = 0.0, F_0 = psi_max, K_I = K_EI, K_H = K_EH)*mycE*d_myc))*(E_m[i] >= 1) + (mycNa*(Na_m[i] > 0) if k == 0 else mycM*(M_m[i] > 0))
+            mycE = (mycE - dt*(f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = psi_Ediv_I, psi_H = psi_Ediv_H, psi_IH = psi_Ediv_IH, F_0 = F0_Ediv, K_I = K_EI, K_H = K_EH)*mycE*d_myc))*(E_m[i] >= 1) + (mycNa*(Na_m[i] > 0) if k == 0 else mycM*(M_m[i] > 0))
 
-            mycMa = (mycMa - dt*f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = 0.0, psi_H = -psi_max, psi_IH = 0.0, F_0 = psi_max, K_I = K_EI, K_H = 2*K_EH)*(mycMa*d_myc))*(Ma_m[i] > 0) + (mycNa*(Na_m[i] >= 1) if k == 0 else mycM*(M_m[i] > 0)) # higher decay rate of myc
+            mycMa = (mycMa - dt*f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = psi_Ediv_I, psi_H = psi_Ediv_H, psi_IH = psi_Ediv_IH, F_0 = F0_Ediv, K_I = K_EI, K_H = 2*K_EH)*(mycMa*d_myc))*(Ma_m[i] > 0) + (mycNa*(Na_m[i] >= 1) if k == 0 else mycM*(M_m[i] > 0)) # higher decay rate of myc
             
             if k == 1:
                 mycM = (mycM + 0*dt*(b_myc*Ain[i]/(M_pop + Ain[i])))*(M_m[i] >= 1)
 
             #### transition probabilities modulated by antigen and cytokine signals ####
-            p_NaM[i] += dt*f_XtoY(p_tcr*(1-unbound_Na), p_cyt*H[i], psi_M_I, psi_M_H, psi_M_IH, F_0 = F0_NM, K_I = 1/2, K_H = K_EH)*(1-unbound_Na)*(Na_m[i] == 1)/char_times[5] if k == 0 else 0.0
-            p_EM[i] += dt*f_XtoY(p_tcr*(I[i] + S[i]*(d_I == 0.0)), p_cyt*H[i], psi_M_I, psi_M_H, psi_M_IH, F_0 = F0_EM, K_I = K_EI + np.sum(E_m[i]), K_H = K_EH)*(E_m[i] > 0)/char_times[5]
+            p_NaM[i] += dt*f_XtoY(p_tcr*(1-unbound_Na), p_cyt*H[i], psi_NM_I, psi_NM_H, psi_NM_IH, F_0 = F0_NM, K_I = 1/2, K_H = K_EH)*(1-unbound_Na)*(Na_m[i] == 1)/char_times[5] if k == 0 else 0.0
+            p_EM[i] += dt*f_XtoY(p_tcr*(I[i] + S[i]*(d_I == 0.0)), p_cyt*H[i], psi_EM_I, psi_EM_H, psi_EM_IH, F_0 = F0_EM, K_I = K_EI + np.sum(E_m[i]), K_H = K_EH)*(E_m[i] > 0)/char_times[5]
             
             if k == 1:
-                p_MM[i] += dt*f_XtoY(p_tcr*(I[i] + S[i]*(d_I == 0.0)), p_cyt*H[i], psi_M_I, psi_M_H, psi_M_IH, F_0 = F0_NM, K_I = K_EI + np.sum(M_m[i]), K_H = K_EH)*(M_m[i] > 0)/char_times[5]
+                p_MM[i] += dt*f_XtoY(p_tcr*(I[i] + S[i]*(d_I == 0.0)), p_cyt*H[i], psi_NM_I, psi_NM_H, psi_NM_IH, F_0 = F0_NM, K_I = K_EI + np.sum(M_m[i]), K_H = K_EH)*(M_m[i] > 0)/char_times[5]
 
             #### Time-dependent rates modulated by antigen and cytokine signals ####
             b_E_div = (mycE > myc_thresh)*(div_E_count < max_expand)*(alpha*p_tcr + (1-alpha)*p_cyt)/char_times[3]
@@ -415,7 +422,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
               Aout_0, b_Ain, b_H, d_H, K_EI, K_EH,
               N_0, max_Na, b_myc, d_myc, myc_thresh]),
               char_times,
-              regulation_coeffs))
+              activation_regulation, memory_regulation, expansion_regulation))
 
     sim_summary = np.array([np.sum(pI*dt), 
                        np.sum(sI*dt),
@@ -440,9 +447,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        np.amin(sS)])
     
     if out_data == "full":
-        out_dict = {"reg_coeffs": np.array(regulation_coeffs), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "sec_diff_bias": sec_bias if k == 1 else [],"eff_by_lin": (E_m), "Na_myc_by_lin": mycM_m if k == 1 else mycNa_m, "Ma_myc_by_lin": mycMa_m, "E_myc_by_lin": mycE_m, "parameters": parameters, "summary_stats": sim_summary, "pmemory_formed": T_pEcytM, "pmemory_survived": T_sEcytM if k == 1 else []}
+        out_dict = {"reg_coeffs": np.concatenate((activation_regulation, memory_regulation, expansion_regulation)), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "sec_diff_bias": sec_bias if k == 1 else [],"eff_by_lin": (E_m), "Na_myc_by_lin": mycM_m if k == 1 else mycNa_m, "Ma_myc_by_lin": mycMa_m, "E_myc_by_lin": mycE_m, "parameters": parameters, "summary_stats": sim_summary, "pmemory_formed": T_pEcytM, "pmemory_survived": T_sEcytM if k == 1 else []}
     elif out_data == "small":
-        out_dict = {"reg_coeffs": np.array(regulation_coeffs), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "sec_diff_bias": sec_bias if k == 1 else [], "parameters": parameters, "summary_stats": sim_summary, "pmemory_survived": T_sEcytM if k == 1 else []}
+        out_dict = {"reg_coeffs": np.concatenate((activation_regulation, memory_regulation, expansion_regulation)), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "sec_diff_bias": sec_bias if k == 1 else [], "parameters": parameters, "summary_stats": sim_summary, "pmemory_survived": T_sEcytM if k == 1 else []}
     
     return out_dict
 
@@ -473,14 +480,14 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
                r"$A_{out}^{(0)}$", r"$b_{A_in}$", r"$b_H$", r"$d_H$", r"$K_{E,I}$", r"$K_{E,H}$",
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N^*,A_{in}}^{(+)}$", r"$\tau_{N^*,A_{in}}^{(-)}$", r"$\tau_{N^*}$", r"$\tau_{E_{div}}$", r"$\tau_{M_{div}}$", r"$\tau_{M_{diff}}$", r"$\tau_{E_{die}}$", r"$\tau_{E_{cyt}}$",
-               r"$\psi_{M}^{(I)}$", r"$\psi_{M}^{(H)}$", r"$\psi_{M}^{(I,H)}$"]
+               r"$\psi_{N,M}^{(I)}$", r"$\psi_{N,M}^{(H)}$", r"$\psi_{N,M}^{(I,H)}$", r"$\psi_{E,M}^{(I)}$", r"$\psi_{E,M}^{(H)}$", r"$\psi_{E,MM}^{(I,H)}$"]
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',
                       'K_IH', 'Aout_0', 'b_Ain', 'b_H', 'd_H', 'K_EI', 'K_EH',
                       'N_0', 'max_Na', 'b_myc', 'd_myc', 'myc_thresh',
                       't_act', 't_bind', 't_Na_div', 't_E_div', 't_M_div', 't_M_diff', 't_E_die', 't_E_cyt',
-                      'psi_M_I', 'psi_M_H', 'psi_M_IH']
+                      'psi_NM_I', 'psi_NM_H', 'psi_NM_IH','psi_EM_I', 'psi_EM_H', 'psiN_EM_IH']
 
 stat_names_for_df = ['p_load', 's_load','T_max_pI', 'T_max_sI', 'harm_pI', 'harm_sI', 
                      'harm_pS', 'harm_sS', 'max_pE', 'max_sE','T_max_pE', 'T_max_sE', 
