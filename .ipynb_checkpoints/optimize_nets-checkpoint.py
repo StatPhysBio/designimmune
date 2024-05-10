@@ -12,9 +12,9 @@ from stoch_sim_model import *
 runs = 10
 vir_samp = np.tile(vir_prop, (runs,1)) # sample distribution of pathogen killing rate and size of naive repertoire
 num_cpu = 25 # number of CPUs requested
-batch_num = 50 # number of network variants to run on a cpu
+batch_num = 80 # number of network variants to run on a cpu
 
-def run(batch = 0, outdir='', virus_sample = vir_samp, infection_type = 'sec', comment = "lin-based"):
+def run(batch = 0, outdir='', virus_sample = vir_samp, infection_type = 'sec', comment = "mem-reg"):
 
     for psi in psi_opts[int(batch[0])*batch_num:(int(batch[0])+1)*batch_num]:
     
