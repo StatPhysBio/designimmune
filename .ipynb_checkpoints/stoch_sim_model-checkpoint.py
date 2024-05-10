@@ -17,29 +17,29 @@ import itertools
 
 # infection dynamics
 S_0 = 10**7 #susceptible cells
-d_S = 0.05
-I_0 = S_0/10**5 # initial detectable levelof infected cells
-b_I = 0.25*(10**(-6)) # harm per unit virion (Chao et al. 2004, Iwami et al. 2015)
+d_S = 0.01
+I_0 = S_0/10**4 # initial detectable levelof infected cells
+b_I = 0.125*(10**(-6)) # harm per unit virion (Chao et al. 2004, Iwami et al. 2015)
 d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
 K_IE_min = 10**4
 K_IE = 10**4 # effector avidity (half-max) for infected cells at low infection concetrations (Mayer et al 2019; Chao et al. 2004)
 K_EI = K_IE
-d_I = np.minimum(5*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
+d_I = np.minimum(d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
 
 # APC dynamics
-Aout_0 = 3*(10**3)
+Aout_0 = (10**3)
 b_Aout = 1.0
-b_Ain = 0.5
+b_Ain = 1.0
 
 # Inflammatory response
 d_H = 2.0
-b_H = 10 # innate response/inflammation per lysed cell compared to natural death
+b_H = 1 # innate response/inflammation per lysed cell compared to natural death
 l_H = 1 # cooperativity
-K_IH = b_H*d_S*K_IE_min/(b_I*S_0 - d_I + d_H) # half-max level of instantaneous damage required to trigger innate/inflammatory response
+K_IH = b_H*K_IE_min/(b_I*S_0 - 1 + d_H) # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_EH = 1*K_IH # half-max level of inflammation required to trigger lymphocyte response
 ep = 10**(-3) # off-target rate of harm
 K_SE = 10**9
-kappa = 0.5 # maximal reduction in replication rate due to inflammatory response
+kappa = 0.0 # maximal reduction in replication rate due to inflammatory response
 d_IH = d_IE*ep
 H_0 = 0.0
 
@@ -53,12 +53,12 @@ rel_persist_M = 5 # d_eM/d_cM
 # Division timer
 d_myc = np.log(2)*24/7 # *np.log(2)
 myc_thresh = 10**(2.6)
-b_myc = 2*myc_thresh/t_bind
+b_myc = 4*myc_thresh/t_bind
 
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 vir_prop = np.vstack((np.array([0, 100*K_IE_min, 1.0, 1.0]), # autoimmune situation
-                      np.array(np.meshgrid(d_S*np.array([1.0, 5]), # vary d_I
+                      np.array(np.meshgrid(d_S*np.array([10.0, 100]), # vary d_I
                                            K_IE*np.array([1.0, 10]), # vary K_IE
                                            np.array([1.0]), # vary K_EI
                                            np.array([1.0]))).T.reshape(-1,4))) # vary K_EH
@@ -69,25 +69,11 @@ xv, yv = np.meshgrid(np.linspace(-1, 1, 11), np.linspace(-1, 1, 11))
 grid_2d = psi_max*np.array([[np.cos(np.pi/4), -np.sin(np.pi/4)],[np.sin(np.pi/4), np.cos(np.pi/4)]]).dot(np.vstack([xv.ravel(), yv.ravel()]))/np.sqrt(2)
 psi_2d = np.vstack((np.vstack([np.array([[x[0], x[1], psi_max - np.abs(x[0]) - np.abs(x[1])], [x[0], x[1], -(psi_max - np.abs(x[0]) - np.abs(x[1]))]]) for x in grid_2d.T])))
 psi_opts = np.array(list(itertools.product(psi_2d.tolist(), repeat = 2))).reshape(-1,6)
-psis = psi_max*np.array([-0.5, -0.5, 0.0]) # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
+psis = psi_max*np.array([-0.5, -0.5, 0.0, -0.5, -0.5, 0.0]) # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
 F_0s = np.array([0.0, 0.0, 0.0, 0.0])
 
 ### (2) Define functions for simulations
 # Define functions for simulations
-@nb.njit
-def hl_u(x,k,l=l_H):
-    return (x**l)/(k**l + x**l)
-
-def vir(I, d_I, b_I = b_I, model = "dep_harm"):
-    if model == "dep_harm":
-        out = b_I*d_I*I
-        
-    elif model == "indep_harm":
-        out = b_I*I
-    
-    return out
-
-
 def f_XtoY(I_sig, H_sig, psi_I, psi_H, psi_IH, F_0, K_I, K_H, reg_model = "mwc_like"):
     ### variable
     # I_sig := antigenic stimuli
@@ -118,7 +104,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                     char_times = [t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt],
                     memory_regulation = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                     activation_regulation = [psi_max/4, psi_max/4, psi_max/2],
-                    expansion_regulation = [0.0, -psi_max, 0.0],
+                    expansion_regulation = [-psi_max/2, -psi_max/2, 0.0],
                     regulation_bias = F_0s,
                     alpha = alpha,
                     infection = "prim",
@@ -157,10 +143,6 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         infection_count = 1
     elif infection == "sec":
         infection_count = 2
-    
-    # select virulence model:
-    if vir_model == "dep_harm": # makes it so that the average virus produced is roughly the same independent of infected eath rate but low
-        b_I = b_I + d_I/S_0
     
     # draw population of reponding cells for agent-based simulations
     psi_Nact_I, psi_Nact_H, psi_Nact_IH = activation_regulation[0], activation_regulation[1], activation_regulation[2]/2
@@ -257,6 +239,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         H[0] = H_0
 
         for i in np.arange(1, int(steps) + 1):
+            # select virulence model:
+            if vir_model == "dep_harm": # makes  average virus produced roughly the same independent of infected death rate
+                b_I_t = b_I + d_I/S_0
+            else:
+                b_I_t = b_I  
+        
             # Compute total population of cell types
             Na_pop, E_pop, Ma_pop = np.sum(Na_m[i-1]), np.sum(E_m[i-1]), np.sum(Ma_m[i-1])
             
@@ -266,17 +254,17 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             #### Run infection dynamics: replication and effector clearance ####
             
             # Update state of susceptible, infected, APCs, and inflammation
-            S[i] = S[i-1] + dt*(b_S - (d_S + d_Sauto*np.exp(-((t-3.0)/t_Hauto)**2))*S[i-1] - (I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H)) - S[i-1]*(d_IH*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) + d_IE*(E_pop)/(K_SE + S[i-1] + E_pop)))*(S[i-1] >= 0.0)
+            S[i] = S[i-1] + dt*(b_S - (d_S + d_Sauto*np.exp(-((t-3.0)/t_Hauto)**2))*S[i-1] - (I[i-1] >= I_0)*b_I_t*I[i-1]*S[i-1]*(1-kappa*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H)) - S[i-1]*(d_IH*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) + d_IE*(E_pop)/(K_SE + S[i-1] + E_pop)))*(S[i-1] >= 0.0)
             
-            I[i] = I[i-1] + dt*((I[i-1] >= I_0)*b_I*I[i-1]*S[i-1]*(1-kappa*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H)) - d_IH*I[i-1]*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) - d_IE*I[i-1]*(E_pop)/(K_IE + I[i-1] + E_pop) - (d_I)*I[i-1])*(I[i-1] >= 0.0)
+            I[i] = I[i-1] + dt*((I[i-1] >= I_0)*b_I_t*I[i-1]*S[i-1]*(1-kappa*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H)) - d_IH*I[i-1]*H[i-1]**l_H/(K_IH**l_H + H[i-1]**l_H) - d_IE*I[i-1]*(E_pop)/(K_IE + I[i-1] + E_pop) - (d_I)*I[i-1])*(I[i-1] >= 0.0)
             
             cell_lysed = d_I*I[i-1] + 0*d_IE*I[i-1]*(E_pop)/(K_IE + I[i-1] + E_pop) + S[i-1]*(d_Sauto*np.exp(-((t-3.0)/t_Hauto)**2) + 0*d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))
             
             H[i] = H[i-1] + dt*(b_H*(cell_lysed) - d_H*H[i-1])*(H[i-1] >= 0.0)
             
-            Aout[i] = Aout[i-1] + dt*(b_Aout*(I[i-1] + 1*(d_I == 0))/(I[i-1] + I_0 + 1*(d_I == 0))*Ain[i-1] - b_Ain*Aout[i-1]*f_XtoY(p_tcr*I[i-1], p_cyt*H[i-1], psi_I = 0.0, psi_H = psi_max, psi_IH = 0.0, F_0 = -psi_max, K_I = K_EI, K_H = K_EH))*(Aout[i-1] >= 0.0)
+            Aout[i] = Aout[i-1] + dt*(b_Aout*(I[i-1] + 1*(d_I == 0))/(I[i-1] + I_0 + 1*(d_I == 0))*Ain[i-1] - b_Ain*Aout[i-1]*f_XtoY(p_tcr*I[i-1], p_cyt*H[i-1], psi_I = psi_max/2, psi_H = psi_max/2, psi_IH = 0.0, F_0 = -psi_max, K_I = K_EI, K_H = K_EH))*(Aout[i-1] >= 0.0)
             
-            Ain[i] = Ain[i-1] + dt*(b_Ain*(I[i-1] + 1*(d_I == 0))/(I[i-1] + I_0 + 1*(d_I == 0))*Aout[i-1]*f_XtoY(p_tcr*I[i-1], p_cyt*H[i-1], psi_I = 0.0, psi_H = psi_max, psi_IH = 0.0, F_0 = -psi_max, K_I = K_EI, K_H = K_EH) - b_Aout*Ain[i-1] - d_IE*Ain[i-1]*Na_pop/(K_IE + Na_pop))*(Ain[i-1] >= 0.0)
+            Ain[i] = Ain[i-1] + dt*(b_Ain*(I[i-1] + 1*(d_I == 0))/(I[i-1] + I_0 + 1*(d_I == 0))*Aout[i-1]*f_XtoY(p_tcr*I[i-1], p_cyt*H[i-1], psi_I = psi_max/2, psi_H = psi_max/2, psi_IH = 0.0, F_0 = -psi_max, K_I = K_EI, K_H = K_EH) - b_Aout*Ain[i-1] - d_IE*Ain[i-1]*Na_pop/(K_IE + Na_pop))*(Ain[i-1] >= 0.0)
             
             I_d_I[i] = I_d_I[i-1] + dt*(I[i-1] >= I_0)*d_I*I[i-1] + (I[i] if i == int(steps) else 0) # cells killed by infection
             
@@ -342,7 +330,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             
             mycE = (mycE - dt*(f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = psi_Ediv_I, psi_H = psi_Ediv_H, psi_IH = psi_Ediv_IH, F_0 = F0_Ediv, K_I = K_EI, K_H = K_EH)*mycE*d_myc))*(E_m[i] >= 1) + (mycNa*(Na_m[i] > 0) if k == 0 else mycM*(M_m[i] > 0))
 
-            mycMa = (mycMa - dt*f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = psi_Ediv_I, psi_H = psi_Ediv_H, psi_IH = psi_Ediv_IH, F_0 = F0_Ediv, K_I = K_EI, K_H = 2*K_EH)*(mycMa*d_myc))*(Ma_m[i] > 0) + (mycNa*(Na_m[i] >= 1) if k == 0 else mycM*(M_m[i] > 0)) # higher decay rate of myc
+            mycMa = (mycMa - dt*f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = psi_Ediv_I, psi_H = psi_Ediv_H, psi_IH = psi_Ediv_IH, F_0 = F0_Ediv, K_I = K_EI, K_H = 1*K_EH)*(mycMa*d_myc))*(Ma_m[i] > 0) + (mycNa*(Na_m[i] >= 1) if k == 0 else mycM*(M_m[i] > 0)) # higher decay rate of myc
             
             if k == 1:
                 mycM = (mycM + 0*dt*(b_myc*Ain[i]/(M_pop + Ain[i])))*(M_m[i] >= 1)
@@ -407,7 +395,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             dyn_data = np.array([S, I, Ain, Na, E, Ma, H, I_d_I + I_d_IE, I_d_S]).T
             prim_bias = bias_t #[p_NaM, p_EM]
         elif k == 1: # secondary infection
-            dyn_data = np.hstack((dyn_data, np.array([S, I, Ain, Na + M, E, Ma, H, I_d_I+ I_d_IE, I_d_S]).T ))
+            dyn_data = np.hstack((dyn_data, np.array([S, I, Ain, Na + M, E, Ma, H, I_d_I + I_d_IE, I_d_S]).T ))
             sec_bias = bias_t # [p_NaM, p_EM, p_MM]
                                  
     ts = np.linspace(0, duration, int(steps) + 1)
@@ -480,14 +468,20 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
                r"$A_{out}^{(0)}$", r"$b_{A_in}$", r"$b_H$", r"$d_H$", r"$K_{E,I}$", r"$K_{E,H}$",
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N^*,A_{in}}^{(+)}$", r"$\tau_{N^*,A_{in}}^{(-)}$", r"$\tau_{N^*}$", r"$\tau_{E_{div}}$", r"$\tau_{M_{div}}$", r"$\tau_{M_{diff}}$", r"$\tau_{E_{die}}$", r"$\tau_{E_{cyt}}$",
-               r"$\psi_{N,M}^{(I)}$", r"$\psi_{N,M}^{(H)}$", r"$\psi_{N,M}^{(I,H)}$", r"$\psi_{E,M}^{(I)}$", r"$\psi_{E,M}^{(H)}$", r"$\psi_{E,MM}^{(I,H)}$"]
+               r"$\psi_{N^*}^{(I)}$", r"$\psi_{N^*}^{(H)}$", r"$\psi_{N^*}^{(I,H)}$",
+               r"$\psi_{N,M}^{(I)}$", r"$\psi_{N,M}^{(H)}$", r"$\psi_{N,M}^{(I,H)}$", 
+               r"$\psi_{E,M}^{(I)}$", r"$\psi_{E,M}^{(H)}$", r"$\psi_{E,MM}^{(I,H)}$",
+               r"$\psi_{E^*}^{(I)}$", r"$\psi_{E^*}^{(H)}$", r"$\psi_{E^*}^{(I,H)}$"]
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',
                       'K_IH', 'Aout_0', 'b_Ain', 'b_H', 'd_H', 'K_EI', 'K_EH',
                       'N_0', 'max_Na', 'b_myc', 'd_myc', 'myc_thresh',
                       't_act', 't_bind', 't_Na_div', 't_E_div', 't_M_div', 't_M_diff', 't_E_die', 't_E_cyt',
-                      'psi_NM_I', 'psi_NM_H', 'psi_NM_IH','psi_EM_I', 'psi_EM_H', 'psiN_EM_IH']
+                      'psi_Nact_I', 'psi_Nact_H', 'psi_Nact_IH',
+                      'psi_NM_I', 'psi_NM_H', 'psi_NM_IH',
+                      'psi_EM_I', 'psi_EM_H', 'psi_EM_IH',
+                      'psi_Ediv_I', 'psi_Ediv_H', 'psi_Ediv_IH']
 
 stat_names_for_df = ['p_load', 's_load','T_max_pI', 'T_max_sI', 'harm_pI', 'harm_sI', 
                      'harm_pS', 'harm_sS', 'max_pE', 'max_sE','T_max_pE', 'T_max_sE', 
