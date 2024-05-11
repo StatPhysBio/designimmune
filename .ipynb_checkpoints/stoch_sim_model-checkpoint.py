@@ -69,7 +69,9 @@ xv, yv = np.meshgrid(np.linspace(-1, 1, 11), np.linspace(-1, 1, 11))
 grid_2d = psi_max*np.array([[np.cos(np.pi/4), -np.sin(np.pi/4)],[np.sin(np.pi/4), np.cos(np.pi/4)]]).dot(np.vstack([xv.ravel(), yv.ravel()]))/np.sqrt(2)
 psi_2d = np.vstack((np.vstack([np.array([[x[0], x[1], psi_max - np.abs(x[0]) - np.abs(x[1])], [x[0], x[1], -(psi_max - np.abs(x[0]) - np.abs(x[1]))]]) for x in grid_2d.T])))
 psi_opts = np.array(list(itertools.product(psi_2d.tolist(), repeat = 2))).reshape(-1,6)
-psis = psi_max*np.array([-0.5, -0.5, 0.0, -0.5, -0.5, 0.0]) # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
+mem_psis = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
+act_psis = [psi_max/4, psi_max/4, psi_max/2]
+exp_psis = [-psi_max/2, -psi_max/2, 0.0]
 F_0s = np.array([0.0, 0.0, 0.0, 0.0])
 
 ### (2) Define functions for simulations
@@ -102,9 +104,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                     Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_EI = K_EI, K_EH = K_EH, kappa = kappa,
                     N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh, max_expand = max_expand,
                     char_times = [t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt],
-                    memory_regulation = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    activation_regulation = [psi_max/4, psi_max/4, psi_max/2],
-                    expansion_regulation = [-psi_max/2, -psi_max/2, 0.0],
+                    memory_regulation = mem_psis,
+                    activation_regulation = act_psis,
+                    expansion_regulation = exp_psis,
                     regulation_bias = F_0s,
                     alpha = alpha,
                     infection = "prim",
