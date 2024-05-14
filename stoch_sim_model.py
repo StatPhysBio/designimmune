@@ -37,7 +37,7 @@ b_H = 1 # innate response/inflammation per lysed cell compared to natural death
 l_H = 1 # cooperativity
 K_IH = b_H*K_IE_min/(b_I*S_0 - 1 + d_H) # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_EH = 1*K_IH # half-max level of inflammation required to trigger lymphocyte response
-ep = 10**(-3) # off-target rate of harm
+ep = 0*10**(-3) # off-target rate of harm
 K_SE = 10**9
 kappa = 0.0 # maximal reduction in replication rate due to inflammatory response
 d_IH = d_IE*ep
@@ -67,7 +67,7 @@ vir_prop = np.vstack((np.array([0, 100*K_IE_min, 1.0, 1.0]), # autoimmune situat
 psi_max = 2.0
 xv, yv = np.meshgrid(np.linspace(-1, 1, 11), np.linspace(-1, 1, 11))
 grid_2d = psi_max*np.array([[np.cos(np.pi/4), -np.sin(np.pi/4)],[np.sin(np.pi/4), np.cos(np.pi/4)]]).dot(np.vstack([xv.ravel(), yv.ravel()]))/np.sqrt(2)
-psi_2d = np.vstack((np.vstack([np.array([[x[0], x[1], psi_max - np.abs(x[0]) - np.abs(x[1])], [x[0], x[1], -(psi_max - np.abs(x[0]) - np.abs(x[1]))]]) for x in grid_2d.T])))
+psi_2d = np.vstack((np.array([0.0,0.0,0.0]), np.vstack([np.array([[x[0], x[1], psi_max - np.abs(x[0]) - np.abs(x[1])], [x[0], x[1], -(psi_max - np.abs(x[0]) - np.abs(x[1]))]]) for x in grid_2d.T])))
 psi_opts = np.array(list(itertools.product(psi_2d.tolist(), repeat = 2))).reshape(-1,6)
 mem_psis = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
 act_psis = [psi_max/4, psi_max/4, psi_max/2]
@@ -110,7 +110,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                     regulation_bias = F_0s,
                     alpha = alpha,
                     infection = "prim",
-                    vir_model = "indep_harm",
+                    vir_model = "dep_harm",
                     duration = sim_duration, 
                     steps = sim_steps,
                     out_data = "small"):
@@ -330,9 +330,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             mycNa = (mycNa + dt*(b_myc*(1-unbound_Na)))*(Na_m[i] > 0)
             # (1-H[i]**l_H/((K_EH/p_cyt)**l_H + H[i]**l_H))
             
-            mycE = (mycE - dt*(f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = psi_Ediv_I, psi_H = psi_Ediv_H, psi_IH = psi_Ediv_IH, F_0 = F0_Ediv, K_I = K_EI, K_H = K_EH)*mycE*d_myc))*(E_m[i] >= 1) + (mycNa*(Na_m[i] > 0) if k == 0 else mycM*(M_m[i] > 0))
+            mycE = (mycE - dt*(f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = -psi_Ediv_I, psi_H = -psi_Ediv_H, psi_IH = -psi_Ediv_IH, F_0 = -F0_Ediv, K_I = K_EI, K_H = K_EH)*mycE*d_myc))*(E_m[i] >= 1) + (mycNa*(Na_m[i] > 0) if k == 0 else mycM*(M_m[i] > 0))
 
-            mycMa = (mycMa - dt*f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = psi_Ediv_I, psi_H = psi_Ediv_H, psi_IH = psi_Ediv_IH, F_0 = F0_Ediv, K_I = K_EI, K_H = 1*K_EH)*(mycMa*d_myc))*(Ma_m[i] > 0) + (mycNa*(Na_m[i] >= 1) if k == 0 else mycM*(M_m[i] > 0)) # higher decay rate of myc
+            mycMa = (mycMa - dt*f_XtoY(p_tcr*I[i], p_cyt*H[i], psi_I = -psi_Ediv_I, psi_H = -psi_Ediv_H, psi_IH = -psi_Ediv_IH, F_0 = -F0_Ediv, K_I = K_EI, K_H = 1*K_EH)*(mycMa*d_myc))*(Ma_m[i] > 0) + (mycNa*(Na_m[i] >= 1) if k == 0 else mycM*(M_m[i] > 0)) # higher decay rate of myc
             
             if k == 1:
                 mycM = (mycM + 0*dt*(b_myc*Ain[i]/(M_pop + Ain[i])))*(M_m[i] >= 1)
