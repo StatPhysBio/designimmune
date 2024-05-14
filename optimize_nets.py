@@ -99,9 +99,11 @@ def main():
     parser = argparse.ArgumentParser(
         description='')
     parser.add_argument('--batch', dest='batch', nargs='+', type=float, required=True,
-                        help='regulatory weights of the network')
+                        help='batch of regulatory weights of the network')
     parser.add_argument('--outdir', dest='outdir', type=str, required=False, default='',
                         help='/PATH/TO/WHERE/OUTPUT/IS/SAVED')
+    parser.add_argument('--comment', dest='comment', type=str, required=False, default='',
+                        help='simulation specifications')
 
     args = parser.parse_args()
 
