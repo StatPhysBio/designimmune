@@ -58,7 +58,7 @@ b_myc = 4*myc_thresh/t_bind
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 vir_prop = np.vstack((np.array([0, 100*K_IE_min, 1.0, 1.0]), # autoimmune situation
-                      np.array(np.meshgrid(d_S*np.array([10.0, 100]), # vary d_I
+                      np.array(np.meshgrid(d_S*np.array([100.0, 10.0]), # vary d_I
                                            K_IE*np.array([1.0, 10]), # vary K_IE
                                            np.array([1.0]), # vary K_EI
                                            np.array([1.0]))).T.reshape(-1,4))) # vary K_EH
@@ -472,7 +472,7 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
                r"$\tau_{N^*,A_{in}}^{(+)}$", r"$\tau_{N^*,A_{in}}^{(-)}$", r"$\tau_{N^*}$", r"$\tau_{E_{div}}$", r"$\tau_{M_{div}}$", r"$\tau_{M_{diff}}$", r"$\tau_{E_{die}}$", r"$\tau_{E_{cyt}}$",
                r"$\psi_{N^*}^{(I)}$", r"$\psi_{N^*}^{(H)}$", r"$\psi_{N^*}^{(I,H)}$",
                r"$\psi_{N,M}^{(I)}$", r"$\psi_{N,M}^{(H)}$", r"$\psi_{N,M}^{(I,H)}$", 
-               r"$\psi_{E,M}^{(I)}$", r"$\psi_{E,M}^{(H)}$", r"$\psi_{E,MM}^{(I,H)}$",
+               r"$\psi_{E,M}^{(I)}$", r"$\psi_{E,M}^{(H)}$", r"$\psi_{E,M}^{(I,H)}$",
                r"$\psi_{E^*}^{(I)}$", r"$\psi_{E^*}^{(H)}$", r"$\psi_{E^*}^{(I,H)}$"]
 
 

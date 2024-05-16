@@ -14,9 +14,8 @@ source ${script_dir}/source_app_mamba.sh
 mamba activate maximmune
 
 SLURM_OUTDIR=/gscratch/scrubbed/oukogu/slurm_output/
-#d="/mmfs1/home/oukogu/github/infoimmune/opt_nets/"
 d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/"
-comment="mem-reg-exp-reg"
+comment="mem-reg"
 
 if [ ! -d "$d" ]; then
   mkdir $d

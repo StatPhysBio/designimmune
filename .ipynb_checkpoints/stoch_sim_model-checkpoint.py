@@ -58,7 +58,7 @@ b_myc = 4*myc_thresh/t_bind
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 vir_prop = np.vstack((np.array([0, 100*K_IE_min, 1.0, 1.0]), # autoimmune situation
-                      np.array(np.meshgrid(d_S*np.array([10.0, 100]), # vary d_I
+                      np.array(np.meshgrid(d_S*np.array([100.0, 10.0]), # vary d_I
                                            K_IE*np.array([1.0, 10]), # vary K_IE
                                            np.array([1.0]), # vary K_EI
                                            np.array([1.0]))).T.reshape(-1,4))) # vary K_EH

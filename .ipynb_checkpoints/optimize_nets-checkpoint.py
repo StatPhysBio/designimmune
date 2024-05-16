@@ -14,7 +14,7 @@ vir_samp = np.tile(vir_prop, (runs,1)) # sample distribution of pathogen killing
 num_cpu = 25 # number of CPUs requested
 batch_num = 100 # number of network variants to run on a cpu
 
-def run(batch = 0, outdir='', virus_sample = vir_samp, infection_type = 'sec', comment = "mem-reg-exp-reg"):
+def run(batch = 0, outdir='', comment = "mem-reg", virus_sample = vir_samp, infection_type = 'sec'):
 
     for psi in psi_opts[int(batch[0])*batch_num:(int(batch[0])+1)*batch_num]:
     
@@ -102,7 +102,7 @@ def main():
                         help='batch of regulatory weights of the network')
     parser.add_argument('--outdir', dest='outdir', type=str, required=False, default='',
                         help='/PATH/TO/WHERE/OUTPUT/IS/SAVED')
-    parser.add_argument('--comment', dest='comment', type=str, required=False, default='',
+    parser.add_argument('--comment', dest='comment', type=str, required=True, default='',
                         help='simulation specifications')
 
     args = parser.parse_args()
