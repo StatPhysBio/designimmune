@@ -14,7 +14,7 @@ vir_samp = np.tile(vir_prop, (runs,1)) # sample distribution of pathogen killing
 num_cpu = 25 # number of CPUs requested
 batch_num = 100 # number of network variants to run on a cpu
 
-def run(batch = 0, outdir='', comment = "mem-reg", virus_sample = vir_samp, infection_type = 'sec'):
+def run(batch = 0, outdir='', comment = "Nact-reg-Ediv-reg", virus_sample = vir_samp, infection_type = 'sec'):
 
     for psi in psi_opts[int(batch[0])*batch_num:(int(batch[0])+1)*batch_num]:
     
@@ -30,9 +30,10 @@ def run(batch = 0, outdir='', comment = "mem-reg", virus_sample = vir_samp, infe
                                                                                                                    K_IE = param[1],
                                                                                                                    K_EI = param[1]*param[2],
                                                                                                                    K_EH = K_IH*param[3],
-                                                                                                                   memory_regulation = reg_coeff if "mem-reg" in comment else mem_psis,
-                                                                                                                   activation_regulation = reg_coeff[0:3] if "act-reg" in comment else act_psis,
-                                                                                                                   expansion_regulation = reg_coeff[3:] if "exp-reg" in comment else act_psis,
+                                                                                                                   NM_regulation = reg_coeff[0:3] if "NM-reg" in comment else NM_psis,
+                                                                                                                   EM_regulation = reg_coeff[3:] if "EM-reg" in comment else EM_psis,
+                                                                                                                   activation_regulation = reg_coeff[0:3] if "Nact-reg" in comment else act_psis,
+                                                                                                                   expansion_regulation = reg_coeff[3:] if "Ediv-reg" in comment else act_psis,
                                                                                                                    infection = infection_type,
                                                                                                                    vir_model = 'dep_harm')
                                                         for param in virus_sample)
