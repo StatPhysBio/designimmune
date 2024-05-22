@@ -4,8 +4,8 @@
 #SBATCH -p ckpt 
 #SBATCH -A amath 
 #SBATCH --nodes=1
-#SBATCH --mem=125G
-#SBATCH --ntasks-per-node=25
+#SBATCH --mem=13G
+#SBATCH --ntasks-per-node=40
 #SBATCH --time=4:00:00
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out
 
@@ -15,7 +15,7 @@ mamba activate maximmune
 
 SLURM_OUTDIR=/gscratch/scrubbed/oukogu/slurm_output/
 d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/"
-comment="NM-reg-EM-reg"
+comment="EM-reg-Ediv-reg"
 
 if [ ! -d "$d" ]; then
   mkdir $d
@@ -28,4 +28,4 @@ arg=${1}
 #$COMMAND optimize_nets.py --batch $batch  --outdir $d
 python optimize_nets.py --batch $arg --outdir $d --comment $comment
 
-mv ${SLURM_OUTDIR}${SLURM_JOB_ID}.out ${SLURM_OUTDIR}net-${1}.out
+mv ${SLURM_OUTDIR}${SLURM_JOB_ID}.out ${SLURM_OUTDIR}batch-${1}.out
