@@ -15,7 +15,7 @@ mamba activate maximmune
 
 SLURM_OUTDIR=/gscratch/scrubbed/oukogu/slurm_output/
 d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/"
-comment="Nact-reg-Ediv-reg"
+comment="NM-reg-EM-reg"
 
 if [ ! -d "$d" ]; then
   mkdir $d

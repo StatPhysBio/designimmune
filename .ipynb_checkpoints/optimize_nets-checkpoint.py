@@ -14,7 +14,7 @@ vir_samp = np.tile(vir_prop, (runs,1)) # sample distribution of pathogen killing
 num_cpu = 25 # number of CPUs requested
 batch_num = 100 # number of network variants to run on a cpu
 
-def run(batch = 0, outdir='', comment = "Nact-reg-Ediv-reg", virus_sample = vir_samp, infection_type = 'sec'):
+def run(batch = 0, outdir='', comment = "NM-reg-EM-reg", virus_sample = vir_samp, infection_type = 'sec'):
 
     for psi in psi_opts[int(batch[0])*batch_num:(int(batch[0])+1)*batch_num]:
     
