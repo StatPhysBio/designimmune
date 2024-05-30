@@ -18,8 +18,8 @@ import itertools
 # infection dynamics
 S_0 = 10**7 #susceptible cells
 d_S = 0.01
-I_0 = S_0/10**4 # initial detectable levelof infected cells
-b_I = 0.125*(10**(-6)) # harm per unit virion (Chao et al. 2004, Iwami et al. 2015)
+b_I = (10**(-7)) # harm per unit virion (Chao et al. 2004, Iwami et al. 2015)
+I_0 = 100 # initial detectable levelof infected cells
 d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
 K_IE_min = 10**4
 K_IE = 10**4 # effector avidity (half-max) for infected cells at low infection concetrations (Mayer et al 2019; Chao et al. 2004)
@@ -38,7 +38,7 @@ l_H = 1 # cooperativity
 K_IH = b_H*K_IE_min/(b_I*S_0 - 1 + d_H) # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_EH = 1*K_IH # half-max level of inflammation required to trigger lymphocyte response
 ep = 0*10**(-3) # off-target rate of harm
-K_SE = 10**9
+K_SE = 20*S_0
 kappa = 0.0 # maximal reduction in replication rate due to inflammatory response
 d_IH = d_IE*ep
 H_0 = 0.0
@@ -59,13 +59,13 @@ b_myc = 4*myc_thresh/t_bind
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 vir_prop = np.vstack((np.array(np.meshgrid(d_S*np.array([100.0, 10.0]), # vary d_I
                                            K_IE*np.array([1.0, 10]), # vary K_IE
-                                           np.array([1.0]), # vary K_EI
-                                           np.array([1.0]))).T.reshape(-1,4),  # vary K_EH
-                     np.array([0, 100*K_IE_min, 1.0, 1.0]))) # autoimmune situation
+                                           b_I*np.array([1.0]) # vary b_I
+                                           )).T.reshape(-1,3),  # vary K_EH
+                     np.array([0, 10*K_IE_min, 0.0]))) # autoimmune situation
 
 # define reg options
 psi_max = 2.0
-xv, yv = np.meshgrid(np.linspace(-1, 1, 7), np.linspace(-1, 1, 7))
+xv, yv = np.meshgrid(np.linspace(-1, 1, 5), np.linspace(-1, 1, 5))
 grid_2d = psi_max*np.array([[np.cos(np.pi/4), -np.sin(np.pi/4)],[np.sin(np.pi/4), np.cos(np.pi/4)]]).dot(np.vstack([xv.ravel(), yv.ravel()]))/np.sqrt(2)
 psi_2d = np.vstack([np.array([[x[0], x[1], psi_max - np.abs(x[0]) - np.abs(x[1])], [x[0], x[1], -(psi_max - np.abs(x[0]) - np.abs(x[1]))]]) for x in grid_2d.T])
 #psi_opts = np.array(list(itertools.product(psi_2d.tolist(), repeat = 4))).reshape(-1,12)
@@ -433,18 +433,22 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        np.argmax(sE)*dt,
                        pM[-1],
                        sM[-1],
-                       M[0] if k == 1 else N[0],
+                       pM_count if N_0 > 0 else 0.0,
                        np.sum(pE*dt), 
                        np.sum(sE*dt),
                        np.sum(pH*dt),
                        np.sum(sH*dt),
                        np.amin(pS),
                        np.amin(sS)])
+
+    # down-size timeseries
+    pnts = int(0.1*steps)
+    keep = [i*10 for i in np.arange(0,pnts)]
     
     if out_data == "full":
-        out_dict = {"reg_coeffs": np.concatenate((activation_regulation, NM_regulation, EM_regulation, expansion_regulation)), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "sec_diff_bias": sec_bias if k == 1 else [],"eff_by_lin": (E_m), "Na_myc_by_lin": mycM_m if k == 1 else mycNa_m, "Ma_myc_by_lin": mycMa_m, "E_myc_by_lin": mycE_m, "parameters": parameters, "summary_stats": sim_summary, "pmemory_formed": T_pEcytM, "pmemory_survived": pM_count if k == 1 else []}
+        out_dict = {"reg_coeffs": np.concatenate((activation_regulation, NM_regulation, EM_regulation, expansion_regulation)), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "sec_diff_bias": sec_bias if k == 1 else [],"eff_by_lin": (E_m), "Na_myc_by_lin": mycM_m if k == 1 else mycNa_m, "Ma_myc_by_lin": mycMa_m, "E_myc_by_lin": mycE_m, "parameters": parameters, "summary_stats": sim_summary, "pmemory_formed": T_pEcytM if N_0 > 0 else []}
     elif out_data == "small":
-        out_dict = {"cell_time_series": dyn_data, "prim_diff_bias": prim_bias, "sec_diff_bias": sec_bias if k == 1 else [], "parameters": parameters, "summary_stats": sim_summary, "pmemory_survived": pM_count}
+        out_dict = {"cell_time_series": dyn_data[keep], "prim_diff_bias": prim_bias[keep], "sec_diff_bias": sec_bias[keep] if k == 1 else [], "parameters": parameters, "summary_stats": sim_summary}
     
     return out_dict
 
