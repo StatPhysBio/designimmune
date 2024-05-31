@@ -57,9 +57,9 @@ b_myc = 4*myc_thresh/t_bind
 
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
-vir_prop = np.vstack((np.array(np.meshgrid(d_S*np.array([100.0, 10.0]), # vary d_I
-                                           K_IE*np.array([1.0, 10]), # vary K_IE
-                                           b_I*np.array([1.0]) # vary b_I
+vir_prop = np.vstack((np.array(np.meshgrid(d_S*np.logspace(1.0, 2.0, 3), # vary d_I
+                                   K_IE*np.logspace(0.0, 1.0, 3), # vary K_IE
+                                   b_I*np.array([1.0]) # vary b_I
                                            )).T.reshape(-1,3),  # vary K_EH
                      np.array([0, 10*K_IE_min, 0.0]))) # autoimmune situation
 
@@ -422,7 +422,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     sim_summary = np.array([np.sum(pI*dt), 
                        np.sum(sI*dt),
                        np.argmax(pI)*dt,
-                       np.argmax(sI)*dt,
+                       np.argmin(pI < I_0)*dt,
                        np.amax(pI_d_I), 
                        np.amax(sI_d_I), 
                        np.amax(pI_d_S),
@@ -456,7 +456,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 stat_names = [r"$\int_0^{T_{sim}} I_{p}dt$",
               r"$\int_0^{T_{sim}} I_{s}dt$",
               r"$T_{I_p}^{max}$",
-              r"$T_{I_s}^{max}$",
+              r"$T_{I_p}^{min}$",
               r"$\int_0^{T_{sim}} (d_I+d_{I,E})I_{p}dt$",
               r"$\int_0^{T_{sim}} (d_I+d_{I,E})I_{s}dt$",
               r"$\int_0^{T_{sim}} d_{I,S}\cdot S_{p}dt$",
@@ -494,7 +494,7 @@ param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',
                       'psi_EM_I', 'psi_EM_H', 'psi_EM_IH',
                       'psi_Ediv_I', 'psi_Ediv_H', 'psi_Ediv_IH']
 
-stat_names_for_df = ['p_load', 's_load','T_max_pI', 'T_max_sI', 'harm_pI', 'harm_sI', 
+stat_names_for_df = ['p_load', 's_load','T_max_pI', 'T_min_pI', 'harm_pI', 'harm_sI', 
                      'harm_pS', 'harm_sS', 'max_pE', 'max_sE','T_max_pE', 'T_max_sE', 
                      'inf_pM', 'inf_sM', 'init_M','int_pE', 'int_sE',
                      'int_pH', 'int_sH', 'min_pS', 'min_sS']
