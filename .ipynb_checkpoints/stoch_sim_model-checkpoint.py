@@ -57,15 +57,15 @@ b_myc = 4*myc_thresh/t_bind
 
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
-vir_prop = np.vstack((np.array(np.meshgrid(d_S*np.logspace(1.0, 2.0, 3), # vary d_I
-                                   K_IE*np.logspace(0.0, 1.0, 3), # vary K_IE
-                                   b_I*np.array([1.0]) # vary b_I
+vir_prop = np.vstack((np.array(np.meshgrid(d_S*np.logspace(0.0, 2.0, 11), # vary d_I
+                                   K_IE*np.logspace(0.0, 2.0, 11), # vary K_IE
+                                   b_I*np.logspace(-1.0, 1.0, 11) # vary b_I
                                            )).T.reshape(-1,3),  # vary K_EH
-                     np.array([0, 10*K_IE_min, 0.0]))) # autoimmune situation
+                     np.array([0, K_IE_min, 0.0]))) # autoimmune situation
 
 # define reg options
 psi_max = 2.0
-xv, yv = np.meshgrid(np.linspace(-1, 1, 5), np.linspace(-1, 1, 5))
+xv, yv = np.meshgrid(np.linspace(-1, 1, 9), np.linspace(-1, 1, 9))
 grid_2d = psi_max*np.array([[np.cos(np.pi/4), -np.sin(np.pi/4)],[np.sin(np.pi/4), np.cos(np.pi/4)]]).dot(np.vstack([xv.ravel(), yv.ravel()]))/np.sqrt(2)
 psi_2d = np.vstack([np.array([[x[0], x[1], psi_max - np.abs(x[0]) - np.abs(x[1])], [x[0], x[1], -(psi_max - np.abs(x[0]) - np.abs(x[1]))]]) for x in grid_2d.T])
 #psi_opts = np.array(list(itertools.product(psi_2d.tolist(), repeat = 4))).reshape(-1,12)
@@ -422,7 +422,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     sim_summary = np.array([np.sum(pI*dt), 
                        np.sum(sI*dt),
                        np.argmax(pI)*dt,
-                       np.argmin(pI < I_0)*dt,
+                       np.argmax(pI < I_0)*dt,
                        np.amax(pI_d_I), 
                        np.amax(sI_d_I), 
                        np.amax(pI_d_S),
