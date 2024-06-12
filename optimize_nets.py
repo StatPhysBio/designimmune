@@ -15,7 +15,7 @@ vir_choice = 0
 num_cpu = 40 # number of CPUs requested
 batch_num = int(62500/len(vir_samp)) + 1 # number of network variants to run on a cpu
 
-def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", virus_sample = vir_samp, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis):
+def run(batch = 0, outdir='', comment = "full-reg-vir", virus_sample = vir_samp, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis):
     
     # Run simulations over different infections
     print(f'Running simulations in batch #{batch[0]}')
