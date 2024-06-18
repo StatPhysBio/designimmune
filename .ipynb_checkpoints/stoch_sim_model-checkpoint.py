@@ -27,7 +27,7 @@ K_EI = K_IE
 d_I = np.minimum(d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
 
 # APC dynamics
-Aout_0 = (10**3)
+A_init = (10**3)
 b_Aout = 10.0
 b_Ain = 1.0
 
@@ -104,7 +104,7 @@ sim_duration = 20
 sim_steps = int(0.5*(10**4))
 
 def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH, K_SE = K_SE,
-                    Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_EI = K_EI, K_EH = K_EH, kappa = kappa,
+                    A_init = A_init, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_EI = K_EI, K_EH = K_EH, kappa = kappa,
                     N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh, max_expand = max_expand,
                     char_times = [t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_EM_diff, t_E_die, t_E_cyt],
                     NM_regulation = NM_psis,
@@ -121,7 +121,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     
     # VARIABLE DEFINITIONS:
     # S_0 := S_0, I_0 := I_0, b_S := b_S, b_I := b_I, d_S := d_S, d_I := d_I, d_IE := d_IE, d_IH := d_IH, K_IE := K_IE, K_IH := K_IH,
-    # Aout_0 := Aout_0, b_Ain := b_Ain, b_H := b_H, d_H := d_H, K_EI := K_EI, K_EH := K_EH,
+    # A_init := A_init, b_Ain := b_Ain, b_H := b_H, d_H := d_H, K_EI := K_EI, K_EH := K_EH,
     # N_0 := N_0, max_Na := max_Na, b_myc := b_myc, d_myc := d_myc, myc_thresh := myc_thresh,
     # char_times := [t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_EM_diff, t_E_die],
     
@@ -236,8 +236,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         S[0] = S_0
         I[0] = I_0
         V[0] = 0
-        Aout[0] = b_Aout/(b_Aout + b_Ain)*Aout_0
-        Ain[0] = b_Ain/(b_Aout + b_Ain)*Aout_0
+        Aout[0] = b_Aout/(b_Aout + b_Ain)*A_init
+        Ain[0] = b_Ain/(b_Aout + b_Ain)*A_init
         H[0] = H_0
 
         for i in np.arange(1, int(steps) + 1):
@@ -319,12 +319,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             diff_EpM_count += diff_EM
             
             #### New binding events ####
-            b_N_act = f_XtoY(sig_2 = p_cyt*H[i-1], psi_2 = psi_max, F_0 = -0.0, K_2 = K_EH)*p_tcr*Ain[i]/(char_times[0]*(Aout_0/2 + Ain[i]))*(Ain[i] >= 1)
+            b_N_act = f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = psi_max, psi_1_2 = 0.0, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH)*Ain[i]/(A_init*char_times[0])*(Ain[i] >= 1)
             b_unbind_t = np.fmin(2*(Na_m[i] == 1)*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = psi_Nact_I, psi_2 = psi_Nact_H, psi_1_2 = psi_Nact_IH, F_0 = 0.0, K_1 = K_IE, K_2 = K_EH)*char_times[1]*2/np.sqrt(np.pi))**2, 1/dt) if np.sum(Na_m[i]) >= 1 else 0.0
             unbound_Na += np.random.binomial(1-unbound_Na, b_unbind_t*dt)
             
             if k == 1:
-                b_M_act = p_tcr*Ain[i]/(char_times[0]*(Aout_0/2 + pM_count + Ain[i]))*(Ain[i] >= 1)
+                b_M_act = f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = psi_max, psi_1_2 = 0.0, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH)*Ain[i]/(A_init*char_times[0])*(Ain[i] >= 1)
             
             #### MYC Dynamics ####
             mycNa = (mycNa + dt*(b_myc*(1-unbound_Na)))*(Na_m[i] > 0)
@@ -417,7 +417,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     dt = ts[1]-ts[0]
     
     parameters = np.concatenate((np.array([S_0, I_0, b_I, d_S, d_I, d_IE, d_IH, K_IE, K_IH,
-              Aout_0, b_Ain, b_H, d_H, K_EI, K_EH,
+              A_init, b_Ain, b_H, d_H, K_EI, K_EH,
               N_0, max_Na, b_myc, d_myc, myc_thresh]),
               char_times,
               activation_regulation, NM_regulation, EM_regulation, expansion_regulation))
@@ -489,7 +489,7 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',
-                      'K_IH', 'Aout_0', 'b_Ain', 'b_H', 'd_H', 'K_EI', 'K_EH',
+                      'K_IH', 'A_init', 'b_Ain', 'b_H', 'd_H', 'K_EI', 'K_EH',
                       'N_0', 'max_Na', 'b_myc', 'd_myc', 'myc_thresh',
                       't_act', 't_bind', 't_Na_div', 't_E_div', 't_M_div', 't_EM_diff', 't_E_die', 't_E_cyt',
                       'psi_Nact_I', 'psi_Nact_H', 'psi_Nact_IH',
