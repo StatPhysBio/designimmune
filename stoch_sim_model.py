@@ -47,7 +47,8 @@ H_0 = 0.0
 N_0 = 100
 max_Na = 2**3
 max_expand = 2**18 #(Marchingo et al.)
-t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt = 1, 3/4, 1/4, 1/3, 1/2, 25.0, 2.0, 2/3
+t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_EM_diff, t_E_die, t_E_cyt = 1, 3/4, 1/4, 1/3, 1/2, 15.0, 2.0, 2/3
+rel_NE_to_M_diff = 5
 rel_persist_M = 5 # d_eM/d_cM
 
 # Division timer
@@ -105,7 +106,7 @@ sim_steps = int(0.5*(10**4))
 def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH, K_SE = K_SE,
                     Aout_0 = Aout_0, b_Ain = b_Ain, b_H = b_H, d_H = d_H, K_EI = K_EI, K_EH = K_EH, kappa = kappa,
                     N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh, max_expand = max_expand,
-                    char_times = [t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die, t_E_cyt],
+                    char_times = [t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_EM_diff, t_E_die, t_E_cyt],
                     NM_regulation = NM_psis,
                     EM_regulation = EM_psis,
                     activation_regulation = act_psis,
@@ -122,7 +123,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     # S_0 := S_0, I_0 := I_0, b_S := b_S, b_I := b_I, d_S := d_S, d_I := d_I, d_IE := d_IE, d_IH := d_IH, K_IE := K_IE, K_IH := K_IH,
     # Aout_0 := Aout_0, b_Ain := b_Ain, b_H := b_H, d_H := d_H, K_EI := K_EI, K_EH := K_EH,
     # N_0 := N_0, max_Na := max_Na, b_myc := b_myc, d_myc := d_myc, myc_thresh := myc_thresh,
-    # char_times := [t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_M_diff, t_E_die],
+    # char_times := [t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_EM_diff, t_E_die],
     
     #################################
     ### SET META-VARIABLES FOR SIMULATION ###
@@ -263,9 +264,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             
             H[i] = H[i-1] + dt*(b_H*(cell_lysed) - d_H*H[i-1])*(H[i-1] >= 0.0)
             
-            Aout[i] = Aout[i-1] + dt*(b_Aout*Ain[i-1]*f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = -psi_max, psi_1_2 = 0.0, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH) - b_Ain*Aout[i-1])*(Aout[i-1] >= 0.0)
+            Aout[i] = Aout[i-1] + dt*(b_Aout*Ain[i-1]*f_XtoY(sig_2 = p_cyt*H[i-1], psi_2 = -psi_max, F_0 = -0.0, K_2 = K_EH) - b_Ain*Aout[i-1])*(Aout[i-1] >= 0.0)
             
-            Ain[i] = Ain[i-1] + dt*(b_Ain*Aout[i-1] - b_Aout*Ain[i-1]*f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = -psi_max, psi_1_2 = 0.0, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH) - d_IE*Ain[i-1]*Na_pop/(K_IE + Na_pop))*(Ain[i-1] >= 0.0)
+            Ain[i] = Ain[i-1] + dt*(b_Ain*Aout[i-1] - b_Aout*Ain[i-1]*f_XtoY(sig_2 = p_cyt*H[i-1], psi_2 = -psi_max, F_0 = -0.0, K_2 = K_EH) - d_IE*Ain[i-1]*Na_pop/(K_IE + Na_pop))*(Ain[i-1] >= 0.0)
             
             I_d_I[i] = I_d_I[i-1] + dt*d_I*I[i-1] + (I[i] if i == int(steps) else 0) # cells killed by infection
             
@@ -283,13 +284,13 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             # (a) Phase 3: Unbound activated naive cells divide and then differentiate
             div_Na = np.random.binomial(Na_m[i-1]*unbound_Na*Na_div_flag, dt*b_Na_div)
 
-            diff_NaM = np.random.binomial(Na_m[i-1]*(1-Na_div_flag)*unbound_Na, np.sum(p_NaM[0:i-1], axis = 0) if np.sum(Na_m[i-1]) > 0 else 0)
+            diff_NaM = np.random.binomial(Na_m[i-1]*(1-Na_div_flag)*unbound_Na, 1 - np.exp(-np.sum(p_NaM[0:i-1], axis = 0)) if np.sum(Na_m[i-1]) > 0 else 0)
             
             # (b) Memory cells from a prior infection activate quickly and divide
             if k == 1:
                 act_M += np.random.binomial(M_m[i-1] - act_M, b_M_act*dt)
                 div_M = np.random.binomial(act_M, dt*b_M_div)
-                diff_MM = np.random.binomial(2*div_M, np.sum(p_MM[np.maximum(0,i-1-int(char_times[2]/dt)):i-1], axis = 0))
+                diff_MM = np.random.binomial(2*div_M, 1 - np.exp(-np.sum(p_MM[np.maximum(0,i-1-int(char_times[2]/dt)):i-1])), axis = 0)
             
             ## II. Expansion
 
@@ -318,8 +319,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             diff_EpM_count += diff_EM
             
             #### New binding events ####
-            b_N_act = f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = psi_max, psi_1_2 = 0.0, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH)*p_tcr*Ain[i]/(char_times[0]*(Aout_0/2 + Ain[i]))*(Ain[i] >= 1)
-            b_unbind_t = np.fmin(2*(Na_m[i] == 1)*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = I[i], sig_2 = H[i], psi_1 = psi_Nact_I, psi_2 = psi_Nact_H, psi_1_2 = psi_Nact_IH, F_0 = 0.0, K_1 = K_IE, K_2 = K_EH)*char_times[1])**2, 1/dt) if np.sum(Na_m[i]) >= 1 else 0.0
+            b_N_act = f_XtoY(sig_2 = p_cyt*H[i-1], psi_2 = psi_max, F_0 = -0.0, K_2 = K_EH)*p_tcr*Ain[i]/(char_times[0]*(Aout_0/2 + Ain[i]))*(Ain[i] >= 1)
+            b_unbind_t = np.fmin(2*(Na_m[i] == 1)*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = psi_Nact_I, psi_2 = psi_Nact_H, psi_1_2 = psi_Nact_IH, F_0 = 0.0, K_1 = K_IE, K_2 = K_EH)*char_times[1]*2/np.sqrt(np.pi))**2, 1/dt) if np.sum(Na_m[i]) >= 1 else 0.0
             unbound_Na += np.random.binomial(1-unbound_Na, b_unbind_t*dt)
             
             if k == 1:
@@ -343,17 +344,17 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
             #### Transition probabilities modulated by antigen and cytokine signals ####
             p_Nact[i] += 1 - b_unbind_t*dt
-            p_NaM[i] += dt*f_XtoY(sig_1 = p_tcr*(1-unbound_Na), sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = 1/2, K_2 = K_EH)*(1-unbound_Na)*(Na_m[i] == 1)/char_times[5]
-            p_EM[i] += dt*f_XtoY(sig_1 = p_tcr*(I[i] + S[i]*(d_I == 0.0)), sig_2 = p_cyt*H[i], psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_1_2 = psi_EM_IH, F_0 = F0_EM, K_1 = K_EI + np.sum(E_m[i]), K_2 = K_EH)*(E_m[i] > 0)/char_times[5]
+            p_NaM[i] += (p_NaM[i-1] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*(1-unbound_Na), sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = 1/2, K_2 = K_EH)/(2/np.sqrt(np.pi)*char_times[5]/rel_NE_to_M_diff)**2)*(1-unbound_Na)*(Na_m[i] == 1)
+            p_EM[i] += p_EM[i-1] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*(I[i] + S[i]*(d_I == 0.0)), sig_2 = p_cyt*H[i], psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_1_2 = psi_EM_IH, F_0 = F0_EM, K_1 = K_EI + np.sum(E_m[i]), K_2 = K_EH)*(E_m[i] > 0)/(2/np.sqrt(np.pi)*char_times[5]**2)
             p_Ediv[i] += b_E_div*dt
 
             if k == 1:
-                p_MM[i] += dt*f_XtoY(sig_1 = p_tcr*(I[i] + S[i]*(d_I == 0.0)), sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = K_EI + np.sum(M_m[i]), K_2 = K_EH)*(M_m[i] > 0)/char_times[5]
+                p_MM[i] += (p_MM[i-1] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*(I[i] + S[i]*(d_I == 0.0)), sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = K_EI + np.sum(M_m[i]), K_2 = K_EH)/(2/np.sqrt(np.pi)*char_times[5]/rel_NE_to_M_diff)**2)*(M_m[i] > 0)
             
             # store time cells become effector
             if k == 0:
                 T_E += dt*(E_m[i] > 0) if np.sum(E_m[i]) > 0 else 0.0
-                d_E_die = 2*(E_m[i] > 0)*T_E/char_times[6]**2
+                d_E_die = 2*(E_m[i] > 0)*T_E/(2/np.sqrt(np.pi)*char_times[6])**2
 
                 # store time an effector spends in cytotoxic state
                 for l in np.arange(0, N_0_var):
@@ -490,7 +491,7 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',
                       'K_IH', 'Aout_0', 'b_Ain', 'b_H', 'd_H', 'K_EI', 'K_EH',
                       'N_0', 'max_Na', 'b_myc', 'd_myc', 'myc_thresh',
-                      't_act', 't_bind', 't_Na_div', 't_E_div', 't_M_div', 't_M_diff', 't_E_die', 't_E_cyt',
+                      't_act', 't_bind', 't_Na_div', 't_E_div', 't_M_div', 't_EM_diff', 't_E_die', 't_E_cyt',
                       'psi_Nact_I', 'psi_Nact_H', 'psi_Nact_IH',
                       'psi_NM_I', 'psi_NM_H', 'psi_NM_IH',
                       'psi_EM_I', 'psi_EM_H', 'psi_EM_IH',
