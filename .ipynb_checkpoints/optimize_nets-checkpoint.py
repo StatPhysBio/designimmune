@@ -12,13 +12,13 @@ from stoch_sim_model import *
 runs = 1
 vir_samp = np.tile(vir_prop, (runs,1)) # sample distribution of pathogen killing rate and size of naive repertoire
 vir_choice = 0
-num_cpu = 40 # number of CPUs requested
-batch_num = int(62500/len(vir_samp)) + 1 # number of network variants to run on a cpu
+num_cpu = 10 # number of CPUs requested
 
-def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", virus_sample = vir_samp, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis):
+
+def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", virus_sample = vir_samp, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
     
     # Run simulations over different infections
-    print(f'Running simulations in batch #{batch[0]}')
+    batch_num = int((220000/len(virus_sample))*(num_cpu/40)) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. Typically can run 62500 sims in 4 hours on 40 cpus
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run
@@ -31,12 +31,15 @@ def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", virus_sample = vir_samp
         run_psis = np.array(default_reg)
         
     else:
+        index_start, index_end = batch[0]*int(batch_num), (batch[0]+1)*int(batch_num)
         run_psis = np.array(list(itertools.product(psi_2d.tolist() if "Nact" in comment else [act_psis], 
                                        psi_2d.tolist() if "NM" in comment else [NM_psis], 
                                        psi_2d.tolist() if "EM" in comment else [EM_psis], 
-                                       psi_2d.tolist() if "Ediv" in comment else [exp_psis]))).reshape(-1,12)
+                                       psi_2d.tolist() if "Ediv" in comment else [exp_psis]))).reshape(-1,12)[index_start:index_end]
 
     params = [np.concatenate(q) for q in list(itertools.product(virus_sample.tolist(), run_psis.tolist()))]
+    
+    print(f'Running {len(params)} simulations in batch #{batch[0]}')
 
     psi_list = Parallel(n_jobs = num_cpu, batch_size = max(int(len(virus_sample)/num_cpu),1))(delayed(lin_stoch_sim)(d_I = param[0], 
                                                                                                                K_IE = param[1],

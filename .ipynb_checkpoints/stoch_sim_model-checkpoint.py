@@ -35,7 +35,7 @@ b_Ain = 1.0
 d_H = 2.0
 b_H = 1 # innate response/inflammation per lysed cell compared to natural death
 l_H = 1 # cooperativity
-K_IH = b_H*K_IE_min/d_H # half-max level of instantaneous damage required to trigger innate/inflammatory response
+K_IH = b_H*K_IE_min # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_EH = 1*K_IH # half-max level of inflammation required to trigger lymphocyte response
 ep = 0*10**(-3) # off-target rate of harm
 K_SE = 10*S_0
@@ -46,23 +46,22 @@ H_0 = 0.0
 # Immune cells
 N_0 = 100
 max_Na = 2**3
-max_expand = 2**18 #(Marchingo et al.)
-t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_EM_diff, t_E_die, t_E_cyt = 1, 3/4, 1/4, 1/3, 1/2, 15.0, 2.0, 2/3
+max_expand = 2**16 #(Marchingo et al.)
+t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_EM_diff, t_E_die, t_E_cyt = 1.0, 3/4, 1/4, 1/3, 1/2, 15.0, 2.0, 2/3
 rel_NE_to_M_diff = 5
 rel_persist_M = 5 # d_eM/d_cM
 
 # Division timer
 d_myc = np.log(2)*24/7 # *np.log(2)
 myc_thresh = 10**(2.6)
-b_myc = 4*myc_thresh/t_bind
+b_myc = 3*myc_thresh/t_bind
 
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
-vir_prop = np.vstack((np.array(np.meshgrid(d_S*np.logspace(1.0, np.log(50), 3), # vary d_I
-                                   K_IE*np.logspace(0.0, 1.0, 3), # vary K_IE
-                                   b_I*np.logspace(0.0, 0.0, 1) # vary b_I
-                                           )).T.reshape(-1,3),  # vary K_EH
-                     np.array([0, 10*K_IE_min, 0.0]))) # autoimmune situation
+vir_prop = np.array(np.meshgrid(d_S*np.logspace(np.log10(20), np.log10(50), 2), # vary d_I
+                                   K_IE*np.logspace(0.0, 2.0, 2), # vary K_IE
+                                   b_I*np.logspace(np.log10(0.75), 0.0, 2) # vary b_I
+                                           )).T.reshape(-1,3)  # vary K_EH
 
 # define reg options
 psi_max = 4.0
@@ -319,12 +318,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             diff_EpM_count += diff_EM
             
             #### New binding events ####
-            b_N_act = f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = psi_max, psi_1_2 = 0.0, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH)*Ain[i]/(A_init*char_times[0])*(Ain[i] >= 1)
+            b_N_act = f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = 4.0, psi_1_2 = 0.0, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH)*Ain[i]/(A_init*char_times[0])*(Ain[i] >= 1)
             b_unbind_t = np.fmin(2*(Na_m[i] == 1)*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = psi_Nact_I, psi_2 = psi_Nact_H, psi_1_2 = psi_Nact_IH, F_0 = 0.0, K_1 = K_IE, K_2 = K_EH)*char_times[1]*2/np.sqrt(np.pi))**2, 1/dt) if np.sum(Na_m[i]) >= 1 else 0.0
             unbound_Na += np.random.binomial(1-unbound_Na, b_unbind_t*dt)
             
             if k == 1:
-                b_M_act = f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = psi_max, psi_1_2 = 0.0, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH)*Ain[i]/(A_init*char_times[0])*(Ain[i] >= 1)
+                b_M_act = f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = 4.0, psi_1_2 = 0.0, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH)*Ain[i]/(A_init*char_times[0])*(Ain[i] >= 1)
             
             #### MYC Dynamics ####
             mycNa = (mycNa + dt*(b_myc*(1-unbound_Na)))*(Na_m[i] > 0)
