@@ -9,20 +9,22 @@ from stoch_sim_model import *
 ### Define function to run simulations and compute MI
 
 # Set simulation parameters
-runs = 1
-vir_samp = np.tile(vir_prop, (runs,1)) # sample distribution of pathogen killing rate and size of naive repertoire
-num_cpu = 40 # number of CPUs requested
+num_cpu = 25 # number of CPUs requested
+run_time = 4.0
 
 
-def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", virus_sample = vir_samp, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
+def run(batch = 0, outdir='', comment = "comp_model_Nact-Ediv-vir", inf_sample = vir_prop, runs = 5, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
     
     # Run simulations over different infections
-    batch_num = int((50000/len(virus_sample))*(num_cpu/40)) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. Typically can run 62500 sims in 4 hours on 40 cpus
+    if "auto" in comment:
+        inf_sample = np.array([[d_S, K_SE, 0.0], [0.0, K_IE_min, 0.0]])
+    
+    batch_num = int((50000/len(inf_sample))*(num_cpu/40)*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. Typically can run 62500 sims in 4 hours on 40 cpus
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run
     if "full-reg" in comment:
-        index_start, index_end = batch[0]*int(batch_num)/len(psi_2d)**3, (batch[0]+1)*int(batch_num)/len(psi_2d)**3
+        index_start, index_end = batch[0]*int(batch_num)/len(psi_2d)**3, (batch[0]+1)*int(batch_num)/len(psi_2d)**3 # fix psi for activation
         big_psis = np.array(list(itertools.product(psi_2d[int(index_start):int(index_end)+1].tolist(), psi_2d.tolist(), psi_2d.tolist(), psi_2d.tolist()))).reshape(-1,12)
         run_psis = big_psis[int(np.ceil((index_start - int(index_start))*len(psi_2d)**3)): int((index_end - int(index_start))*len(psi_2d)**3)]
         
@@ -30,17 +32,18 @@ def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", virus_sample = vir_samp
         run_psis = np.array(default_reg)
         
     else:
-        index_start, index_end = batch[0]*int(batch_num), (batch[0]+1)*int(batch_num)
-        run_psis = np.array(list(itertools.product(psi_2d[(psi_2d[:,0] >= 0)*(psi_2d[:,1] >= 0)*(psi_2d[:,2] >= 0)*((psi_2d[:,0] > 0) + (psi_2d[:,1] > 0) > 0)].tolist() if "Nact" in comment else [act_psis], 
+        index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
+        run_psis = np.array(list(itertools.product(psi_2d_pos.tolist() if ("Nact" in comment and "comp_model" not in comment) else (psi_2d_comp.tolist() if "comp_model" in comment else [act_psis]),
                                        psi_2d.tolist() if "NM" in comment else [NM_psis], 
                                        psi_2d.tolist() if "EM" in comment else [EM_psis], 
-                                       psi_2d[((psi_2d[:,0] >= 0) + (psi_2d[:,1] >= 0)) > 0].tolist() if "Ediv" in comment else [exp_psis]))).reshape(-1,12)[index_start:index_end]
+                                       psi_2d.tolist() if ("Ediv" in comment and "comp_model" not in comment) else (psi_2d_comp.tolist() if "comp_model" in comment else [exp_psis])))).reshape(-1,12)[index_start:index_end]
 
-    params = [np.concatenate(q) for q in list(itertools.product(virus_sample.tolist(), run_psis.tolist()))]
+
+    params = [np.concatenate(q) for q in list(itertools.product( np.tile(inf_sample, (runs,1)).tolist(), run_psis.tolist()))]
     
     print(f'Running {len(params)} simulations in batch #{batch[0]}')
 
-    psi_list = Parallel(n_jobs = num_cpu, batch_size = max(int(len(virus_sample)/num_cpu),1))(delayed(lin_stoch_sim)(d_I = param[0], 
+    psi_list = Parallel(n_jobs = num_cpu, batch_size = max(int(len(inf_sample)/num_cpu),1))(delayed(lin_stoch_sim)(d_I = param[0], 
                                                                                                                K_IE = param[1],
                                                                                                                b_I = param[2],
                                                                                                                K_EI = param[1],
@@ -50,7 +53,8 @@ def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", virus_sample = vir_samp
                                                                                                                EM_regulation = param[9:12], # if "EM-reg" in comment else EM_psis,
                                                                                                                expansion_regulation = param[12:], # if "Ediv-reg" in comment else act_psis,
                                                                                                                infection = infection_type,
-                                                                                                               vir_model = vir_model)
+                                                                                                               vir_model = vir_model if 'auto' not in comment else "autoimmune",
+                                                                                                               reg_model = "competition_model" if "comp_model" in comment else "mwc_like")
                                                     for param in params)
 
     # Store data in dictionary

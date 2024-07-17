@@ -26,6 +26,7 @@ d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (20
 K_IE_min = 10**4
 K_IE = 10**4 # effector avidity (half-max) for infected cells at low infection concetrations (Mayer et al 2019; Chao et al. 2004)
 K_EI = K_IE
+K_IE_K_IN = 10*d_S # ratio of K_IE to K_IN
 d_I = np.minimum(d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
 
 # APC dynamics
@@ -40,7 +41,7 @@ l_H = 1 # cooperativity
 K_IH = b_H*K_IE_min/d_H # half-max level of instantaneous damage required to trigger innate/inflammatory response
 K_EH = 1*K_IH # half-max level of inflammation required to trigger lymphocyte response
 ep = 0*10**(-3) # off-target rate of harm
-K_SE = 10*S_0
+K_SE = S_0
 kappa = 0.0 # maximal reduction in replication rate due to inflammatory response
 d_IH = d_IE*ep
 H_0 = 0.0
@@ -49,7 +50,7 @@ H_0 = 0.0
 N_0 = 100
 max_Na = 2**3
 max_expand = 2**16 #(Marchingo et al.)
-t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_EM_diff, t_E_die, t_E_cyt = 1.0, 3/4, 1/4, 1/3, 1/2, 15.0, 2.0, 2/3
+t_act, t_bind, t_Na_div, t_E_div, t_M_div, t_EM_diff, t_E_die, t_E_cyt = 1.0, 3/4, 1/4, 1/3, 1/2, 15.0, 2.5, 2/3
 rel_NE_to_M_diff = 5
 rel_persist_M = 5 # d_eM/d_cM
 
@@ -60,9 +61,9 @@ b_myc = 3*myc_thresh/t_bind
 
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
-vir_prop = np.array(np.meshgrid(d_S*np.logspace(1, np.log10(50), 3), # vary d_I
-                                   K_IE*np.logspace(0.0, np.log10(50), 3), # vary K_IE
-                                   b_I*np.logspace(np.log10(0.75), np.log10(1.25), 3) # vary b_I
+vir_prop = np.array(np.meshgrid(d_S*np.linspace(10, 50, 5), # vary d_I
+                                   K_IE*np.logspace(0.0, np.log10(50), 5), # vary K_IE
+                                   b_I*np.linspace(0.75, 1.25, 5) # vary b_I
                                            )).T.reshape(-1,3)
 
 # define reg options
@@ -72,14 +73,17 @@ grid_2d = psi_max*np.array([[np.cos(np.pi/4), -np.sin(np.pi/4)],[np.sin(np.pi/4)
 
 #psi_2d = np.vstack([np.array([[x[0], x[1], psi_max - np.abs(x[0]) - np.abs(x[1])], [x[0], x[1], -(psi_max - np.abs(x[0]) - np.abs(x[1]))]]) for x in grid_2d.T])
 
-psi_2d = np.array(list(itertools.product(np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
+psi_2d_full = np.array(list(itertools.product(np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
                                  np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
-                                 [-1, 0, 1])))
+                                 np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist())))
+psi_2d = psi_2d_full[np.abs(psi_2d_full[:,0]) + np.abs(psi_2d_full[:,1]) + 2*np.abs(psi_2d_full[:,2]) <= psi_max]
+psi_2d_pos = psi_2d[(psi_2d[:,0] >= 0)*(psi_2d[:,1] >= 0)*(psi_2d[:,2] >= 0)]
+psi_2d_comp = psi_2d[(psi_2d[:,0] >= 0)*(psi_2d[:,1] >= 0)*(psi_2d[:,2] == 0)*(np.sum(psi_2d[:,0:2], axis = 1) > 0)]
 
 NM_psis = [0.0, 0.0, 0.0] # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
 EM_psis = [0.0, 0.0, 0.0]
-act_psis = [0.0, 0.0, 0.0]
-exp_psis = [0.0, 0.0, 0.0]
+act_psis = [1.0, 1.0, 0.0]
+exp_psis = [1.0, 1.0, 0.0]
 F_0s = np.array([0.0, 0.0, 0.0, 0.0])
 
 ### (2) Define functions for simulations
@@ -95,6 +99,10 @@ def f_XtoY(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_
     
     if reg_model == "mwc_like":
         F_1 = psi_1*np.log((1 + sig_1/K_1)/2) + psi_2*np.log((1 + sig_2/K_2)/2) + psi_3*np.log((1 + sig_3/K_3)/2) + psi_1_2*np.log((1 + (sig_1*sig_2)/(K_1*K_2))/2) + psi_1_3*np.log((1 + (sig_1*sig_3)/(K_1*K_3))/2) + psi_2_3*np.log((1 + (sig_2*sig_3)/(K_2*K_3))/2)
+        out = 1/(1 + np.exp(- (F_1 + F_0)))
+
+    elif reg_model == "competition_model":
+        F_1 = (psi_1*np.log((1 + sig_1/K_1)/2)**2 + psi_2*np.log((1 + sig_2/K_2)/2)**2 + psi_3*np.log((1 + sig_3/K_3)/2)**2)/(np.log((1 + sig_1/K_1)/2) + np.log((1 + sig_2/K_2)/2) + np.log((1 + sig_3/K_3)/2)) + psi_1_2*np.log((1 + (sig_1*sig_2)/(K_1*K_2))/2) + psi_1_3*np.log((1 + (sig_1*sig_3)/(K_1*K_3))/2) + psi_2_3*np.log((1 + (sig_2*sig_3)/(K_2*K_3))/2)
         out = 1/(1 + np.exp(- (F_1 + F_0)))
         
     else:
@@ -117,9 +125,10 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                     regulation_bias = F_0s,
                     alpha = alpha,
                     infection = "prim",
-                    vir_model = "dep_harm",
+                    vir_model = "indep_harm",
                     duration = sim_duration, 
                     steps = sim_steps,
+                    reg_model = "mwc_like",
                     out_data = "small"):
     
     # VARIABLE DEFINITIONS:
@@ -134,17 +143,6 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     dt =  duration/steps
     N_0_var = int(N_0)
     b_S = S_0*d_S
-    
-    # in case of autoimmune response
-    if d_I == 0.0:
-        d_Sauto = 1.0*d_S 
-        K_SE = K_IE
-        
-        I_0 = 0.0
-    else:
-        d_Sauto = 0.0
-
-    t_Hauto = 0.25 # duration of autoimmune inflammation
     
     # set infection scenario: primary or secondary
     infection_count = 0
@@ -238,18 +236,28 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         #################################
         t = 0.0
         S[0] = S_0
-        I[0] = I_0
+        I[0] = I_0 if vir_model != 'autoimmune' else 0.0
         V[0] = 0
         Aout[0] = b_Aout/(b_Aout + b_Ain)*A_init
         Ain[0] = b_Ain/(b_Aout + b_Ain)*A_init
         H[0] = H_0
-
+        
         for i in np.arange(1, int(steps) + 1):
             # select virulence model:
             if vir_model == "dep_harm": # makes  average virus produced roughly the same independent of infected death rate
                 b_I_t = b_I + d_I/S_0
+                d_Sauto = 0
+                t_Hauto = 0.5
+            elif vir_model == "autoimmune":
+                b_I_t = 0.0
+                d_Sauto = d_I 
+                K_SE = K_IE
+                I_0 = 0.0
+                t_Hauto = 0.25 # duration of autoimmune inflammation
             else:
-                b_I_t = b_I  
+                b_I_t = b_I
+                d_Sauto = 0
+                t_Hauto = 0.5
         
             # Compute total population of cell types
             Na_pop, E_pop, Ma_pop = np.sum(Na_m[i-1]), np.sum(E_m[i-1]), np.sum(Ma_m[i-1])
@@ -264,9 +272,11 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             
             I[i] = I[i-1] + dt*(b_I_t*I[i-1]*S[i-1]*(I[i-1] >= I_0) - d_IE*I[i-1]*(E_pop)/(K_IE + I[i-1] + E_pop) - (d_I)*I[i-1])*(I[i-1] >= 1.0)
             
-            cell_lysed = d_I*I[i-1] + 0*d_IE*I[i-1]*(E_pop)/(K_IE + I[i-1] + E_pop) + S[i-1]*(d_Sauto*np.exp(-((t-2.5)/t_Hauto)**2) + 0*d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))
+            cell_lysed = d_I*I[i-1] + d_IE*I[i-1]*(E_pop)/(K_IE + I[i-1] + E_pop) + S[i-1]*(d_Sauto*np.exp(-((t-2.5)/t_Hauto)**2) + d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))*(vir_model == "autoimmune")
+
+            harm_detected = d_I*I[i-1] + d_IE*I[i-1]*(E_pop)/(K_IE + I[i-1] + E_pop) + S[i-1]*d_Sauto*np.exp(-((t-2.5)/t_Hauto)**2)
             
-            H[i] = H[i-1] + dt*(b_H*(cell_lysed) - d_H*H[i-1])*(H[i-1] >= 0.0)
+            H[i] = H[i-1] + dt*(b_H*(harm_detected) - d_H*H[i-1])*(H[i-1] >= 0.0)
             
             Aout[i] = Aout[i-1] + dt*(b_Aout*Ain[i-1]*f_XtoY(sig_2 = p_cyt*H[i-1], psi_2 = -psi_max, F_0 = -0.0, K_2 = K_EH) - b_Ain*Aout[i-1])*(Aout[i-1] >= 0.0)
             
@@ -324,18 +334,18 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             diff_EpM_count += diff_EM
             
             #### New binding events ####
-            b_N_bind = (N_m[i-1] > 0)*(1 - bound_N)*f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = 2.0, psi_1_2 = 0.0, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH)/char_times[0]
-            b_unbind_t = (N_m[i-1] > 0)*bound_N*np.fmin(2*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = psi_Nact_I, psi_2 = psi_Nact_H, psi_1_2 = psi_Nact_IH, F_0 = 0.0, K_1 = K_IE, K_2 = K_EH)*char_times[1]*2/np.sqrt(np.pi))**2, 1/dt) if np.sum(N_m[i]) >= 1 else 0.0
+            b_N_bind = (N_m[i-1] > 0)*(1 - bound_N)*f_XtoY(sig_1 = p_tcr*cell_lysed, sig_2 = p_cyt*H[i-1], psi_1 = 1.0, psi_2 = 1.0, psi_1_2 = 0.0, F_0 = -0.0, K_1 = K_IE_K_IN*K_EI, K_2 = K_EH, reg_model = reg_model)/char_times[0]
+            b_unbind_t = (N_m[i-1] > 0)*bound_N*np.fmin(2*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = p_tcr*cell_lysed, sig_2 = p_cyt*H[i-1], psi_1 = psi_Nact_I, psi_2 = psi_Nact_H, psi_1_2 = psi_Nact_IH, F_0 = 0.0, K_1 = K_IE_K_IN*K_IE, K_2 = K_EH, reg_model = reg_model)*char_times[1]*2/np.sqrt(np.pi))**2, 1/dt) if np.sum(N_m[i]) >= 1 else 0.0
             
             if k == 1:
-                b_M_act = f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = 0.0, psi_1_2 = psi_max/2, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH)/char_times[0] + 0*Ain[i]/(A_init*char_times[0])*(Ain[i] >= 1)
+                b_M_act = f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = 0.0, psi_1_2 = psi_max/2, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH, reg_model = reg_model)/char_times[0] + 0*Ain[i]/(A_init*char_times[0])*(Ain[i] >= 1)
             
             #### MYC Dynamics ####
-            mycN = (mycN + dt*(b_myc*bound_N - (1 - bound_N)*(mycN < myc_thresh)*f_XtoY(sig_1 = p_tcr*I[i], sig_2 = p_cyt*H[i], psi_1 = -psi_max/2, psi_2 = -psi_max/2, psi_1_2 = 0.0, F_0 = 0.0, K_1 = K_EI, K_2 = K_EH)*mycN*d_myc*(mycN > 0)))*(N_m[i] + Na_m[i] > 0)
+            mycN = (mycN + dt*(b_myc*bound_N - (1 - bound_N)*(mycN < myc_thresh)*f_XtoY(sig_1 = p_tcr*cell_lysed, sig_2 = p_cyt*H[i], psi_1 = -psi_max/2, psi_2 = -psi_max/2, psi_1_2 = 0.0, F_0 = 0.0, K_1 = K_IE_K_IN*K_EI, K_2 = K_EH, reg_model = reg_model)*mycN*d_myc*(mycN > 0)))*(N_m[i] + Na_m[i] > 0)
             
-            mycE = (mycE - dt*(f_XtoY(sig_1 = p_tcr*I[i], sig_2 = p_cyt*H[i], psi_1 = -psi_Ediv_I, psi_2 = -psi_Ediv_H, psi_1_2 = -psi_Ediv_IH, F_0 = -F0_Ediv, K_1 = K_EI, K_2 = K_EH)*mycE*d_myc))*(E_m[i] >= 1) + (mycN*(Na_m[i] > 0) if k == 0 else mycM*(M_m[i] > 0))
+            mycE = (mycE - dt*(f_XtoY(sig_1 = p_tcr*(I[i] + S[i]*(vir_model == "autoimmune")), sig_2 = p_cyt*H[i], psi_1 = -psi_Ediv_I, psi_2 = -psi_Ediv_H, psi_1_2 = -psi_Ediv_IH, F_0 = -F0_Ediv, K_1 = K_EI, K_2 = K_EH, reg_model = reg_model)*mycE*d_myc))*(E_m[i] >= 1) + (mycN*(Na_m[i] > 0) if k == 0 else mycM*(M_m[i] > 0))
 
-            mycMa = (mycMa - dt*f_XtoY(sig_1 = p_tcr*I[i], sig_2 = p_cyt*H[i], psi_1 = -psi_Ediv_I, psi_2 = -psi_Ediv_H, psi_1_2 = -psi_Ediv_IH, F_0 = -F0_Ediv, K_1 = K_EI, K_2 = 1*K_EH)*(mycMa*d_myc))*(Ma_m[i] > 0) + (mycN*(Na_m[i] >= 1) if k == 0 else mycM*(M_m[i] > 0)) # higher decay rate of myc
+            mycMa = (mycMa - dt*f_XtoY(sig_1 = p_tcr*(I[i] + S[i]*(vir_model == "autoimmune")), sig_2 = p_cyt*H[i], psi_1 = -psi_Ediv_I, psi_2 = -psi_Ediv_H, psi_1_2 = -psi_Ediv_IH, F_0 = -F0_Ediv, K_1 = K_EI, K_2 = 1*K_EH, reg_model = reg_model)*(mycMa*d_myc))*(Ma_m[i] > 0) + (mycN*(Na_m[i] >= 1) if k == 0 else mycM*(M_m[i] > 0)) # higher decay rate of myc
             
             if k == 1:
                 mycM = (mycM + 0*dt*(b_myc*Ain[i]/(M_pop + Ain[i])))*(M_m[i] >= 1)
@@ -347,12 +357,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
             #### Transition probabilities modulated by antigen and cytokine signals ####
             p_Nact[i] += 1 - b_unbind_t*dt
-            p_NaM[i] += (p_NaM[i-1] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*I[i], sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = K_EI, K_2 = K_EH)/(2/np.sqrt(np.pi)*char_times[5]/rel_NE_to_M_diff)**2)*(N_m[i]*bound_N > 0)
-            p_EM[i] += p_EM[i-1] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*(I[i] + S[i]*(d_I == 0.0)), sig_2 = p_cyt*H[i], psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_1_2 = psi_EM_IH, F_0 = F0_EM, K_1 = K_EI + np.sum(E_m[i]), K_2 = K_EH)*(E_m[i] > 0)/(2/np.sqrt(np.pi)*char_times[5]**2)
+            p_NaM[i] += (p_NaM[i-1] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*cell_lysed, sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = K_IE_K_IN*K_EI, K_2 = K_EH, reg_model = reg_model)/(2/np.sqrt(np.pi)*char_times[5]/rel_NE_to_M_diff)**2)*(N_m[i]*bound_N > 0)
+            p_EM[i] += p_EM[i-1] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*(I[i] + S[i]*(vir_model == "autoimmune")), sig_2 = p_cyt*H[i], psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_1_2 = psi_EM_IH, F_0 = F0_EM, K_1 = K_EI + np.sum(E_m[i]), K_2 = K_EH, reg_model = reg_model)*(E_m[i] > 0)/(2/np.sqrt(np.pi)*char_times[5]**2)
             p_Ediv[i] += b_E_div*dt
 
             if k == 1:
-                p_MM[i] += (p_MM[i-1] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*(I[i] + S[i]*(d_I == 0.0)), sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = K_EI + np.sum(M_m[i]), K_2 = K_EH)/(2/np.sqrt(np.pi)*char_times[5]/rel_NE_to_M_diff)**2)*(M_m[i] > 0)
+                p_MM[i] += (p_MM[i-1] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*(I[i] + S[i]*(vir_model == "autoimmune")), sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = K_EI + np.sum(M_m[i]), K_2 = K_EH, reg_model = reg_model)/(2/np.sqrt(np.pi)*char_times[5]/rel_NE_to_M_diff)**2)*(M_m[i] > 0)
             
             # store time cells become effector
             if k == 0:
@@ -435,7 +445,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        np.amax(sI_d_S),
                        np.max(pE),
                        np.max(sE),
-                       np.argmax(pE)*dt,
+                       np.argmax(pE)*dt, # np.argmax(pE > N_0)*dt, also replace A_in with N in output
                        np.argmax(sE)*dt,
                        pM[-1],
                        sM[-1],
