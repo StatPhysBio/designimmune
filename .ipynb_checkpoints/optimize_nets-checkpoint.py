@@ -7,11 +7,8 @@ import pickle
 from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
-
-# Set simulation parameters
-num_cpu = 40 # number of CPUs requested
+num_cpu = 30 # number of CPUs requested
 run_time = 4.0
-
 
 def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", inf_sample = vir_prop, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
     
@@ -33,7 +30,7 @@ def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", inf_sample = vir_prop, 
         
     else:
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
-        run_psis = np.array(list(itertools.product(psi_2d_pos.tolist() if ("Nact" in comment and "comp_model" not in comment) else (psi_2d_comp.tolist() if "comp_model" in comment else [act_psis]),
+        run_psis = np.array(list(itertools.product(psi_2d.tolist() if ("Nact" in comment and "comp_model" not in comment) else (psi_2d_comp.tolist() if "comp_model" in comment else [act_psis]),
                                        psi_2d.tolist() if "NM" in comment else [NM_psis], 
                                        psi_2d.tolist() if "EM" in comment else [EM_psis], 
                                        psi_2d.tolist() if ("Ediv" in comment and "comp_model" not in comment) else (psi_2d_comp.tolist() if "comp_model" in comment else [exp_psis])))).reshape(-1,16)[index_start:index_end]

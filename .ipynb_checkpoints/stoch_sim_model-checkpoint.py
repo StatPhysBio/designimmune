@@ -76,15 +76,15 @@ grid_2d = psi_max*np.array([[np.cos(np.pi/4), -np.sin(np.pi/4)],[np.sin(np.pi/4)
 psi_2d_full = np.array(list(itertools.product(np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
                                  np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
                                  np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
-                                 np.array([0, -1, -2, -4]).tolist())))
+                                 np.array([1, 0, -1]).tolist())))
 psi_2d = psi_2d_full[(np.abs(psi_2d_full[:,0]) + np.abs(psi_2d_full[:,1]) + 2*np.abs(psi_2d_full[:,2]) <= psi_max)]
 psi_2d_pos = psi_2d[(psi_2d[:,0] >= 0)*(psi_2d[:,1] >= 0)*(psi_2d[:,2] >= 0)]
-psi_2d_comp = psi_2d[(psi_2d[:,0] >= 0)*(psi_2d[:,1] >= 0)*(psi_2d[:,2] == 0)*(np.sum(psi_2d[:,0:2], axis = 1) > 0)]
+psi_2d_comp = psi_2d[(psi_2d[:,2] == 0)]
 
 NM_psis = [0.0, 0.0, 0.0, 0.0] # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
 EM_psis = [0.0, 0.0, 0.0, 0.0]
-act_psis = [1.0, 1.0, 0.0, 0.0]
-exp_psis = [1.0, 1.0, 0.0, 0.0]
+act_psis = [psi_max/2, psi_max/2, 0.0, 0.0]
+exp_psis = [psi_max/2, psi_max/2, 0.0, 0.0]
 
 ### (2) Define functions for simulations
 # Define functions for simulations
@@ -332,7 +332,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             
             #### New binding events ####
             b_N_bind = (N_m[i-1] > 0)*(1 - bound_N)*f_XtoY(sig_1 = p_tcr*cell_lysed, sig_2 = p_cyt*H[i-1], psi_1 = 1.0, psi_2 = 1.0, psi_1_2 = 0.0, F_0 = F0_Nact, K_1 = K_IE_K_IN*K_EI, K_2 = K_EH, reg_model = reg_model)/char_times[0]
-            b_unbind_t = (N_m[i-1] > 0)*bound_N*np.fmin(2*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = p_tcr*cell_lysed, sig_2 = p_cyt*H[i-1], psi_1 = psi_Nact_I, psi_2 = psi_Nact_H, psi_1_2 = psi_Nact_IH, F_0 = F0_Nact, K_1 = K_IE_K_IN*K_IE, K_2 = K_EH, reg_model = reg_model)*char_times[1]*2/np.sqrt(np.pi))**2, 1/dt) if np.sum(N_m[i]) >= 1 else 0.0
+            b_unbind_t = (N_m[i-1] > 0)*bound_N*np.fmin(2*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = p_tcr*cell_lysed, sig_2 = p_cyt*H[i-1], psi_1 = psi_Nact_I, psi_2 = psi_Nact_H, psi_1_2 = psi_Nact_IH, F_0 = F0_Nact, K_1 = K_IE_K_IN*K_IE, K_2 = K_EH, reg_model = reg_model)*char_times[1]*2/np.sqrt(np.pi))**2, 1/dt) if np.sum(N_m[i])*I[i] >= 1 else 0.0
             
             if k == 1:
                 b_M_act = f_XtoY(sig_1 = p_tcr*I[i-1], sig_2 = p_cyt*H[i-1], psi_1 = 0.0, psi_2 = 0.0, psi_1_2 = psi_max/2, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH, reg_model = reg_model)/char_times[0] + 0*Ain[i]/(A_init*char_times[0])*(Ain[i] >= 1)
@@ -511,3 +511,8 @@ stat_names_for_df = ['p_load', 's_load','T_max_pI', 'T_min_pI', 'harm_pI', 'harm
                      'harm_pS', 'harm_sS', 'max_pE', 'max_sE','T_pE', 'T_sE', 
                      'inf_pM', 'inf_sM', 'init_M','int_pE', 'int_sE',
                      'int_pH', 'int_sH', 'min_pS', 'min_sS']
+
+NM_reg = ['psi_NM_I', 'psi_NM_H', 'psi_NM_IH', 'F0_NM']
+EM_reg = ['psi_EM_I', 'psi_EM_H', 'psi_EM_IH', 'F0_EM']
+Nact_reg = ['psi_Nact_I', 'psi_Nact_H', 'psi_Nact_IH', 'F0_Nact']
+Ediv_reg = ['psi_Ediv_I', 'psi_Ediv_H', 'psi_Ediv_IH', 'F0_Ediv']
