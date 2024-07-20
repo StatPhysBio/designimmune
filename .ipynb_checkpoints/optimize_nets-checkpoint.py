@@ -10,7 +10,7 @@ from stoch_sim_model import *
 num_cpu = 30 # number of CPUs requested
 run_time = 4.0
 
-def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", inf_sample = vir_prop, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
+def run(batch = 0, outdir='', comment = "auto-Nact-Ediv-vir", inf_sample = vir_prop, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
     
     # Run simulations over different infections
     if "auto" in comment:
