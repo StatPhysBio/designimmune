@@ -102,7 +102,7 @@ def f_XtoY(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_
         out = 1/(1 + np.exp(- (F_1 + F_0)))
 
     elif reg_model == "competition_model":
-        F_1 = (psi_1*np.log((1 + sig_1/K_1))**2 + psi_2*np.log((1 + sig_2/K_2))**2 + psi_3*np.log((1 + sig_3/K_3))**2)/(np.log((1 + sig_1/K_1)) + np.log((1 + sig_2/K_2)) + np.log((1 + sig_3/K_3))) + psi_1_2*np.log((1 + (sig_1*sig_2)/(K_1*K_2))) + psi_1_3*np.log((1 + (sig_1*sig_3)/(K_1*K_3))) + psi_2_3*np.log((1 + (sig_2*sig_3)/(K_2*K_3)))
+        F_1 = (psi_1*np.log((1 + sig_1/K_1))**2 + psi_2*np.log((1 + sig_2/K_2))**2 + psi_3*np.log((1 + sig_3/K_3))**2)/(2*(np.log((1 + sig_1/K_1)) + np.log((1 + sig_2/K_2)) + np.log((1 + sig_3/K_3)))) + (psi_1*np.log((1 + sig_1/K_1)) + psi_2*np.log((1 + sig_2/K_2)) + psi_3*np.log((1 + sig_3/K_3)))/2
         out = 1/(1 + np.exp(- (F_1 + F_0)))
         
     else:
