@@ -206,12 +206,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         if k == 1:
             mycM = 4*myc_thresh*np.ones(pM_count)
         
-        p_NaM = np.zeros((int(steps)+1, N_0_var))
-        p_EM = np.zeros((int(steps)+1, N_0_var if k == 0 else pM_count))
-        p_Nact = np.zeros((int(steps)+1, N_0_var))
-        p_Ediv = np.zeros((int(steps)+1, N_0_var if k == 0 else pM_count))
+        r_NaM = np.zeros((int(steps)+1, N_0_var))
+        r_EM = np.zeros((int(steps)+1, N_0_var if k == 0 else pM_count))
+        r_Nact = np.zeros((int(steps)+1, N_0_var))
+        r_Ediv = np.zeros((int(steps)+1, N_0_var if k == 0 else pM_count))
         if k == 1:
-            p_MM = np.zeros((int(steps)+1, pM_count))
+            r_MM = np.zeros((int(steps)+1, pM_count))
         
         b_unbind_t = np.zeros(N_0_var)
         b_N_bind = np.zeros(N_0_var)
@@ -291,13 +291,13 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             # (a) Phase 3: Unbound activated naive cells divide and then differentiate
             div_Na = np.random.binomial(Na_m[i-1]*Na_div_flag, dt*b_Na_div)
 
-            diff_NaM = np.random.binomial(Na_m[i-1]*(1 - Na_div_flag), 1 - np.exp(-np.sum(p_NaM[0:i-1], axis = 0)) if np.sum(Na_m[i-1]) > 0 else 0)
+            diff_NaM = np.random.binomial(Na_m[i-1]*(1 - Na_div_flag), 1 - np.exp(-np.sum(r_NaM[0:i-1], axis = 0)*dt) if np.sum(Na_m[i-1]) > 0 else 0)
             
             # (b) Memory cells from a prior infection activate quickly and divide
             if k == 1:
                 act_M += np.random.binomial(M_m[i-1] - act_M, b_M_act*dt)
                 div_M = np.random.binomial(act_M, dt*b_M_div)
-                diff_MM = np.random.binomial(2*div_M, 1 - np.exp(-np.sum(p_MM[np.maximum(0,i-1-int(char_times[2]/dt)):i-1])), axis = 0)
+                diff_MM = np.random.binomial(2*div_M, 1 - np.exp(-np.sum(r_MM[np.maximum(0,i-1-int(char_times[2]/dt)):i-1])), axis = 0)
             
             ## II. Expansion
 
@@ -307,7 +307,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             # (b) Effector cells divide, differentiate, die
             die_E = np.random.binomial(E_m[i-1], d_E_die*dt)
             div_E = np.random.binomial(E_m[i-1] - die_E, dt*(b_E_div))
-            diff_EM = np.random.binomial(E_m[i-1] - die_E + div_E, p_EM[i-1])
+            diff_EM = np.random.binomial(E_m[i-1] - die_E + div_E, r_EM[i-1])
             
             #### Update population dynamics: ####
             N_m[i] += N_m[i-1] - act_N
@@ -330,9 +330,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             
             b_N_bind = (N_m[i] > 0)*(1 - bound_N)*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = 0.0, psi_2 = 0.0, psi_1_2 = 1.0, F_0 = -1.0, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")), K_2 = K_EH, reg_model = reg_model)/char_times[0]
 
-            b_unbind_t = bound_N*np.fmin(2*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = 2.0, psi_2 = 0.0, psi_1_2 = 0.0, F_0 = -1, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")), K_2 = K_EH, reg_model = reg_model)*char_times[1]*2/np.sqrt(np.pi))**2, 1/dt) if np.sum(N_m[i])*cells_sensed >= 1 else 0.0
+            # b_unbind_t = bound_N*np.fmin(2*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = 2.0, psi_2 = 0.0, psi_1_2 = 0.0, F_0 = -1, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")), K_2 = K_EH, reg_model = reg_model)*char_times[1]*2/np.sqrt(np.pi))**2, 1/dt) if np.sum(N_m[i])*cells_sensed >= 1 else 0.0
 
-            # b_unbind_t = (N_m[i] > 0)*bound_N*np.fmin(2*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = psi_Nact_I, psi_2 = psi_Nact_H, psi_1_2 = psi_Nact_IH, F_0 = F0_Nact, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")), K_2 = K_EH, reg_model = reg_model)*char_times[1]*2/np.sqrt(np.pi))**2, 1/dt) if np.sum(N_m[i])*cells_sensed >= 1 else 0.0
+            b_unbind_t = (N_m[i] > 0)*bound_N*np.fmin(2*(i - np.argmin(N_m[0:i], axis = 0))*dt/(f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = psi_Nact_I, psi_2 = psi_Nact_H, psi_1_2 = psi_Nact_IH, F_0 = F0_Nact, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")), K_2 = K_EH, reg_model = reg_model)*char_times[1]*2/np.sqrt(np.pi))**2, 1/dt) if np.sum(N_m[i])*cells_sensed >= 1 else 0.0
             
             if k == 1:
                 b_M_act = f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = 0.0, psi_2 = 0.0, psi_1_2 = psi_max/2, F_0 = -0.0, K_1 = K_EI, K_2 = K_EH, reg_model = reg_model)/char_times[0] + 0*Ain[i]/(A_init*char_times[0])*(Ain[i] >= 1)
@@ -355,13 +355,13 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             # (mycN >= myc_thresh)*b_unbind_t*dt
             
             #### Transition probabilities modulated by antigen and cytokine signals ####
-            p_Nact[i] +=  bound_N*(p_Nact[i] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = psi_Nact_I, psi_2 = psi_Nact_H, psi_1_2 = psi_Nact_IH, F_0 = F0_Nact, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")), K_2 = K_EH, reg_model = reg_model)/(2/np.sqrt(np.pi)*char_times[1])**2)
-            p_NaM[i] += (p_NaM[i] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")), K_2 = K_EH, reg_model = reg_model)/(2/np.sqrt(np.pi)*char_times[5])**2)*(N_m[i]*bound_N > 0)*(mycN >= myc_thresh)
-            p_EM[i] += p_EM[i] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_1_2 = psi_EM_IH, F_0 = F0_EM, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")) + np.sum(E_m[i]), K_2 = K_EH, reg_model = reg_model)*(E_m[i] > 0)/(2/np.sqrt(np.pi)*char_times[5]**2)
-            p_Ediv[i] += b_E_div*dt
+            r_Nact[i] += (mycN >= myc_thresh)*b_unbind_t
+            r_NaM[i] += (r_NaM[i] + 2*dt*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")), K_2 = K_EH, reg_model = reg_model)/(2/np.sqrt(np.pi)*char_times[5])**2)*(N_m[i]*bound_N > 0)*(mycN >= myc_thresh)
+            r_EM[i] += r_EM[i] + 2*dt*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_1_2 = psi_EM_IH, F_0 = F0_EM, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")) + np.sum(E_m[i]), K_2 = K_EH, reg_model = reg_model)*(E_m[i] > 0)/(2/np.sqrt(np.pi)*char_times[5]**2)
+            r_Ediv[i] += b_E_div
 
             if k == 1:
-                p_MM[i] += (p_MM[i] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")) + np.sum(M_m[i]), K_2 = K_EH, reg_model = reg_model)/(2/np.sqrt(np.pi)*char_times[5])**2)*(M_m[i] > 0)
+                r_MM[i] += (r_MM[i] + 2*(dt**2)*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_1_2 = psi_NM_IH, F_0 = F0_NM, K_1 = (K_EI*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")) + np.sum(M_m[i]), K_2 = K_EH, reg_model = reg_model)/(2/np.sqrt(np.pi)*char_times[5])**2)*(M_m[i] > 0)
             
             # store time cells become effector
             if k == 0:
@@ -386,11 +386,11 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                     mycM_m[i] = mycM
 
             #### Store differentiation biases
-            bias_t[i] += np.array([np.mean((p_Nact[i])),
-                                   np.mean((p_NaM[i])[N_m[i]*bound_N > 0]) if np.sum(N_m[i]*bound_N) > 0.0 else 0.0, 
-                                   np.mean((p_EM[i])[E_m[i] > 0]) if np.sum(E_m[i]) > 0.0 else 0.0, 
-                                   np.mean((p_MM[i])[M_m[i] > 0]) if k == 1 else 0.0,
-                                   np.mean(p_Ediv[i][E_m[i] > 0]) if np.sum(E_m[i]) > 0.0 else 0.0])
+            bias_t[i] += np.array([np.mean((r_Nact[i])),
+                                   np.mean((r_NaM[i])[N_m[i]*bound_N > 0]) if np.sum(N_m[i]*bound_N) > 0.0 else 0.0, 
+                                   np.mean((r_EM[i])[E_m[i] > 0]) if np.sum(E_m[i]) > 0.0 else 0.0, 
+                                   np.mean((r_MM[i])[M_m[i] > 0]) if k == 1 else 0.0,
+                                   np.mean(r_Ediv[i][E_m[i] > 0]) if np.sum(E_m[i]) > 0.0 else 0.0])
             
         # Increment time
             t += dt
@@ -415,10 +415,10 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         
         if k == 0: # primary infection
             dyn_data = np.array([S, I, N, Na, E, Ma, H, I_d_I + I_d_IE, I_d_S]).T
-            prim_bias = bias_t #[p_NaM, p_EM]
+            prim_bias = bias_t #[r_NaM, r_EM]
         elif k == 1: # secondary infection
             dyn_data = np.hstack((dyn_data, np.array([S, I, N, Na + M, E, Ma, H, I_d_I + I_d_IE, I_d_S]).T ))
-            sec_bias = bias_t # [p_NaM, p_EM, p_MM]
+            sec_bias = bias_t # [r_NaM, r_EM, r_MM]
                                  
     ts = np.linspace(0, duration, int(steps) + 1)
     
