@@ -10,11 +10,11 @@ from stoch_sim_model import *
 num_cpu = 30 # number of CPUs requested
 run_time = 4.0
 
-def run(batch = 0, outdir='', comment = "full-reg", inf_sample = vir_prop, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
+def run(batch = 0, outdir='', comment = "NM-EM-vir", inf_sample = vir_prop, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
     
     # Run simulations over different infections
     if "auto" in comment:
-        inf_sample = np.array([[d_S, K_SE, 0.0], [0.0, K_IE_min, 0.0]])
+        inf_sample = np.array([[d_S, K_SE, 0.0], [0.0, K_SE, 0.0]])
     
     batch_num = int((45000/len(inf_sample))*(num_cpu/40)*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. Typically can run 62500 sims in 4 hours on 40 cpus
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
@@ -56,7 +56,7 @@ def run(batch = 0, outdir='', comment = "full-reg", inf_sample = vir_prop, runs 
 
     # Store data in dictionary
     psi_dict = {}
-    select_keys = ['cell_time_series', 'prim_diff_bias', 'parameters', 'summary_stats']
+    select_keys = ['parameters', 'summary_stats']
     for k in select_keys:
         psi_dict[k] = list(d[k] for d in psi_list)
 

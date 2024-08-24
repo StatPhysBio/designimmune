@@ -1,9 +1,10 @@
 #!/bin/bash
 script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-max_job=890 # change depending on number of inputs
+max_job=260 # change depending on number of inputs: Nact-Ediv = 47, full-reg = 947
 # if some jobs don't run, run the following:
-# rerun_list=(6 13)
+# rerun_list=(3 14 20 46)
+
 # for i in "${rerun_list[@]}";
 
 for ((i=0; i<=${max_job}; i++));
