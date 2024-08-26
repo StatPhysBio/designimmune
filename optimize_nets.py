@@ -7,16 +7,16 @@ import pickle
 from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
-num_cpu = 30 # number of CPUs requested
+num_cpu = 38 # number of CPUs requested
 run_time = 4.0
 
-def run(batch = 0, outdir='', comment = "NM-EM-vir", inf_sample = vir_prop, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
+def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", inf_sample = vir_prop, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
     
     # Run simulations over different infections
     if "auto" in comment:
         inf_sample = np.array([[d_S, K_SE, 0.0], [0.0, K_SE, 0.0]])
     
-    batch_num = int((45000/len(inf_sample))*(num_cpu/40)*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. Typically can run 62500 sims in 4 hours on 40 cpus
+    batch_num = int((68400/len(inf_sample))*(num_cpu/40)*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. Typically can run 62500 sims in 4 hours on 40 cpus
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run
