@@ -15,7 +15,7 @@ import itertools
 ### (1) Define simulation parameters
 # Define simulation parameters
 sim_duration = 21
-sim_steps = int(0.5*(10**4))
+sim_steps = int(0.3*(10**4))
 
 # infection dynamics
 S_0 = 10**7 #susceptible cells
@@ -61,7 +61,7 @@ b_myc = myc_thresh/t_act # Prlic et al. (2006)
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 vir_prop = np.array(np.meshgrid(d_S*np.linspace(10, 50, 8), # vary d_I
-                                   K_IE*np.logspace(0.0, np.log10(50), 8), # vary K_IE
+                                   K_IE*np.logspace(0.0, 2, 8), # vary K_IE
                                    b_I*np.linspace(0.75, 1.5, 8) # vary b_I
                                            )).T.reshape(-1,3)
 
@@ -70,10 +70,11 @@ psi_max = 4.0
 psi_2d_full = np.array(list(itertools.product(np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
                                  np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
                                  np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
-                                 np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist())))
+                                 np.linspace(-1, 1, int(psi_max + 1)).tolist())))
 psi_2d = psi_2d_full[(np.abs(psi_2d_full[:,0]) + np.abs(psi_2d_full[:,1]) + 2*np.abs(psi_2d_full[:,2]) <= psi_max)]
 psi_2d_pos = psi_2d[(psi_2d[:,0] >= 0)*(psi_2d[:,1] >= 0)*(psi_2d[:,2] >= 0)]
 psi_2d_comp = psi_2d[(psi_2d[:,2] == 0)]
+psi_2d_nobias = psi_2d[(psi_2d[:,3] == 0)]
 
 NM_psis = [0.0, 0.0, 0.0, 0.0] # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
 EM_psis = [0.0, 0.0, 0.0, 0.0]
