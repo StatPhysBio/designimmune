@@ -16,7 +16,7 @@ def run(batch = 0, outdir='', comment = "prim-Nact-Ediv-vir", inf_sample = vir_p
     if "auto" in comment:
         inf_sample = np.array([[d_S, K_SE, 0.0], [0.0, K_SE, 0.0]])
     
-    batch_num = int((124800/len(inf_sample))*(num_cpu/40)*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. Typically can run 62500 sims in 4 hours on 40 cpus
+    batch_num = int((124800/len(inf_sample))*(num_cpu/40)*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions.
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run
@@ -61,7 +61,7 @@ def run(batch = 0, outdir='', comment = "prim-Nact-Ediv-vir", inf_sample = vir_p
         psi_dict[k] = list(d[k] for d in psi_list)
 
     # Save dictionary
-    with open(os.path.join(outdir, "raw",outfile), 'wb') as f:
+    with open(os.path.join(outdir, outfile), 'wb') as f:
     # Pickle the 'data' dictionary using the highest protocol available.
         pickle.dump(psi_dict, f, pickle.HIGHEST_PROTOCOL)
     print(f'Saved {outfile}')
