@@ -7,16 +7,16 @@ import pickle
 from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
-num_cpu = 39 # number of CPUs requested
+num_cpu = 40 # number of CPUs requested
 run_time = 4.0
 
-def run(batch = 0, outdir='', comment = "prim-Nact-Ediv-vir", inf_sample = vir_prop, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
+def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", inf_sample = vir_prop, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
     
     # Run simulations over different infections
     if "auto" in comment:
         inf_sample = np.array([[d_S, K_SE, 0.0], [0.0, K_SE, 0.0]])
     
-    batch_num = int((124800/len(inf_sample))*(num_cpu/40)*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions.
+    batch_num = int((288000/len(inf_sample))*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions.
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run
@@ -24,17 +24,21 @@ def run(batch = 0, outdir='', comment = "prim-Nact-Ediv-vir", inf_sample = vir_p
         index_start, index_end = batch[0]*int(batch_num)/len(psi_2d)**3, (batch[0]+1)*int(batch_num)/len(psi_2d)**3 # fix psi for activation
         big_psis = np.array(list(itertools.product(psi_2d[int(index_start):int(index_end)+1].tolist(), psi_2d.tolist(), psi_2d.tolist(), psi_2d.tolist()))).reshape(-1,16)
         run_psis = big_psis[int(np.ceil((index_start - int(index_start))*len(psi_2d)**3)): int((index_end - int(index_start))*len(psi_2d)**3)]
+
+    elif "full_nobias-reg" in comment:
+        index_start, index_end = batch[0]*int(batch_num)/len(psi_2d_nobias)**3, (batch[0]+1)*int(batch_num)/len(psi_2d_nobias)**3 # fix psi for activation
+        big_psis = np.array(list(itertools.product(psi_2d_nobias[int(index_start):int(index_end)+1].tolist(), psi_2d_nobias.tolist(), psi_2d_nobias.tolist(), psi_2d_nobias.tolist()))).reshape(-1,16)
+        run_psis = big_psis[int(np.ceil((index_start - int(index_start))*len(psi_2d_nobias)**3)): int((index_end - int(index_start))*len(psi_2d_nobias)**3)]
         
     elif "single-reg" in comment:
         run_psis = np.array([default_reg])
         
     else:
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
-        run_psis = np.array(list(itertools.product(psi_2d.tolist() if ("Nact" in comment and "comp_model" not in comment) else (psi_2d_comp.tolist() if "comp_model" in comment else [act_psis]),
-                                       psi_2d.tolist() if "NM" in comment else [NM_psis], 
-                                       psi_2d.tolist() if "EM" in comment else [EM_psis], 
-                                       psi_2d.tolist() if ("Ediv" in comment and "comp_model" not in comment) else (psi_2d_comp.tolist() if "comp_model" in comment else [exp_psis])))).reshape(-1,16)[index_start:index_end]
-
+        run_psis = np.array(list(itertools.product(psi_2d.tolist() if ("Nact" in comment and "comp_model" not in comment) else (psi_2d_comp.tolist() if "comp_model" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]]),
+                                       psi_2d.tolist() if "NM" in comment else [[0.0, 0.0, 0.0, -2.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]], 
+                                       psi_2d.tolist() if "EM" in comment else [[0.0, 0.0, 0.0, -2.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]], 
+                                       psi_2d.tolist() if ("Ediv" in comment and "comp_model" not in comment) else (psi_2d_comp.tolist() if "comp_model" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]])))).reshape(-1,16)[index_start:index_end]
 
     params = [np.concatenate(q) for q in list(itertools.product( np.tile(inf_sample, (runs,1)).tolist(), run_psis.tolist()))]
     

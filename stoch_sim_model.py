@@ -10,7 +10,7 @@ import itertools
 ### (1) Define simulation parameters
 # Define simulation parameters
 sim_duration = 21
-sim_steps = int(0.5*(10**4))
+sim_steps = int(0.2*(10**4))
 
 # infection dynamics
 S_0 = 10**7 #susceptible cells
@@ -45,10 +45,13 @@ b_myc = myc_thresh/t_act # Prlic et al. (2006)
 
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
-vir_prop = np.array(np.meshgrid(d_S*np.linspace(10, 100, 8), # vary d_I
-                                   K_IE*np.logspace(0.0, 2, 8), # vary K_IE
-                                   b_I*np.linspace(0.75, 2.0, 8) # vary b_I
+num_pnts = 7
+vir_prop = np.array(np.meshgrid(d_S*np.linspace(10, 100, num_pnts), # vary d_I
+                                   K_IE*np.logspace(0.0, 2, num_pnts), # vary K_IE
+                                   b_I*np.linspace(0.75, 2.0, num_pnts) # vary b_I
                                            )).T.reshape(-1,3)
+
+vir_prop_select = vir_prop[vir_prop[:,2]*S_0 > vir_prop[:,0]]
 
 # define reg options
 psi_max = 4.0
@@ -234,7 +237,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                 t_Hauto = 0.25
         
             # Compute total population of cell types
-            Na_pop, E_pop, Ma_pop = np.sum(Na_m[i-1]), np.sum(E_m[i-1]), np.sum(Ma_m[i-1])
+            E_pop = np.sum(E_m[i-1])
             
             if k == 1:
                 M_pop = np.sum(M_m[i-1])
@@ -260,13 +263,15 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             cell_lysed = I_die + dt*S[i-1]*(d_Sauto*np.exp(-((t-2.0)/t_Hauto)**2) + d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))*(vir_model == "autoimmune")
 
             harm_detected = I_die + dt*S[i-1]*d_Sauto*np.exp(-((t-2.0)/t_Hauto)**2)
+
+            cells_sensed = (I[i] + S[i]*(vir_model == "autoimmune"))
             
             H[i] += H[i-1] + b_H*(harm_detected) - dt*d_H*H[i-1]*(H[i-1] >= 0.0)
             
             ## I. Recruitment/Priming
 
             # (a) Phase 1: Naive cells encounter and bind APCs
-            bound_N += np.random.binomial(N_m[i-1], b_N_bind*dt) - np.random.binomial(N_m[i-1], b_unbind_t*dt)
+            bound_N += np.random.binomial(N_m[i-1], b_N_bind*dt) - np.random.binomial(N_m[i-1], b_unbind_t*dt) if cells_sensed >= 1 else 0
 
             # (a) Phase 2: Activated naive cells are bound to APCs and receive stimulation.
             act_N = (1 - bound_N)*(mycN >= myc_thresh)*(N_m[i-1] > 0)
@@ -309,7 +314,6 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             diff_EpM_count += diff_EM
             
             #### New binding events ####
-            cells_sensed = (I[i] + S[i]*(vir_model == "autoimmune"))
             
             b_N_bind = (N_m[i] > 0)*(1 - bound_N)*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], psi_1 = psi_max/4, psi_2 = psi_max/2, psi_1_2 = 0.0, F_0 = -2.0, K_1 = S_0, K_2 = K_EH, reg_model = reg_model)/char_times[0] if cells_sensed >= 1 else 0.0
 
