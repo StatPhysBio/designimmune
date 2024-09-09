@@ -10,7 +10,7 @@ import itertools
 ### (1) Define simulation parameters
 # Define simulation parameters
 sim_duration = 21
-sim_steps = int(0.2*(10**4))
+sim_steps = int(0.3*(10**4))
 
 # infection dynamics
 S_0 = 10**7 #susceptible cells
@@ -32,7 +32,7 @@ kappa = 0.0 # maximal reduction in replication rate due to inflammatory response
 d_IH = d_IE*0
 
 # Immune cells
-N_0 = 100
+N_0 = 300
 max_Na = 2**2
 max_expand = 2**15 - 1 #(Marchingo et al.)
 t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_act = 0.5, 1.0, 1/4, 1/3, 1/2, 2.5, 1/4
