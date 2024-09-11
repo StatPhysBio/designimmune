@@ -16,7 +16,7 @@ def run(batch = 0, outdir='', comment = "auto-Nact-Ediv-vir", inf_sample = vir_p
     if "auto" in comment:
         inf_sample = np.array([[d_S, K_SE, 0.0], [0.0, K_SE, 0.0]])
     
-    batch_num = int((329142/len(inf_sample))*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions.
+    batch_num = int((250000/len(inf_sample))*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions.
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run

@@ -366,7 +366,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        np.amax(pI_d_S),
                        np.max(pE),
                        np.argmax(pE)*dt,
-                       np.mean(np.argmax(E_m > 0 , axis = 0)*dt*(np.amax(E_m, axis = 0) > 0 )),
+                       np.mean(np.argmax(E_m > 0 , axis = 0)*dt*(np.amax(E_m, axis = 0) > 0 )) + sim_duration*(np.max(pE) < 1.0),
                        pM[-1],
                        pM_count if N_0 > 0 else 0.0,
                        np.sum(pE*dt), 
