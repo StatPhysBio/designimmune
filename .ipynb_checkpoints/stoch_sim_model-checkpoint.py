@@ -6,6 +6,7 @@ from scipy import stats
 import os as os
 import pandas as pd
 import itertools
+from scipy.optimize import fsolve
 
 ### (1) Define simulation parameters
 # Define simulation parameters
@@ -36,7 +37,9 @@ N_0 = 200
 max_Na = 2**2
 max_expand = 2**15 - 1 #(Marchingo et al.)
 t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_act = 0.5, 1.0, 1/4, 1/3, 1/2, 2.5, 1/4
-rel_persist_M = 5 # d_eM/d_cM
+rel_persist_M = 5
+t_long_M = 5 # years
+t_short_M = 0.8 # years
 
 # Division timer
 d_myc = 1/t_E_die
@@ -58,7 +61,7 @@ psi_max = 4.0
 psi_2d_full = np.array(list(itertools.product(np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
                                  np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
                                  np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist(),
-                                 np.linspace(-1, 1, int(psi_max + 1)).tolist())))
+                                 np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist())))
 
 psi_2d = psi_2d_full[(np.abs(psi_2d_full[:,0]) + np.abs(psi_2d_full[:,1]) + 2*np.abs(psi_2d_full[:,2]) <= psi_max)]
 psi_2d_pos = psi_2d[(psi_2d[:,0] >= 0)*(psi_2d[:,1] >= 0)*(psi_2d[:,2] >= 0)]
@@ -93,6 +96,16 @@ def f_XtoY(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_
     
     return out
 
+def memory_duration(t, T_eff, T_degrade = t_E_die, target = N_0):
+
+    out = np.exp(- t/np.maximum(t_long_M - (t_long_M - t_short_M)*T_eff/T_degrade, sim_duration/365.25))
+
+    return np.sum(out) - target
+
+def antigenicity_over_harm(df):
+    out = np.log(0 + (df['K_EH'] if 'K_EH' in df.columns.tolist() else K_EH)*(df['b_I']*(df['S_0'] if 'S_0' in df.columns.tolist() else S_0) - df['d_I'] + (df['d_H'] if 'd_H' in df.columns.tolist() else d_H) )/(df['d_I']*(df['I_0'] if 'I_0' in df.columns.tolist() else I_0)))/np.log(df['K_IE']/(df['I_0'] if 'I_0' in df.columns.tolist() else I_0))
+    return out
+    
 #######################
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
 #######################
@@ -331,10 +344,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     # Collect population dynamics
     N, Na, Ma, E = np.sum(N_m, axis = 1), np.sum(Na_m, axis = 1), np.sum(Ma_m, axis = 1), np.sum(E_m, axis = 1)
     
-    T_pEcytM = np.concatenate(T_Ecyt) # time that memory spends in effector
+    T_pEcytM = np.concatenate(T_Ecyt) if N_0 > 0 else np.array([0.0]) # time that memory spends in effector
     # Project out surviving primary memory
-    M_survive = np.random.binomial( np.ones(len(T_pEcytM), dtype =np.int32), np.exp(- 0.5*(1 + (rel_persist_M - 1)*T_pEcytM/char_times[5])) ) # second infection happens 0.5/d_cM years on average.
-    pM_count = int(np.sum(M_survive))
+    M_duration = fsolve(memory_duration, 1.0, args = (T_pEcytM, char_times[5], N_0), xtol = 0.001).item() if len(T_pEcytM) > N_0 and N_0 > 0.0 else 0.0
 
     lineage_comp = np.vstack([np.amax(N_m, axis = 0) ,
                               np.amax(Ma_m, axis = 0),
@@ -368,7 +380,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        np.argmax(pE)*dt,
                        np.mean(np.argmax(E_m > 0 , axis = 0)*dt*(np.amax(E_m, axis = 0) > 0 )) + sim_duration*(np.max(pE) < 1.0),
                        pM[-1],
-                       pM_count if N_0 > 0 else 0.0,
+                       M_duration if N_0 > 0 else 0.0,
                        np.sum(pE*dt), 
                        np.sum(pH*dt),
                        np.amin(pS)])
@@ -393,8 +405,8 @@ stat_names = [r"$\int_0^{T_{sim}} I_{p}dt$",
               r"$E_p^{max}$",
               r"$T_{E_p}^{max}$",
               r"$T_{E_p}^{start}$",
-              r"$(M_p)^\infty$",
-              r"$M(0)$",
+              r"$(M_p)^{max}$",
+              r"$T_{M < N}$",
               r"$\int E_p dt$",
               r"$\int H_p dt$",
               r"$S_p^{min}$"]
@@ -420,7 +432,7 @@ param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',
 
 stat_names_for_df = ['p_load', 'T_max_pI', 'T_min_pI', 'harm_pI',
                      'harm_pS', 'max_pE', 'T_pE_max', 'T_pE_start', 
-                     'inf_pM', 'init_M','int_pE',
+                     'max_pM', 'T_pM_min','int_pE',
                      'int_pH', 'min_pS']
 
 NM_reg = ['psi_NM_I', 'psi_NM_H', 'psi_NM_IH', 'F0_NM']
