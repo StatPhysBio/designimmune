@@ -35,10 +35,10 @@ def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", inf_sample = vir_prop_s
         
     else:
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
-        run_psis = np.array(list(itertools.product(psi_2d.tolist() if ("Nact" in comment and "comp_model" not in comment) else (psi_2d_comp.tolist() if "comp_model" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]]),
+        run_psis = np.array(list(itertools.product(psi_2d.tolist() if ("Nact" in comment and "comp_bias" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]]),
                                        psi_2d.tolist() if "NM" in comment else [[0.0, 0.0, 0.0, -2.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]], 
                                        psi_2d.tolist() if "EM" in comment else [[0.0, 0.0, 0.0, -2.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]], 
-                                       psi_2d.tolist() if ("Ediv" in comment and "comp_model" not in comment) else (psi_2d_comp.tolist() if "comp_model" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]])))).reshape(-1,16)[index_start:index_end]
+                                       psi_2d.tolist() if ("Ediv" in comment and "comp_bias" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]])))).reshape(-1,16)[index_start:index_end]
 
     params = [np.concatenate(q) for q in list(itertools.product( np.tile(inf_sample, (runs,1)).tolist(), run_psis.tolist()))]
     
