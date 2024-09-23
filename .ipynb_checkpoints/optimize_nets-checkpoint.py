@@ -10,13 +10,16 @@ from stoch_sim_model import *
 num_cpu = 40 # number of CPUs requested
 run_time = 4.0
 
-# [d_S, S_0/10, 0.0], [0.0, S_0/10, 0.0]
+#
 
 def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", inf_sample = vir_prop_select, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
     
     # Run simulations over different infections
     if "auto" in comment:
-        inf_sample = np.array([[d_S, S_0, 0.0], [0.0, S_0, 0.0], [d_S, S_0/10, 0.0], [0.0, S_0/10, 0.0]])
+        inf_sample = np.array(np.meshgrid(d_S*np.array([0.0, 0.1, 1]), # vary d_I
+                                   K_IE*np.array([10,100,1000]), # vary K_IE
+                                   b_I*np.array([0.0]) # vary b_I
+                                           )).T.reshape(-1,3)
     
     batch_num = int((267906/len(inf_sample))*(num_cpu/40)*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions.
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
@@ -37,10 +40,10 @@ def run(batch = 0, outdir='', comment = "Nact-Ediv-vir", inf_sample = vir_prop_s
         
     else:
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
-        run_psis = np.array(list(itertools.product(psi_2d.tolist() if ("Nact" in comment and "comp_bias" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]]),
+        run_psis = np.array(list(itertools.product(psi_2d.tolist() if ("Nact" in comment and "comp_bias" not in comment and "auto" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else (psi_2d_pos.tolist() if "auto" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]])),
                                        psi_2d.tolist() if "NM" in comment else [[0.0, 0.0, 0.0, -2.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]], 
                                        psi_2d.tolist() if "EM" in comment else [[0.0, 0.0, 0.0, -2.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]], 
-                                       psi_2d.tolist() if ("Ediv" in comment and "comp_bias" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]])))).reshape(-1,16)[index_start:index_end]
+                                       psi_2d.tolist() if ("Ediv" in comment and "comp_bias" not in comment and "auto" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else (psi_2d_pos.tolist() if "auto" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]]))))).reshape(-1,16)[index_start:index_end]
 
     params = [np.concatenate(q) for q in list(itertools.product( np.tile(inf_sample, (runs,1)).tolist(), run_psis.tolist()))]
     
