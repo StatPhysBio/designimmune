@@ -65,9 +65,21 @@ psi_2d_full = np.array(list(itertools.product(np.linspace(-psi_max/2, psi_max/2,
 
 psi_2d = psi_2d_full[(np.abs(psi_2d_full[:,0]) + np.abs(psi_2d_full[:,1]) + 2*np.abs(psi_2d_full[:,2]) <= psi_max)]
 psi_2d_pos = psi_2d[(psi_2d[:,0] >= 0)*(psi_2d[:,1] >= 0)*(psi_2d[:,2] >= 0)]
+# psi_2d_full_pos = np.array(list(itertools.product(np.linspace(0, psi_max/2, int(psi_max + 1)).tolist(),
+#                                  np.linspace(0, psi_max/2, int(psi_max + 1)).tolist(),
+#                                  np.linspace(0, psi_max/2, int(psi_max + 1)).tolist(),
+#                                  np.linspace(psi_max/2, psi_max/2, int(psi_max + 1)).tolist())))
+# psi_2d_pos = psi_2d_full_pos[(np.abs(psi_2d_full_pos[:,0]) + np.abs(psi_2d_full_pos[:,1]) + 2*np.abs(psi_2d_full_pos[:,2]) <= psi_max)]
+
 psi_2d_comp = psi_2d[(psi_2d[:,2] == 0)]
 psi_2d_nobias = psi_2d[(psi_2d[:,3] == 0)]
 psi_2d_comp_bias = np.array(list(itertools.product([0.0],[ 0.0], [0.0], np.linspace(-(1 + psi_max), (1 + psi_max), 11).tolist())))
+
+bl_block = list(itertools.product([0.0],[ 0.0], [0.0], np.linspace(-psi_max, psi_max, int(psi_max + 1)).tolist()))
+psi_2d_sparse = np.vstack((np.array(list(itertools.product(psi_2d.tolist(), bl_block, bl_block, bl_block))).reshape(-1,16),
+           np.array(list(itertools.product(bl_block, psi_2d.tolist(), bl_block, bl_block))).reshape(-1,16),
+           np.array(list(itertools.product(bl_block, bl_block, psi_2d.tolist(), bl_block))).reshape(-1,16),
+           np.array(list(itertools.product(bl_block, bl_block, bl_block, psi_2d.tolist()))).reshape(-1,16)))
 
 NM_psis = [0.0, 0.0, 0.0, 0.0] # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
 EM_psis = [0.0, 0.0, 0.0, 0.0]
@@ -213,17 +225,17 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         if vir_model == "dep_harm": # makes  average virus produced roughly the same independent of infected death rate
             b_I_t = b_I + d_I/S_0
             d_Sauto = 0
-            t_Hauto = 0.25
+            t_Hauto = 1.0
         elif vir_model == "autoimmune":
             b_I_t = 0.0
             d_Sauto = d_I 
             K_SE = K_IE
             I_0 = 0.0
-            t_Hauto = 0.25 # duration of autoimmune inflammation
+            t_Hauto = 1.0 # duration of autoimmune inflammation
         else:
             b_I_t = b_I
             d_Sauto = 0
-            t_Hauto = 0.25
+            t_Hauto = 1.0
     
         # Compute total population of cell types
         E_pop = np.sum(E_m[i-1])
@@ -240,16 +252,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         S_to_I, I_die = dt*S[i-1]*(I[i-1] >= I_0)*b_I_t*I[i-1], dt*I[i-1]*(d_IE*(E_pop)/(K_IE + I[i-1] + E_pop) + d_I)
         I_d_IE[i] += I_d_IE[i-1] + dt*I[i-1]*d_IE*(E_pop)/(K_IE + I[i-1] + E_pop) # cells killed by immune response
         I_d_I[i] += I_d_I[i-1] + dt*I[i-1]*d_I + (I[i] if i == int(steps) else 0) # cells killed by infection
-        I_d_S[i] += I_d_S[i-1] + dt*S[i-1]*( d_IE*(E_pop)/(K_SE + S[i-1] + E_pop) + d_Sauto*np.exp(-((t-2.0)/t_Hauto)**2) )
+        I_d_S[i] += I_d_S[i-1] + dt*S[i-1]*( d_IE*(E_pop)/(K_SE + S[i-1] + E_pop) )
         
         # (b) state variables
-        S[i] += S[i-1] - S_to_I + dt*(b_S - (d_S + d_Sauto*np.exp(-((t-2.0)/t_Hauto)**2))*S[i-1] - S[i-1]*d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))*(S[i-1] >= 1.0)
+        S[i] += S[i-1] - S_to_I + dt*(b_S - (d_S + d_Sauto*np.exp(-(t/t_Hauto)**2))*S[i-1] - S[i-1]*d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))*(S[i-1] >= 1.0)
         
         I[i] += I[i-1] + S_to_I - I_die
 
-        harm_detected = I_die + dt*S[i-1]*d_Sauto*np.exp(-((t-2.0)/t_Hauto)**2)
-        
-        cell_lysed = harm_detected + dt*S[i-1]*d_IE*(E_pop)/(K_SE + S[i-1] + E_pop)*(vir_model == "autoimmune")
+        harm_detected = I_die + dt*S[i-1]*d_Sauto*np.exp(-(t/t_Hauto)**2)
 
         cells_sensed = (I[i] + S[i]*(vir_model == "autoimmune"))
         
