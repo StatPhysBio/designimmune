@@ -49,12 +49,12 @@ b_myc = myc_thresh/t_act # Prlic et al. (2006)
 # hyper parameters
 alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 num_pnts = 7
-vir_prop = np.array(np.meshgrid(d_S*np.linspace(10, 100, num_pnts), # vary d_I
+vir_prop = np.array(np.meshgrid(d_S*np.linspace(25, 100, num_pnts), # vary d_I
                                    K_IE*np.logspace(0.0, 2, num_pnts), # vary K_IE
                                    b_I*np.linspace(0.75, 2.0, num_pnts) # vary b_I
                                            )).T.reshape(-1,3)
 
-vir_prop_select = vir_prop[vir_prop[:,2]*S_0 > vir_prop[:,0]]
+vir_prop_select = vir_prop[vir_prop[:,2]*S_0 - vir_prop[:,0] >= 1/4] #vir_prop[vir_prop[:,2]*S_0 > vir_prop[:,0]]
 
 # define reg options
 psi_max = 4.0
@@ -75,11 +75,11 @@ psi_2d_comp = psi_2d[(psi_2d[:,2] == 0)]
 psi_2d_nobias = psi_2d[(psi_2d[:,3] == 0)]
 psi_2d_comp_bias = np.array(list(itertools.product([0.0],[ 0.0], [0.0], np.linspace(-(1 + psi_max), (1 + psi_max), 11).tolist())))
 
-bl_block = list(itertools.product([0.0],[ 0.0], [0.0], np.linspace(-psi_max, psi_max, int(psi_max + 1)).tolist()))
-psi_2d_sparse = np.vstack((np.array(list(itertools.product(psi_2d.tolist(), bl_block, bl_block, bl_block))).reshape(-1,16),
-           np.array(list(itertools.product(bl_block, psi_2d.tolist(), bl_block, bl_block))).reshape(-1,16),
-           np.array(list(itertools.product(bl_block, bl_block, psi_2d.tolist(), bl_block))).reshape(-1,16),
-           np.array(list(itertools.product(bl_block, bl_block, bl_block, psi_2d.tolist()))).reshape(-1,16)))
+bl_block = list(itertools.product([0.0],[ 0.0], [0.0], np.linspace(-psi_max/2, psi_max/2, int(psi_max + 1)).tolist()))
+psi_2d_sparse = np.vstack((np.array(list(itertools.product(psi_2d_full.tolist(), bl_block, bl_block, bl_block))).reshape(-1,16),
+           np.array(list(itertools.product(bl_block, psi_2d_full.tolist(), bl_block, bl_block))).reshape(-1,16),
+           np.array(list(itertools.product(bl_block, bl_block, psi_2d_full.tolist(), bl_block))).reshape(-1,16),
+           np.array(list(itertools.product(bl_block, bl_block, bl_block, psi_2d_full.tolist()))).reshape(-1,16)))
 
 NM_psis = [0.0, 0.0, 0.0, 0.0] # regulatory weights: psi_M_I, psi_M_H, psi_M_IH
 EM_psis = [0.0, 0.0, 0.0, 0.0]
