@@ -16,8 +16,9 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
     if "auto" in comment:
         inf_sample = np.array(np.meshgrid(d_S*np.array([0.1, 1.0, 10.0]), # vary d_I
                                    S_0*np.array([0.1, 1.0, 10.0]), # vary K_IE
-                                   b_I*np.array([0.0]) # vary b_I
-                                           )).T.reshape(-1,3)
+                                   b_I*np.array([0.0]), # vary b_I
+                                   K_EH**np.logspace(-1.0, 1, 3) # vary K_EH
+                                           )).T.reshape(-1,4)
     
     batch_num = int((230400/len(inf_sample))*(num_cpu/40)*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
@@ -55,7 +56,7 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
                                                                                                                K_IE = param[1],
                                                                                                                b_I = param[2],
                                                                                                                K_EI = param[1],
-                                                                                                               K_EH = K_EH,
+                                                                                                               K_EH = param[3],
                                                                                                                activation_regulation = param[3:7], # if "Nact-reg" in comment else act_psis,
                                                                                                                NM_regulation = param[7:11], # if "NM-reg" in comment else NM_psis,
                                                                                                                EM_regulation = param[11:15], # if "EM-reg" in comment else EM_psis,

@@ -26,18 +26,14 @@ d_I = np.minimum(25*d_S, S_0*b_I) # successful virus cannot kill cells faster th
 # Inflammatory response
 d_H = 2.0
 b_H = 1 # innate response/inflammation per lysed cell compared to natural death
-K_IH = d_S*S_0/d_H # half-max level of instantaneous damage required to trigger innate/inflammatory response
-K_EH = 1*K_IH # half-max level of inflammation required to trigger lymphocyte response
+K_EH = d_S*S_0/d_H # half-max level of innate/inflammatory response required to trigger lymphocyte response
 K_SE = 10*S_0
-kappa = 0.0 # maximal reduction in replication rate due to inflammatory response
-d_IH = d_IE*0
 
 # Immune cells
 N_0 = 200
 max_Na = 2**2
 max_expand = 2**15 - 1 #(Marchingo et al.)
 t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_act = 0.5, 1.0, 1/4, 1/3, 1/2, 2.5, 1/4
-rel_persist_M = 5
 t_long_M = 5 # years
 t_short_M = 0.8 # years
 
@@ -47,12 +43,12 @@ myc_thresh = 1.0
 b_myc = myc_thresh/t_act # Prlic et al. (2006)
 
 # hyper parameters
-alpha = 0.5 # weight of antigenic signals relative to inflamatory signals
 num_pnts = 10
 vir_prop = np.array(np.meshgrid(d_S*np.linspace(25, 100, num_pnts), # vary d_I
                                    K_IE*np.logspace(0.0, 2, num_pnts), # vary K_IE
-                                   b_I*np.array([2.0]) # vary b_I
-                                           )).T.reshape(-1,3)
+                                   b_I*np.array([2.0]), # vary b_I
+                                   K_EH*np.logspace(-1.0, 1, 3) # vary K_EH
+                                           )).T.reshape(-1,4)
 
 vir_prop_select = vir_prop[vir_prop[:,2]*S_0 - vir_prop[:,0] >= 1/4] #vir_prop[vir_prop[:,2]*S_0 > vir_prop[:,0]]
 
@@ -123,15 +119,14 @@ def antigenicity_over_harm(df):
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
 #######################
 
-def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, d_IH = d_IH, K_IE = K_IE, K_IH = K_IH, K_SE = K_SE,
-                    b_H = b_H, d_H = d_H, K_EI = K_EI, K_EH = K_EH, kappa = kappa,
+def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, K_IE = K_IE, K_SE = K_SE,
+                    b_H = b_H, d_H = d_H, K_EI = K_EI, K_EH = K_EH,
                     N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh, max_expand = max_expand,
                     char_times = [t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_act],
                     NM_regulation = NM_psis,
                     EM_regulation = EM_psis,
                     activation_regulation = act_psis,
                     expansion_regulation = exp_psis,
-                    alpha = alpha,
                     infection = "prim",
                     vir_model = "indep_harm",
                     duration = sim_duration, 
@@ -140,7 +135,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                     out_data = "small"):
     
     # VARIABLE DEFINITIONS:
-    # S_0 := S_0, I_0 := I_0, b_S := b_S, b_I := b_I, d_S := d_S, d_I := d_I, d_IE := d_IE, d_IH := d_IH, K_IE := K_IE, K_IH := K_IH,
+    # S_0 := S_0, I_0 := I_0, b_S := b_S, b_I := b_I, d_S := d_S, d_I := d_I, d_IE := d_IE, K_IE := K_IE,
     # b_H := b_H, d_H := d_H, K_EI := K_EI, K_EH := K_EH,
     # N_0 := N_0, max_Na := max_Na, b_myc := b_myc, d_myc := d_myc, myc_thresh := myc_thresh,
     # char_times := [t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_EM_diff, t_E_die, t_Nact],
@@ -209,8 +204,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     b_N_bind = np.zeros(N_0_var)
     b_Na_div = np.ones(N_0_var)/char_times[2]
     b_myc_t = np.zeros(N_0_var)
-    b_E_div = np.ones(N_0_var)*(alpha*p_tcr + (1-alpha)*p_cyt)/char_times[3]
-    b_Ma_div = np.ones(N_0_var)*(alpha*p_tcr + (1-alpha)*p_cyt)/char_times[4]
+    b_E_div = np.ones(N_0_var)/char_times[3]
+    b_Ma_div = np.ones(N_0_var)/char_times[4]
     d_E_die = np.ones(N_0_var)/char_times[5]   
     
     #################################
@@ -325,8 +320,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         #### Time-dependent rates modulated by antigen and cytokine signals ####
         b_Na_div = 1/char_times[2]
-        b_E_div = (mycE >= myc_thresh)*(div_E_count < max_expand)*(alpha*p_tcr + (1-alpha)*p_cyt)/char_times[3]
-        b_Ma_div = (mycMa >= myc_thresh)*(div_E_count < max_expand)*(alpha*p_tcr + (1-alpha)*p_cyt)/char_times[4]
+        b_E_div = (mycE >= myc_thresh)*(div_E_count < max_expand)/char_times[3]
+        b_Ma_div = (mycMa >= myc_thresh)*(div_E_count < max_expand)/char_times[4]
         
         #### Transition probabilities modulated by antigen and cytokine signals ####
         r_Nact[i] += b_myc_t/myc_thresh
@@ -384,7 +379,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         
     dt = ts[1]-ts[0]
     
-    parameters = np.concatenate((np.array([S_0, I_0, b_I, d_S, d_I, d_IE, d_IH, K_IE, K_IH,
+    parameters = np.concatenate((np.array([S_0, I_0, b_I, d_S, d_I, d_IE, K_IE,
               b_H, d_H, K_EI, K_EH,
               N_0, max_Na, b_myc, d_myc, myc_thresh]),
               char_times,
@@ -440,8 +435,8 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
                r"$\psi_{E^*}^{(I)}$", r"$\psi_{E^*}^{(H)}$", r"$\psi_{E^*}^{(P)}$", r"$F_{E^*}$"]
 
 
-param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'd_IH', 'K_IE',
-                      'K_IH', 'b_H', 'd_H', 'K_EI', 'K_EH',
+param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_IE',
+                      'b_H', 'd_H', 'K_EI', 'K_EH',
                       'N_0', 'max_Na', 'b_myc', 'd_myc', 'myc_thresh',
                       't_bind', 't_unbind', 't_Na_div', 't_E_div', 't_M_div', 't_E_die', 't_act',
                       'psi_Nact_I', 'psi_Nact_H', 'psi_Nact_P', 'F0_Nact',

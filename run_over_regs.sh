@@ -1,13 +1,13 @@
 #!/bin/bash
 script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-max_job=218 # change depending on number of inputs: Nact-Ediv = 47, full-reg = 947
+max_job=649 # change depending on number of inputs: Nact-Ediv = 47, full-reg = 947
 # if some jobs don't run, run the following:
-rerun_list=(81)
+# rerun_list=(18 30 133 134 135 138 146 147 155)
 
-for i in "${rerun_list[@]}";
+# for i in "${rerun_list[@]}";
 
-# for ((i=0; i<=${max_job}; i++));
+for ((i=0; i<=${max_job}; i++));
 
 do
     sbatch ${script_dir}/submit_app_job.sh "${script_dir}/submit_optimize_nets.sh $i"
