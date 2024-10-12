@@ -17,10 +17,10 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
         inf_sample = np.array(np.meshgrid(d_S*np.array([0.1, 1.0, 10.0]), # vary d_I
                                    S_0*np.array([0.1, 1.0, 10.0]), # vary K_IE
                                    b_I*np.array([0.0]), # vary b_I
-                                   K_EH**np.logspace(-1.0, 1, 3) # vary K_EH
+                                   K_EH*np.logspace(-1.0, 1, 3) # vary K_EH
                                            )).T.reshape(-1,4)
     
-    batch_num = int((230400/len(inf_sample))*(num_cpu/40)*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
+    batch_num = int((180000/len(inf_sample))*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run
@@ -55,12 +55,11 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
     psi_list = Parallel(n_jobs = num_cpu, batch_size = max(int(len(inf_sample)/num_cpu),1))(delayed(lin_stoch_sim)(d_I = param[0], 
                                                                                                                K_IE = param[1],
                                                                                                                b_I = param[2],
-                                                                                                               K_EI = param[1],
                                                                                                                K_EH = param[3],
-                                                                                                               activation_regulation = param[3:7], # if "Nact-reg" in comment else act_psis,
-                                                                                                               NM_regulation = param[7:11], # if "NM-reg" in comment else NM_psis,
-                                                                                                               EM_regulation = param[11:15], # if "EM-reg" in comment else EM_psis,
-                                                                                                               expansion_regulation = param[15:19], # if "Ediv-reg" in comment else act_psis,
+                                                                                                               activation_regulation = param[4:8], # if "Nact-reg" in comment else act_psis,
+                                                                                                               NM_regulation = param[8:12], # if "NM-reg" in comment else NM_psis,
+                                                                                                               EM_regulation = param[12:16], # if "EM-reg" in comment else EM_psis,
+                                                                                                               expansion_regulation = param[16:20], # if "Ediv-reg" in comment else act_psis,
                                                                                                                infection = infection_type,
                                                                                                                vir_model = vir_model if 'auto' not in comment else "autoimmune",
                                                                                                                reg_model = "competition_model" if "comp_model" in comment else "mwc_like")
