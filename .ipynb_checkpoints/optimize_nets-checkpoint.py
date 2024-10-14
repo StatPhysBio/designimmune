@@ -20,7 +20,7 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
                                    K_EH*np.logspace(-1.0, 1, 3) # vary K_EH
                                            )).T.reshape(-1,4)
     
-    batch_num = int((180000/len(inf_sample))*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
+    batch_num = int((144000/len(inf_sample))*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run
@@ -55,7 +55,6 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
     psi_list = Parallel(n_jobs = num_cpu, batch_size = max(int(len(inf_sample)/num_cpu),1))(delayed(lin_stoch_sim)(d_I = param[0], 
                                                                                                                K_IE = param[1],
                                                                                                                b_I = param[2],
-                                                                                                               K_EI = param[1],
                                                                                                                K_EH = param[3],
                                                                                                                activation_regulation = param[4:8], # if "Nact-reg" in comment else act_psis,
                                                                                                                NM_regulation = param[8:12], # if "NM-reg" in comment else NM_psis,

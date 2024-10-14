@@ -113,6 +113,25 @@ def memory_duration(t, T_eff, T_degrade = t_E_die, target = N_0):
 def antigenicity_over_harm(df):
     out = np.log(0 + (df['K_EH'] if 'K_EH' in df.columns.tolist() else K_EH)*(df['b_I']*(df['S_0'] if 'S_0' in df.columns.tolist() else S_0) - df['d_I'] + (df['d_H'] if 'd_H' in df.columns.tolist() else d_H) )/(df['d_I']*(df['I_0'] if 'I_0' in df.columns.tolist() else I_0)))/np.log(df['K_IE']/(df['I_0'] if 'I_0' in df.columns.tolist() else I_0))
     return out
+
+def sigmoid(x, y_max, y_min,
+            b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15, 
+            w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14, w15, 
+            a00 = 0, a01 = 0, a02 = 0, a03 = 0):
+
+    out = (y_max - y_min) \
+    *((1 - a00)/(1 + np.exp( -((b0 + x[:,0])*w0 + (b1 + x[:,1])*w1 + (b2 + x[:,2])*w2 + (b3 + x[:,3])*w3) )) + a00) \
+    *((1 - a01)/(1 + np.exp( -((b4 + x[:,4])*w4 + (b5 + x[:,5])*w5 + (b6 + x[:,6])*w6 + (b7 + x[:,7])*w7) )) + a01) \
+    *((1 - a02)/(1 + np.exp( -((b8 + x[:,8])*w8 + (b9 + x[:,9])*w9 + (b10 + x[:,10])*w10 + (b11 + x[:,11])*w11) )) + a02) \
+    *((1 - a03)/(1 + np.exp( -((b12 + x[:,12])*w12 + (b13 + x[:,13])*w13 + (b14 + x[:,14])*w14 + (b15 + x[:,15])*w15) )) + a03) \
+    + y_min
+
+    return out        
+
+def sigmoid_1d(x, y_max, y_min, b, w):
+
+    out = (y_max - y_min)/(1 + np.exp(-w*x - b) ) + y_min
+    return out
     
 #######################
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
@@ -452,3 +471,6 @@ NM_reg = ['psi_NM_I', 'psi_NM_H', 'psi_NM_P', 'F0_NM']
 EM_reg = ['psi_EM_I', 'psi_EM_H', 'psi_EM_P', 'F0_EM']
 Nact_reg = ['psi_Nact_I', 'psi_Nact_H', 'psi_Nact_P', 'F0_Nact']
 Ediv_reg = ['psi_Ediv_I', 'psi_Ediv_H', 'psi_Ediv_P', 'F0_Ediv']
+
+perf_vars = ["peff_protection", "peff_toxicity", "max_pM_fold", "T_pM_min", "int_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Protection", "Toxicity", "Memory \n expansion", "Memory \n duration", "Response \n expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
