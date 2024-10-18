@@ -10,17 +10,17 @@ from stoch_sim_model import *
 num_cpu = 25 # number of CPUs requested
 run_time = 4.0
 
-def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_select, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu):
+def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_select, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu, run_time = run_time):
     
     # Run simulations over different infections
     if "auto" in comment:
-        inf_sample = np.array(np.meshgrid(d_S*np.array([0.1, 1.0, 10.0]), # vary d_I
-                                   S_0*np.array([0.1, 1.0, 10.0]), # vary K_IE
+        inf_sample = np.array(np.meshgrid(d_S*np.array([0.0, 1.0]), # vary d_I
+                                   S_0*np.array([1.0, 10.0]), # vary K_IE
                                    b_I*np.array([0.0]), # vary b_I
-                                   K_EH*np.logspace(-1.0, 1, 3) # vary K_EH
+                                   K_EH*np.array([1.0]) # vary K_EH
                                            )).T.reshape(-1,4)
     
-    batch_num = int((144000/len(inf_sample))*(run_time/4)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
+    batch_num = int((1440/len(inf_sample))*(run_time*num_cpu)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run

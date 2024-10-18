@@ -11,7 +11,7 @@ from scipy.optimize import fsolve, minimize
 ### (1) Define simulation parameters
 # Define simulation parameters
 sim_duration = 20
-sim_steps = int(0.20*(10**4))
+sim_steps = int(0.2*(10**4))
 
 # infection dynamics
 S_0 = 10**7 #susceptible cells
@@ -289,7 +289,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         else:
             bound_N = 0*bound_N
 
-        bound_N_time += bound_N*bound_N*dt - (1-bound_N)*bound_N_time*dt
+        bound_N_time += bound_N*bound_N*dt - (1-bound_N)*bound_N_time*dt*N_m[i-1] # only reset to zero if the cell is not activated
 
         # (b) Phase 2: Activated naive cells are bound to APCs and receive stimulation.
         act_N = (1 - bound_N)*(mycN >= myc_thresh)*(N_m[i-1] > 0)
@@ -355,8 +355,10 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         d_E_die = 2*(E_m[i] > 0)*T_E/(2/np.sqrt(np.pi)*char_times[5])**2
 
         # store time an effector spends in cytotoxic state
-        for l in np.where(N_m[i] == 0)[0]:
+        for l in np.where((N_m[i] == 0)*(E_m[i] + b_Ma_div > 0))[0]:
             T_Ecyt[l] += diff_NaM[l]*[0.0] + diff_EM[l]*[T_E[l].item()] + div_Ma[l]*[0.0]
+
+        # T_Ecyt += np.sum(diff_NaM)*[0.0] + diff_EM*T_E.tolist() + np.sum(div_Ma)*[0.0]
 
         #### Store myc levels ####
         if out_data == "full":
@@ -472,5 +474,7 @@ EM_reg = ['psi_EM_I', 'psi_EM_H', 'psi_EM_P', 'F0_EM']
 Nact_reg = ['psi_Nact_I', 'psi_Nact_H', 'psi_Nact_P', 'F0_Nact']
 Ediv_reg = ['psi_Ediv_I', 'psi_Ediv_H', 'psi_Ediv_P', 'F0_Ediv']
 
-perf_vars = ["peff_protection", "peff_toxicity", "max_pM_fold", "T_pM_min", "int_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Protection", "Toxicity", "Memory \n expansion", "Memory \n duration", "Response \n expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_vars = ["peff_protection", "peff_toxicity", "max_pM_fold", "T_pM_min"] #, "int_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Protection", "Toxicity", "Memory \n expansion", "Memory \n duration"] #, "Response \n expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+
+vir_vars = ['d_I', 'K_IE', 'b_I', 'K_EH', 'S_0']
