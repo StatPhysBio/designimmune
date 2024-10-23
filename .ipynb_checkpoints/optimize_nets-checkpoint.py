@@ -3,14 +3,18 @@ import os
 from joblib import Parallel, delayed
 import numpy as np
 import pickle
+import time
 
 from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
-num_cpu = 25 # number of CPUs requested
+num_cpu = 25 # number of CPUs used to benchmark expected runtime
+add_cpu = 14 # additional cpus requested as a buffer
 run_time = 4.0
 
 def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_select, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu, run_time = run_time):
+
+    start = time.time() # timestamp start
     
     # Run simulations over different infections
     if "auto" in comment:
@@ -20,7 +24,7 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
                                    K_EH*np.array([1.0]) # vary K_EH
                                            )).T.reshape(-1,4)
     
-    batch_num = int((1440/len(inf_sample))*(run_time*num_cpu)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
+    batch_num = int((2057/len(inf_sample))*(run_time*num_cpu)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run
@@ -52,7 +56,7 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
     
     print(f'Running {len(params)} simulations in batch #{batch[0]}')
 
-    psi_list = Parallel(n_jobs = num_cpu, batch_size = max(int(len(inf_sample)/num_cpu),1))(delayed(lin_stoch_sim)(d_I = param[0], 
+    psi_list = Parallel(n_jobs = num_cpu + add_cpu, batch_size = max(int(len(params)/(num_cpu + add_cpu)),1))(delayed(lin_stoch_sim)(d_I = param[0], 
                                                                                                                K_IE = param[1],
                                                                                                                b_I = param[2],
                                                                                                                K_EH = param[3],
@@ -76,6 +80,10 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
     # Pickle the 'data' dictionary using the highest protocol available.
         pickle.dump(psi_dict, f, pickle.HIGHEST_PROTOCOL)
     print(f'Saved {outfile}')
+
+    end = time.time() # timestamp end
+    
+    print((end - start)/3600, 'hrs')
 
 def main():
     import argparse
