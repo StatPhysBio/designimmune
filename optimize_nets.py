@@ -9,7 +9,7 @@ from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
 num_cpu = 25 # number of CPUs used to benchmark expected runtime
-add_cpu = 14 # additional cpus requested as a buffer
+add_cpu = 15 # additional cpus requested as a buffer
 run_time = 4.0
 
 def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_select, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu, run_time = run_time):

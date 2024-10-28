@@ -111,10 +111,11 @@ def antigenicity_over_harm(df):
     return out
 
 def sigmoid(x, y_max, y_min,
-            b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15,
+            b3, b7, b11, b15,
             w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14, w15, 
-            a00 = 0, a01 = 0, a02 = 0, a03 = 0):
-            #b0 = 0, b1 = 0, b2 = 0, b4 = 0, b5 = 0, b6 = 0, b8 = 0, b9 = 0, b10 = 0, b12 = 0, b13 = 0, b14 = 0):
+            a00 = 0, a01 = 0, a02 = 0, a03 = 0,
+            b0 = 0, b1 = 0, b2 = 0, b4 = 0, b5 = 0, b6 = 0, b8 = 0, b9 = 0, b10 = 0, b12 = 0, b13 = 0, b14 = 0):
+            #b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15,
 
     out = (y_max - y_min) \
     *((1 - a00)/(1 + np.exp( -((b0 + x[:,0])*w0 + (b1 + x[:,1])*w1 + (b2 + x[:,2])*w2 + (b3 + x[:,3])*w3) )) + a00) \
@@ -356,7 +357,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         #### Transition probabilities modulated by antigen and cytokine signals ####
         r_Nact[i] += b_myc_t/myc_thresh
         
-        r_NaM[i] += (r_NaM[i-1] + 2*dt*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_3 = psi_NM_P,F_0 = F0_NM, K_1 = (K_IE*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")), K_2 = K_EH, K_3 = K_EH, reg_model = reg_model)/(2/np.sqrt(np.pi)*(char_times[1]))**2)*(N_m[i]*bound_N > 0)*(mycN >= myc_thresh)
+        r_NaM[i] += (r_NaM[i-1] + 2*dt*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i], psi_1 = psi_NM_I, psi_2 = psi_NM_H, psi_3 = psi_NM_P,F_0 = F0_NM, K_1 = (K_IE*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")), K_2 = K_EH, K_3 = K_EH, reg_model = reg_model)/(2/np.sqrt(np.pi)*(char_times[1]/2))**2)*(N_m[i]*bound_N > 0)*(mycN >= myc_thresh)
         
         r_EM[i] += (r_EM[i-1] + 2*dt*f_XtoY(sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i], psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_3 = psi_EM_P, F_0 = F0_EM, K_1 = (K_IE*(vir_model != "autoimmune") + K_SE*(vir_model == "autoimmune")), K_2 = K_EH, K_3 = K_EH, reg_model = reg_model)/(2/np.sqrt(np.pi)*char_times[1]**2))*(E_m[i] > 0) # Urgent: need to square entire denominator
         
@@ -383,7 +384,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             mycE_m[i] += mycE
 
         #### Store differentiation biases
-        bias_t[i] += np.array([np.mean((r_Nact[i])),
+        bias_t[i] += np.array([np.mean((r_Nact[i])) if N_0 > 0.0 else 0.0,
                                np.mean((r_NaM[i])[N_m[i]*bound_N > 0]) if np.sum(N_m[i]*bound_N) > 0.0 else 0.0, 
                                np.mean((r_EM[i])[E_m[i] > 0]) if np.sum(E_m[i]) > 0.0 else 0.0, 
                                np.mean(r_Ediv[i][E_m[i] > 0]) if np.sum(E_m[i]) > 0.0 else 0.0])
@@ -429,7 +430,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        np.amax(pI_d_SE),
                        np.sum(div_E_count),
                        np.argmax(pE)*dt,
-                       np.mean(np.argmax(E_m > 0 , axis = 0)*dt*(np.amax(E_m, axis = 0) > 0 )) + sim_duration*(np.max(pE) < 1.0),
+                       (np.mean(np.argmax(E_m > 0 , axis = 0)*dt*(np.amax(E_m, axis = 0) > 0 )) + sim_duration*(np.max(pE) < 1.0)) if N_0 > 0 else sim_duration,
                        pM[-1],
                        M_duration if N_0 > 0 else 0.0,
                        np.sum(pE*dt), 
@@ -497,7 +498,7 @@ reg_and_label = [param_names[-14]] + [param_names[-10]] + [param_names[-6]] + [p
 reg_bl = [Nact_reg[3]] + [NM_reg[3]] + [EM_reg[3]] + [Ediv_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
-perf_vars = ["peff_protection", "peff_toxicity", "max_pM_fold", "T_pM_min", "max_pE_fold"]#, "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Protection", "Toxicity", "Memory \n expansion", "Memory \n duration", "Response \n expansion"]#, "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_vars = ["peff_protection", "peff_toxicity", "max_pM_fold", "T_pM_min", "max_pE_fold"]  #, "T_max_pI", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Protection", "Toxicity", "Memory \n expansion", "Memory \n duration", "Response \n expansion"] #, "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
 
 vir_vars = ['d_I', 'K_IE', 'b_I', 'K_EH', 'S_0']
