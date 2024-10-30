@@ -9,10 +9,10 @@ from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
 num_cpu = 25 # number of CPUs used to benchmark expected runtime
-add_cpu = 15 # additional cpus requested as a buffer
+add_cpu = 14 # additional cpus requested as a buffer
 run_time = 4.0
 
-def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_select, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NM_psis + EM_psis + exp_psis, num_cpu = num_cpu, run_time = run_time):
+def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_select, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NE_psis + EM_psis + exp_psis, num_cpu = num_cpu, run_time = run_time):
 
     start = time.time() # timestamp start
     
@@ -48,7 +48,7 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
     else:
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
         run_psis = np.array(list(itertools.product(psi_2d.tolist() if ("Nact" in comment and "comp_bias" not in comment and "auto" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else (psi_2d.tolist() if "auto" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]])),
-                                       psi_2d.tolist() if ("NM" in comment and "auto" not in comment) else ([[0.0, 0.0, 0.0, -2.0]] if "auto" in comment else [[0.0, 0.0, 0.0, -2.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]]), 
+                                       psi_2d.tolist() if ("NE" in comment and "auto" not in comment) else ([[0.0, 0.0, 0.0, -2.0]] if "auto" in comment else [[0.0, 0.0, 0.0, -2.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]]), 
                                        psi_2d.tolist() if ("EM" in comment and "auto" not in comment) else ([[0.0, 0.0, 0.0, -2.0]] if "auto" in comment else [[0.0, 0.0, 0.0, -2.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]]), 
                                        psi_2d.tolist() if ("Ediv" in comment and "comp_bias" not in comment and "auto" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else (psi_2d.tolist() if "auto" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]]))))).reshape(-1,16)[index_start:index_end]
 
@@ -60,10 +60,10 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
                                                                                                                K_IE = param[1],
                                                                                                                b_I = param[2],
                                                                                                                K_EH = param[3],
-                                                                                                               activation_regulation = param[4:8], # if "Nact-reg" in comment else act_psis,
-                                                                                                               NM_regulation = param[8:12], # if "NM-reg" in comment else NM_psis,
-                                                                                                               EM_regulation = param[12:16], # if "EM-reg" in comment else EM_psis,
-                                                                                                               expansion_regulation = param[16:20], # if "Ediv-reg" in comment else act_psis,
+                                                                                                               activation_regulation = param[4:8],
+                                                                                                               NE_regulation = param[8:12],
+                                                                                                               EM_regulation = param[12:16],
+                                                                                                               expansion_regulation = param[16:20],
                                                                                                                infection = infection_type,
                                                                                                                vir_model = vir_model if 'auto' not in comment else "autoimmune",
                                                                                                                reg_model = "competition_model" if "comp_model" in comment else "mwc_like")
