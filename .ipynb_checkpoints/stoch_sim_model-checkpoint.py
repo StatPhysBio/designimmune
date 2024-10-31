@@ -46,8 +46,9 @@ num_pnts = 10
 vir_prop = np.array(np.meshgrid(d_S*np.linspace(25, 125, num_pnts), # vary d_I
                                    K_IE*np.logspace(0.0, 2, num_pnts), # vary K_IE
                                    b_I*np.array([2.0]), # vary b_I
-                                   K_EH*np.logspace(-1.0, 1, 3) # vary K_EH
-                                           )).T.reshape(-1,4)
+                                   K_EH*np.logspace(0.0, 0, 1), # vary K_EH
+                                   N_0*np.logspace(0.0, 1, 3) # vary N_0
+                                           )).T.reshape(-1,5)
 
 vir_prop_select = vir_prop[vir_prop[:,2]*S_0 - vir_prop[:,0] >= 1/4] #vir_prop[vir_prop[:,2]*S_0 > vir_prop[:,0]]
 
@@ -281,11 +282,11 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         I_d_S[i] += I_d_S[i-1] + dt*S[i-1]*d_S
         
         # (b) state variables
-        S[i] += S[i-1] - S_to_I + dt*(b_S - (d_S + d_Sauto*np.exp(-(t/t_Hauto)**2))*S[i-1] - S[i-1]*d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))*(S[i-1] >= 1.0)
+        S[i] += S[i-1] - S_to_I + dt*(b_S - (d_S + (d_Sauto/t_Hauto)*np.exp(-t**2/(2*t_Hauto**2))*S[i-1] - S[i-1]*d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))*(S[i-1] >= 1.0)
         
         I[i] += I[i-1] + S_to_I - I_die
 
-        harm_detected = I_die + dt*S[i-1]*d_Sauto*np.exp(-(t/t_Hauto)**2) + S_to_I*(vir_model == "cancer")
+        harm_detected = I_die + dt*S[i-1]*(d_Sauto/t_Hauto)*np.exp(-t**2/(2*t_Hauto**2)) + S_to_I*(vir_model == "cancer")
         immunopathology = I_d_SE[i] + I_d_IE[i]
         cells_sensed = (I[i] + S[i]*K_IE/K_SE)
         
@@ -406,7 +407,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                               p_tcr*np.ones(N_0_var),
                               p_cyt*np.ones(N_0_var)])
     
-    dyn_data = np.array([S, I, N, Na, E, Ma, H, I_d_I + I_d_IE, I_d_SE]).T
+    dyn_data = np.array([S, I, N, Na, E, Ma, H, I_d_I + I_d_IE, I_d_SE]).T # add I_d_IE as a separate variable, also add P
     prim_bias = bias_t
                                  
     ts = np.linspace(0, duration, int(steps) + 1)
@@ -504,4 +505,4 @@ perf_labels = ["Protection", "Toxicity", "Memory expansion", "Memory duration", 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
 
-vir_vars = ['d_I', 'K_IE', 'b_I', 'K_EH', 'S_0']
+vir_vars = ['d_I', 'K_IE', 'b_I', 'K_EH', 'N_0', 'S_0']

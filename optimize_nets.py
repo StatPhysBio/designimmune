@@ -9,22 +9,23 @@ from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
 num_cpu = 25 # number of CPUs used to benchmark expected runtime
-add_cpu = 14 # additional cpus requested as a buffer
+add_cpu = 10 # additional cpus requested as a buffer
 run_time = 4.0
 
-def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_select, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NE_psis + EM_psis + exp_psis, num_cpu = num_cpu, run_time = run_time):
+def run(batch = 0, outdir='', comment = "auto-sparse-reg", inf_sample = vir_prop_select, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NE_psis + EM_psis + exp_psis, num_cpu = num_cpu, run_time = run_time):
 
     start = time.time() # timestamp start
     
     # Run simulations over different infections
     if "auto" in comment:
-        inf_sample = np.array(np.meshgrid(d_S*np.array([0.0, 1.0]), # vary d_I
-                                   S_0*np.array([1.0, 10.0]), # vary K_IE
+        inf_sample = np.array(np.meshgrid(d_S*np.array([0.1, 10.0]), # vary d_I
+                                   S_0*np.array([0.1, 1.0]), # vary K_IE
                                    b_I*np.array([0.0]), # vary b_I
-                                   K_EH*np.array([1.0]) # vary K_EH
-                                           )).T.reshape(-1,4)
+                                   K_EH*np.array([1.0]), # vary K_EH
+                                   N_0*np.logspace(0.0, 0.0, 1) # vary N_0
+                                           )).T.reshape(-1,5)
     
-    batch_num = int((2057/len(inf_sample))*(run_time*num_cpu)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
+    batch_num = int((1309/len(inf_sample))*(run_time*num_cpu)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run
@@ -60,10 +61,11 @@ def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_sele
                                                                                                                K_IE = param[1],
                                                                                                                b_I = param[2],
                                                                                                                K_EH = param[3],
-                                                                                                               activation_regulation = param[4:8],
-                                                                                                               NE_regulation = param[8:12],
-                                                                                                               EM_regulation = param[12:16],
-                                                                                                               expansion_regulation = param[16:20],
+                                                                                                               N_0 = param[4],
+                                                                                                               activation_regulation = param[5:9],
+                                                                                                               NE_regulation = param[9:13],
+                                                                                                               EM_regulation = param[13:17],
+                                                                                                               expansion_regulation = param[17:21],
                                                                                                                infection = infection_type,
                                                                                                                vir_model = vir_model if 'auto' not in comment else "autoimmune",
                                                                                                                reg_model = "competition_model" if "comp_model" in comment else "mwc_like")
