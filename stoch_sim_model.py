@@ -41,6 +41,10 @@ d_myc = 1/(t_Na_div)
 myc_thresh = 1.0
 b_myc = myc_thresh/t_act # Prlic et al. (2006)
 
+# Auto-immunity and cancer
+t_Hauto = 1.0 # duration of autoimmune inflammation
+t_Hcancer = 1.0 # duration of supplied inflammatory cytokines
+
 # hyper parameters
 num_pnts = 10
 vir_prop = np.array(np.meshgrid(d_S*np.linspace(25, 125, num_pnts), # vary d_I
@@ -245,26 +249,18 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         if vir_model == "dep_harm": # makes  average virus produced roughly the same independent of infected death rate
             b_I_t = b_I + d_I/S_0
             d_Sauto = 0
-            t_Hauto = 1.0
-            t_Hcancer = 1.0
         elif vir_model == "autoimmune":
             b_I_t = 0.0
             d_Sauto = d_I 
             K_SE = K_IE
             I_0 = 0.0
-            t_Hauto = 1.0 # duration of autoimmune inflammation
-            t_Hcancer = 1.0
         else:
             b_I_t = b_I
             d_Sauto = 0
-            t_Hauto = 1.0
-            t_Hcancer = 1.0
         # elif vir_model == "cancer":
         #     b_I_t = b_I
         #     d_Sauto = 0
-        #     t_Hauto = 1.0
         #     S_0 = S_0 - I_0
-        #     t_Hcancer = 1.0 # duration of supplied inflammatory cytokines
     
         # Compute total population of cell types
         E_pop = np.sum(E_m[i-1])
@@ -282,7 +278,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         I_d_S[i] += I_d_S[i-1] + dt*S[i-1]*d_S
         
         # (b) state variables
-        S[i] += S[i-1] - S_to_I + dt*(b_S - (d_S + (d_Sauto/t_Hauto)*np.exp(-t**2/(2*t_Hauto**2))*S[i-1] - S[i-1]*d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))*(S[i-1] >= 1.0)
+        S[i] += S[i-1] - S_to_I + dt*(b_S - (d_S + (d_Sauto/t_Hauto)*np.exp(-t**2/(2*t_Hauto**2)))*S[i-1] - S[i-1]*d_IE*(E_pop)/(K_SE + S[i-1] + E_pop))*(S[i-1] >= 1.0)
         
         I[i] += I[i-1] + S_to_I - I_die
 
@@ -469,7 +465,7 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N,A_{in}}$", r"$\tau_{N \cdot A_{in}}$", r"$\tau_{N^*,N^*}$", r"$\tau_{E_,E}$", r"$\tau_{M,M}$", r"$\tau_{E_{die}}$", r"$\tau_{N^*}$",
                r"$\psi_{N^*}^{(I)}$", r"$\psi_{N^*}^{(H)}$", r"$\psi_{N^*}^{(P)}$", r"$F_{N^*}$",
-               r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(H)}$", r"$\psi_{N,E}^{(P)}$", r"$F_{N,E}$", 
+               r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(H)}$", r"$\psi_{N,E}^{(P)}$", r"$F_{N^{*},E}$", 
                r"$\psi_{E,M}^{(I)}$", r"$\psi_{E,M}^{(H)}$", r"$\psi_{E,M}^{(P)}$", r"$F_{E,M}$", 
                r"$\psi_{E^*}^{(I)}$", r"$\psi_{E^*}^{(H)}$", r"$\psi_{E^*}^{(P)}$", r"$F_{E^*}$"]
 

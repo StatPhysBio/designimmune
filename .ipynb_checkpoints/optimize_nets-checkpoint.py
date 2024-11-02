@@ -18,8 +18,8 @@ def run(batch = 0, outdir='', comment = "auto-sparse-reg", inf_sample = vir_prop
     
     # Run simulations over different infections
     if "auto" in comment:
-        inf_sample = np.array(np.meshgrid(d_S*np.array([0.0, 10.0]), # vary d_I
-                                   S_0*np.array([0.1, 1.0]), # vary K_IE
+        inf_sample = np.array(np.meshgrid(d_S*np.array([1.0, 10.0]), # vary d_I
+                                   S_0*np.array([0.5, 1.0]), # vary K_IE
                                    b_I*np.array([0.0]), # vary b_I
                                    K_EH*np.array([1.0]), # vary K_EH
                                    N_0*np.logspace(0.0, 0.0, 1) # vary N_0
