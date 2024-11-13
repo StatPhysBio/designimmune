@@ -9,23 +9,23 @@ from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
 num_cpu = 25 # number of CPUs used to benchmark expected runtime
-add_cpu = 10 # additional cpus requested as a buffer
+add_cpu = 12 # additional cpus requested as a buffer
 run_time = 4.0
 
-def run(batch = 0, outdir='', comment = "auto-sparse-reg", inf_sample = vir_prop_select, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NE_psis + EM_psis + exp_psis, num_cpu = num_cpu, run_time = run_time):
+def run(batch = 0, outdir='', comment = "sparse-reg", inf_sample = vir_prop_select, runs = 1, infection_type = 'prim', vir_model = "indep_harm", default_reg = act_psis + NE_psis + EM_psis + exp_psis, num_cpu = num_cpu, run_time = run_time):
 
     start = time.time() # timestamp start
     
     # Run simulations over different infections
     if "auto" in comment:
-        inf_sample = np.array(np.meshgrid(d_S*np.array([1.0, 10.0]), # vary d_I
-                                   S_0*np.array([0.5, 1.0]), # vary K_IE
+        inf_sample = np.array(np.meshgrid(d_S*np.array([1.0, 5.0]), # vary d_I
+                                   S_0*np.array([1.0, 5.0]), # vary K_IE
                                    b_I*np.array([0.0]), # vary b_I
                                    K_EH*np.array([1.0]), # vary K_EH
                                    N_0*np.logspace(0.0, 0.0, 1) # vary N_0
                                            )).T.reshape(-1,5)
     
-    batch_num = int((1309/len(inf_sample))*(run_time*num_cpu)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
+    batch_num = int((2400/len(inf_sample))*(run_time*num_cpu)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
 
     # Find psis to run
@@ -48,10 +48,10 @@ def run(batch = 0, outdir='', comment = "auto-sparse-reg", inf_sample = vir_prop
         
     else:
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
-        run_psis = np.array(list(itertools.product(psi_2d.tolist() if ("Nact" in comment and "comp_bias" not in comment and "auto" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else (psi_2d.tolist() if "auto" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]])),
-                                       psi_2d.tolist() if ("NE" in comment and "auto" not in comment) else ([[0.0, 0.0, 0.0, -2.0]] if "auto" in comment else [[0.0, 0.0, 0.0, -2.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]]), 
-                                       psi_2d.tolist() if ("EM" in comment and "auto" not in comment) else ([[0.0, 0.0, 0.0, -2.0]] if "auto" in comment else [[0.0, 0.0, 0.0, -2.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]]), 
-                                       psi_2d.tolist() if ("Ediv" in comment and "comp_bias" not in comment and "auto" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else (psi_2d.tolist() if "auto" in comment else [[psi_max/2, psi_max/2, 0.0, -2.0], [psi_max/2, psi_max/2, 0.0, 0.0], [psi_max/2, psi_max/2, 0.0, 2.0]]))))).reshape(-1,16)[index_start:index_end]
+        run_psis = np.array(list(itertools.product(psi_2d.tolist() if ("Nact" in comment and "comp_bias" not in comment and "auto" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else (psi_2d.tolist() if "auto" in comment else [[psi_max, psi_max, 0.0, -F0_max], [psi_max, psi_max, 0.0, 0.0], [psi_max, psi_max, 0.0, F0_max]])),
+                                       psi_2d.tolist() if ("NE" in comment and "auto" not in comment) else ([[0.0, 0.0, 0.0, -F0_max]] if "auto" in comment else [[0.0, 0.0, 0.0, -F0_max], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, F0_max]]), 
+                                       psi_2d.tolist() if ("EM" in comment and "auto" not in comment) else ([[0.0, 0.0, 0.0, -F0_max]] if "auto" in comment else [[0.0, 0.0, 0.0, -F0_max], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, F0_max]]), 
+                                       psi_2d.tolist() if ("Ediv" in comment and "comp_bias" not in comment and "auto" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else (psi_2d.tolist() if "auto" in comment else [[psi_max, psi_max, 0.0, -F0_max], [psi_max, psi_max, 0.0, 0.0], [psi_max, psi_max, 0.0, F0_max]]))))).reshape(-1,16)[index_start:index_end]
 
     params = [np.concatenate(q) for q in list(itertools.product( np.tile(inf_sample, (runs,1)).tolist(), run_psis.tolist()))]
     
