@@ -119,24 +119,22 @@ def antigenicity_over_harm(df):
     out = np.log(0 + (df['K_EH'] if 'K_EH' in df.columns.tolist() else K_EH)*(df['b_I']*(df['S_0'] if 'S_0' in df.columns.tolist() else S_0) - df['d_I'] + (df['d_H'] if 'd_H' in df.columns.tolist() else d_H) )/(df['d_I']*(df['I_0'] if 'I_0' in df.columns.tolist() else I_0)))/np.log(df['K_IE']/(df['I_0'] if 'I_0' in df.columns.tolist() else I_0))
     return out
 
-def sigmoid(x, y_max, y_min,
-            a00, a01, a02, a03,
-            w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14, w15, 
-            b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, b7 = 0, b8 = 0, b9 = 0, b10 = 0, b11 = 0, b12 = 0, b13 = 0, b14 = 0, b15 = 0):
-            #b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15,
+def sigmoid(x, y_range, y_min,
+            w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14, w15,
+            a0 = 0, a1 = 0, a2 = 0, a3 = 0):
 
-    out = (y_max - y_min) \
-    *1/(1 + np.exp( -((b0 + x[:,0])*w0 + (b1 + x[:,1])*w1 + (b2 + x[:,2])*w2 + (b3 + x[:,3])*w3 + a00))) \
-    *1/(1 + np.exp( -((b4 + x[:,4])*w4 + (b5 + x[:,5])*w5 + (b6 + x[:,6])*w6 + (b7 + x[:,7])*w7 + a01))) \
-    *1/(1 + np.exp( -((b8 + x[:,8])*w8 + (b9 + x[:,9])*w9 + (b10 + x[:,10])*w10 + (b11 + x[:,11])*w11 + a02))) \
-    *1/(1 + np.exp( -((b12 + x[:,12])*w12 + (b13 + x[:,13])*w13 + (b14 + x[:,14])*w14 + (b15 + x[:,15])*w15 + a03))) \
+    out = y_range \
+    *1/(1 + np.exp( -((x[:,0])*w0 + (x[:,1])*w1 + (x[:,2])*w2 + (x[:,3])*w3 + a0))) \
+    *1/(1 + np.exp( -((x[:,4])*w4 + (x[:,5])*w5 + (x[:,6])*w6 + (x[:,7])*w7 + a1))) \
+    *1/(1 + np.exp( -((x[:,8])*w8 + (x[:,9])*w9 + (x[:,10])*w10 + (x[:,11])*w11 + a2))) \
+    *1/(1 + np.exp( -((x[:,12])*w12 + (x[:,13])*w13 + (x[:,14])*w14 + (x[:,15])*w15 + a3))) \
     + y_min
 
     return out        
 
-def sigmoid_1d(x, y_max, y_min, b, w):
+def sigmoid_1d(x, y_range, y_min, b, w):
 
-    out = (y_max - y_min)/(1 + np.exp(-w*x - b) ) + y_min
+    out = y_range/(1 + np.exp(-w*x - b) ) + y_min
     return out
     
 #######################
@@ -276,7 +274,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             
         S_to_I, I_die = dt*S[i-1]*(I[i-1] >= I_0)*b_I_t*I[i-1], dt*I[i-1]*(d_IE*(E_pop)/(K_IE + I[i-1] + E_pop) + d_I)
         I_d_IE[i] += I_d_IE[i-1] + dt*I[i-1]*d_IE*(E_pop)/(K_IE + I[i-1] + E_pop) # infected cells killed by immune response
-        I_d_I[i] += I_d_I[i-1] + dt*I[i-1]*d_I + (I[i] if i == int(steps) else 0) # cells killed by infection
+        I_d_I[i] += I_d_I[i-1] + dt*I[i-1]*d_I # cells killed by infection
         I_d_SE[i] += I_d_SE[i-1] + dt*S[i-1]*( d_IE*(E_pop)/(K_SE + S[i-1] + E_pop) ) # susceptible cells killed by immune response
         I_d_S[i] += I_d_S[i-1] + dt*S[i-1]*d_S
         
@@ -422,10 +420,10 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     sim_summary = np.array([np.sum(pI*dt) + np.sum(pS*dt)*(vir_model == "autoimmune"),
                        np.argmax(pI)*dt,
                        np.argmax(pI < I_0)*dt,
-                       np.amax(pI_d_I), 
+                       np.amax(pI_d_I) + I[-1], 
                        np.amax(pI_d_SE),
                        np.sum(div_E_count),
-                       np.argmax(pE)*dt,
+                       np.argmax(pE)*dt + sim_duration*(np.max(pE) < 1.0),
                        (np.mean(np.argmax(E_m > 0 , axis = 0)*dt*(np.amax(E_m, axis = 0) > 0 )) + sim_duration*(np.max(pE) < 1.0)) if N_0 > 0 else sim_duration,
                        pM[-1],
                        M_duration if N_0 > 0 else 0.0,
@@ -490,9 +488,7 @@ EE_reg = ['psi_EE_I', 'psi_EE_H', 'psi_EE_P', 'F0_EE']
 
 module_labels = ['$N \longrightarrow N^*$', '$N^* \longrightarrow E$', '$E \longrightarrow M$', '$E \longrightarrow E + E$']
 modules = ['Na', 'NE', 'EM', 'EE']
-reg_or = [Na_reg[0:2]] + [NE_reg[0:2]] + [EM_reg[0:2]] + [EE_reg[0:2]]
-reg_and = [Na_reg[2]] + [NE_reg[2]] + [EM_reg[2]] + [EE_reg[2]]
-reg_and_label = [param_names[-14]] + [param_names[-10]] + [param_names[-6]] + [param_names[-2]]
+reg_stim = Na_reg[0:3] + NE_reg[0:3] + EM_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
