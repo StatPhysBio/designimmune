@@ -15,6 +15,7 @@ mamba activate maximmune
 SLURM_OUTDIR=/gscratch/scrubbed/oukogu/slurm_output/
 d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/raw"
 comment="sparse-reg"
+infection_model="acute"
 
 if [ ! -d "$d" ]; then
   mkdir $d
@@ -25,6 +26,7 @@ arg=${1}
 
 #COMMAND="apptainer run --bind /gscratch /gscratch/spe/$USER/apptainer_images/maximmune.sif python"
 #$COMMAND optimize_nets.py --batch $batch  --outdir $d --comment $comment
-python optimize_nets.py --batch $arg --outdir $d --comment $comment
+python optimize_nets.py --batch $arg --outdir $d \
+                        --comment $comment --infection_model $infection_model
 
 mv ${SLURM_OUTDIR}${SLURM_JOB_ID}.out ${SLURM_OUTDIR}batch-${1}.out

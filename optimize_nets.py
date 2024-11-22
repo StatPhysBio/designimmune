@@ -18,8 +18,7 @@ def run(
     comment = "sparse-reg",
     inf_sample = vir_prop_select,
     runs = 1,
-    infection_type = 'prim',
-    vir_model = "indep_harm",
+    infection_model = 'acute',
     default_reg = act_psis + NE_psis + EM_psis + exp_psis,
     num_cpu = num_cpu,
     run_time = run_time,
@@ -29,16 +28,25 @@ def run(
     start = time.time() # timestamp start
 
     # Run simulations over different infections
-    if "auto" in comment:
+    if "autoimmune" in infection_model:
         inf_sample = np.array(np.meshgrid(d_S*np.array([1.0, 5.0]), # vary d_I
                                    S_0*np.array([1.0, 5.0]), # vary K_IE
                                    b_I*np.array([0.0]), # vary b_I
                                    K_EH*np.array([1.0]), # vary K_EH
-                                   N_0*np.logspace(0.0, 0.0, 1) # vary N_0
-                                           )).T.reshape(-1,5)
+                                   N_0*np.logspace(0.0, 0.0, 1), # vary N_0
+                                   I_0*np.array([0.0]) # vary I_0
+                                           )).T.reshape(-1,6)
+    elif "cancer" in infection_model:
+        inf_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
+                                   K_SE*np.array([0.001, 0.01]), # vary K_IE
+                                   b_C*np.array([1.0]), # vary b_I
+                                   K_EH*np.array([1.0]), # vary K_EH
+                                   N_0*np.logspace(-1.0, 1.0, 5), # vary N_0
+                                   S_0*np.array([0.1]) # vary I_0
+                                           )).T.reshape(-1,6)
 
-    batch_num = int((2400/len(inf_sample))*(run_time*num_cpu)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions. # need later: 267906
-    outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_type}-'+ f'{comment}.pkl')
+    batch_num = int((2880/len(inf_sample))*(run_time*num_cpu)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions.
+    outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_model}-'+ f'{comment}.pkl')
 
     # Find psis to run
     if "full-reg" in comment:
@@ -58,13 +66,6 @@ def run(
     elif "single-reg" in comment:
         run_psis = np.array([default_reg])
 
-    else:
-        index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
-        run_psis = np.array(list(itertools.product(psi_2d.tolist() if ("Nact" in comment and "comp_bias" not in comment and "auto" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else (psi_2d.tolist() if "auto" in comment else [[psi_max, psi_max, 0.0, -F0_max], [psi_max, psi_max, 0.0, 0.0], [psi_max, psi_max, 0.0, F0_max]])),
-                                       psi_2d.tolist() if ("NE" in comment and "auto" not in comment) else ([[0.0, 0.0, 0.0, -F0_max]] if "auto" in comment else [[0.0, 0.0, 0.0, -F0_max], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, F0_max]]),
-                                       psi_2d.tolist() if ("EM" in comment and "auto" not in comment) else ([[0.0, 0.0, 0.0, -F0_max]] if "auto" in comment else [[0.0, 0.0, 0.0, -F0_max], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, F0_max]]),
-                                       psi_2d.tolist() if ("Ediv" in comment and "comp_bias" not in comment and "auto" not in comment) else (psi_2d_comp_bias.tolist() if "comp_bias" in comment else (psi_2d.tolist() if "auto" in comment else [[psi_max, psi_max, 0.0, -F0_max], [psi_max, psi_max, 0.0, 0.0], [psi_max, psi_max, 0.0, F0_max]]))))).reshape(-1,16)[index_start:index_end]
-
     params = [np.concatenate(q) for q in list(itertools.product( np.tile(inf_sample, (runs,1)).tolist(), run_psis.tolist()))]
 
     rng = np.random.default_rng(seed)
@@ -77,11 +78,11 @@ def run(
 
     batch_size = max(int(len(params) / (num_cpu + add_cpu)), 1)
     psi_list = Parallel(n_jobs=num_cpu + add_cpu, batch_size=batch_size)(delayed(lin_stoch_sim)(
-        d_I = param[0], K_IE = param[1], b_I = param[2], K_EH = param[3], N_0 = param[4],
-        activation_regulation = param[5:9], NE_regulation = param[9:13], EM_regulation = param[13:17],
-        expansion_regulation = param[17:21], infection = infection_type,
-        vir_model = vir_model if 'auto' not in comment else "autoimmune",
-        reg_model = "competition_model" if "comp_model" in comment else "mwc_like",
+        d_I = param[0], K_IE = param[1], b_I = param[2], K_EH = param[3], N_0 = param[4], I_0 = param[5],
+        activation_regulation = param[-16:-12], NE_regulation = param[-12:-8], EM_regulation = param[-8:-4],
+        expansion_regulation = param[-4:],
+        infection_model = infection_model,
+        reg_model = "mwc_like",
         seed=child_rng)
         for param, child_rng in zip(params, child_rngs)
     )
@@ -111,15 +112,17 @@ def main():
                         help='batch of regulatory weights of the network')
     parser.add_argument('--outdir', dest='outdir', type=str, required=False, default='',
                         help='/PATH/TO/WHERE/OUTPUT/IS/SAVED')
-    parser.add_argument('--comment', dest='comment', type=str, required=True, default='',
+    parser.add_argument('--comment', dest='comment', type=str, required=False, default='sparse-reg',
                         help='simulation specifications')
+    parser.add_argument('--infection_model', dest='infection_model', type=str, required=False, default='acute',
+                        help='infection specifications')
     parser.add_argument('--seed', dest='seed', type=int, required=False, default=None,
                         help='The seed for the random number generator')
     args = parser.parse_args()
 
     os.chdir(args.outdir)
 
-    run(args.batch, args.outdir, seed=args.seed)
+    run(args.batch, args.outdir, comment = args.comment, infection_model = args.infection_model, seed=args.seed)
 
 
 if __name__ == '__main__':
