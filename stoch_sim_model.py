@@ -309,7 +309,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         # Update state of susceptible, infected and inflammation
         # (a) event variables
         S_to_I = dt * S[i - 1] * (I[i - 1] >= I_0) * b_I_t * I[i - 1] * (S[i - 1] >= 1.0)
-        I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_IE + I[i - 1] + E_pop) # infected cells killed by immune response
+        I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_IE + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
         I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") # cells killed by infection
         S_d_SE[i] += S_d_SE[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_SE + S[i - 1] + E_pop)) # susceptible cells killed by immune response
 
@@ -481,6 +481,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     N, Na, Ma, E = np.sum(N_m, axis = 1), np.sum(Na_m, axis = 1), np.sum(Ma_m, axis = 1), np.sum(E_m, axis = 1)
 
     T_pEcytM = np.concatenate(T_Ecyt) if N_0 > 0 else np.array([0.0]) # time that memory spends in effector
+    count_cM = np.sum(T_pEcytM == 0)
     # T_pEcytM = T_Ecyt # time that memory spends in effector
     # Project out surviving primary memory
     M_duration = fsolve(
@@ -495,7 +496,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         p_tcr + zeros_n_0_var, p_cyt + zeros_n_0_var
     ])
 
-    dyn_data = np.array([S, I, N, Na, E, Ma, H, I_d_I + I_d_IE, S_d_SE, P]).T # add I_d_IE as a separate variable, also add P
+    dyn_data = np.array([S, I, N, Na, E, Ma, H, I_d_I + I_d_IE, S_d_SE, P]).T # add I_d_IE as a separate variable
     prim_bias = bias_t
 
     ts = np.linspace(0, duration, int_steps + 1)
@@ -522,6 +523,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        (np.mean(np.argmax(E_m > 0 , axis = 0)*dt*(np.amax(E_m, axis = 0) > 0 )) + sim_duration*(np.max(pE) < 1.0)) if N_0 > 0 else sim_duration,
                        pM[-1],
                        M_duration if N_0 > 0 else 0.0,
+                       count_cM if N_0 > 0 else 0.0,
                        np.sum(pP*dt),
                        np.sum(pH*dt),
                        np.amin(pS)])
@@ -548,7 +550,8 @@ stat_names = [r"$\int_0^{T_{sim}} I_{p}dt$",
               r"$T_{E_p}^{start}$",
               r"$(M_p)^{max}$",
               r"$T_{M < N}$",
-              r"$\int_0^{T_{sim}} P_p dt$", #r"$\int_0^{T_{sim}} P_p dt$",
+              # r"$(cM_p)^{max}$",
+              r"$\int_0^{T_{sim}} P_p dt$",
               r"$\int_0^{T_{sim}} H_p dt$",
               r"$S_p^{min}$"]
 
@@ -573,8 +576,8 @@ param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_IE',
 
 stat_names_for_df = ['p_load', 'T_max_pI', 'T_min_pI', 'harm_pI',
                      'harm_pS', 'max_pE', 'T_pE_max', 'T_pE_start',
-                     'max_pM', 'T_pM_min','int_pP', #int_pP
-                     'int_pH', 'min_pS']
+                     'max_pM', 'T_pM_min', #count_cM
+                     'int_pP', 'int_pH', 'min_pS']
 
 NE_reg = ['psi_NE_I', 'psi_NE_H', 'psi_NE_P', 'F0_NE']
 EM_reg = ['psi_EM_I', 'psi_EM_H', 'psi_EM_P', 'F0_EM']
@@ -587,8 +590,8 @@ reg_stim = Na_reg[0:3] + NE_reg[0:3] + EM_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
-perf_vars = ["peff_protection", "peff_toxicity", "max_pM_fold", "T_pM_min", "max_pE_fold"]#, "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Protection", "Toxicity", "Memory expansion", "Memory duration", "Response expansion"]#, "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_vars = ["peff_protection", "peff_toxicity", "max_pM_fold", "T_pM_min", "max_pE_fold"]#, "max_cM_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Protection", "Toxicity", "Memory expansion", "Memory duration", "Response expansion"]#, "Central mem. exp.", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
