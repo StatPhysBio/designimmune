@@ -139,9 +139,9 @@ def f_XtoY_ret0(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0,
 
     return 0.0
 
-def memory_duration(t, T_eff, T_degrade = t_E_die, target = N_0, dt = sim_duration/sim_steps):
+def memory_duration(t, T_eff, T_degrade = t_E_die, target = N_0, min_time = 30/365.25):
 
-    out = np.exp(- t/np.maximum(t_long_M - (t_long_M - t_short_M)*T_eff/T_degrade, 30/365.25))
+    out = np.exp(- t/np.maximum(t_long_M - (t_long_M - t_short_M)*T_eff/T_degrade, min_time))
 
     return np.sum(out) - target
 
@@ -486,7 +486,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     # Project out surviving primary memory
     M_duration = fsolve(
         memory_duration, 1.0,
-        args=(T_pEcytM, char_times[5], N_0, dt), xtol = 0.001
+        args=(T_pEcytM, char_times[5], N_0), xtol = 0.001
     ).item() if len(T_pEcytM) > N_0 and N_0 > 0.0 else 0.0
 
     zeros_n_0_var = np.zeros(N_0_var)
@@ -550,7 +550,7 @@ stat_names = [r"$\int_0^{T_{sim}} I_{p}dt$",
               r"$T_{E_p}^{start}$",
               r"$(M_p)^{max}$",
               r"$T_{M < N}$",
-              # r"$(cM_p)^{max}$",
+              r"$(cM_p)^{max}$",
               r"$\int_0^{T_{sim}} P_p dt$",
               r"$\int_0^{T_{sim}} H_p dt$",
               r"$S_p^{min}$"]
@@ -576,12 +576,12 @@ param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_IE',
 
 stat_names_for_df = ['p_load', 'T_max_pI', 'T_min_pI', 'harm_pI',
                      'harm_pS', 'max_pE', 'T_pE_max', 'T_pE_start',
-                     'max_pM', 'T_pM_min', #count_cM
+                     'max_pM', 'T_pM_min', 'max_cM',
                      'int_pP', 'int_pH', 'min_pS']
 
+Na_reg = ['psi_Na_I', 'psi_Na_H', 'psi_Na_P', 'F0_Na']
 NE_reg = ['psi_NE_I', 'psi_NE_H', 'psi_NE_P', 'F0_NE']
 EM_reg = ['psi_EM_I', 'psi_EM_H', 'psi_EM_P', 'F0_EM']
-Na_reg = ['psi_Na_I', 'psi_Na_H', 'psi_Na_P', 'F0_Na']
 EE_reg = ['psi_EE_I', 'psi_EE_H', 'psi_EE_P', 'F0_EE']
 
 module_labels = ['$N \longrightarrow N^*$', '$N^* \longrightarrow E$', '$E \longrightarrow M$', '$E \longrightarrow E + E$']
@@ -590,8 +590,8 @@ reg_stim = Na_reg[0:3] + NE_reg[0:3] + EM_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
-perf_vars = ["peff_protection", "peff_toxicity", "max_pM_fold", "T_pM_min", "max_pE_fold"]#, "max_cM_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Protection", "Toxicity", "Memory expansion", "Memory duration", "Response expansion"]#, "Central mem. exp.", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_vars = ["peff_protection", "peff_toxicity", "max_pM_fold", "T_pM_min" , "max_cM_fold"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Protection", "Toxicity", "Memory expansion", "Memory duration", "Central mem. exp."] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"

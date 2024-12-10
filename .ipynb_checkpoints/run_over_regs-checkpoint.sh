@@ -1,9 +1,9 @@
 #!/bin/bash
 script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-max_job=540 # change depending on number of inputs
+max_job=24 # change depending on number of inputs
 # if some jobs don't run, run the following:
-# rerun_list=(289 340 344 348 363 364 367 379 383 387)
+# rerun_list=(196)
 
 # for i in "${rerun_list[@]}";
 
