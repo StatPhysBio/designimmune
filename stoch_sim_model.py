@@ -33,8 +33,8 @@ N_0 = 300
 max_Na = 2**2
 max_expand = 2**14 #(Marchingo et al.)
 t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_act = 1.0, 3/4, 1/4, 1/3, 1/2, 2.5, 1/4
-t_long_M = 5 # years
-t_short_M = 0.8 # years
+t_long_M = 5*365.25 # years
+t_short_M = 0.8*365.25 # years
 
 # Division timer
 d_myc = 1.0 # Heinzel et al (2017)
@@ -139,7 +139,13 @@ def f_XtoY_ret0(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0,
 
     return 0.0
 
-def memory_duration(t, T_eff, T_degrade = t_E_die, target = N_0, min_time = 30/365.25):
+def memory_lifespan(T_eff, T_degrade = t_E_die, min_time = 0):
+
+    out = np.maximum(t_long_M - (t_long_M - t_short_M)*T_eff/T_degrade, min_time)
+
+    return out
+
+def memory_protection(t, T_eff, T_degrade = t_E_die, target = N_0, min_time = 1):
 
     out = np.exp(- t/np.maximum(t_long_M - (t_long_M - t_short_M)*T_eff/T_degrade, min_time))
 
@@ -450,7 +456,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         # store time cells become effector
         T_E += dt * e_m_nonzero_mask if sum_e_m > 0 else 0.0
-        d_E_die = 0.5 * np.pi * e_m_nonzero_mask * T_E / char_times[5]**2
+        d_E_die = 0.5 * np.sqrt(np.pi) * e_m_nonzero_mask * T_E / char_times[5]**2
 
         # store time an effector spends in cytotoxic state
         for_where = (diff_NaE + div_Ma + diff_EM > 0)
@@ -485,9 +491,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     # T_pEcytM = T_Ecyt # time that memory spends in effector
     # Project out surviving primary memory
     M_duration = fsolve(
-        memory_duration, 1.0,
+        memory_protection, 1.0,
         args=(T_pEcytM, char_times[5], N_0), xtol = 0.001
-    ).item() if len(T_pEcytM) > N_0 and N_0 > 0.0 else 0.0
+    ).item()/365.25 if len(T_pEcytM) > N_0 and N_0 > 0.0 else 0.0
 
     zeros_n_0_var = np.zeros(N_0_var)
 
@@ -521,7 +527,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        np.sum(div_E_count),
                        np.argmax(pE)*dt + sim_duration*(np.max(pE) < 1.0),
                        (np.mean(np.argmax(E_m > 0 , axis = 0)*dt*(np.amax(E_m, axis = 0) > 0 )) + sim_duration*(np.max(pE) < 1.0)) if N_0 > 0 else sim_duration,
-                       pM[-1],
+                       np.sum(memory_lifespan(T_pEcytM) >= sim_duration),
                        M_duration if N_0 > 0 else 0.0,
                        count_cM if N_0 > 0 else 0.0,
                        np.sum(pP*dt),
