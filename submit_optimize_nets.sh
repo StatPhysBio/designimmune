@@ -4,7 +4,7 @@
 #SBATCH -A amath 
 #SBATCH --nodes=1
 #SBATCH --mem=20GB
-#SBATCH --ntasks-per-node=39
+#SBATCH --ntasks-per-node=30
 #SBATCH --time=4:00:00
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out
 
@@ -15,7 +15,7 @@ mamba activate maximmune
 SLURM_OUTDIR=/gscratch/scrubbed/oukogu/slurm_output/
 d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/raw"
 comment="sparse-reg"
-infection_model="autoimmune"
+infection_model="acute"
 
 if [ ! -d "$d" ]; then
   mkdir $d

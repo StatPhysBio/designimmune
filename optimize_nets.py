@@ -9,18 +9,18 @@ from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
 num_cpu = 25 # number of CPUs used to benchmark expected runtime
-add_cpu = 14 # additional cpus requested as a buffer
+add_cpu = 5 # additional cpus requested as a buffer
 run_time = 4.0
 
 def run(
     batch = 0,
     outdir='',
     comment = "sparse-reg",
-    inf_sample = vir_prop_select,
+    inf_sample = infection_sample_select,
     runs = 5,
-    infection_model = 'autoimmune',
+    infection_model = 'acute',
     default_reg = act_psis + NE_psis + EM_psis + exp_psis,
-    sim_per_cpu_hour = 2880,
+    sim_per_cpu_hour = 2250,
     num_cpu = num_cpu,
     run_time = run_time,
     seed = None
@@ -30,21 +30,9 @@ def run(
 
     # Run simulations over different infections
     if "autoimmune" in infection_model:
-        inf_sample = np.array(np.meshgrid(d_S*np.array([1.0, 5.0]), # vary d_I
-                                   K_SE*np.array([0.5, 1.0]), # vary K_IE
-                                   b_I*np.array([0.0]), # vary b_I
-                                   K_EH*np.array([1.0]), # vary K_EH
-                                   N_0*np.logspace(0.0, 0.0, 1), # vary N_0
-                                   I_0*np.array([0.0]) # vary I_0
-                                           )).T.reshape(-1,6)
+        inf_sample = auto_sample
     elif "cancer" in infection_model:
-        inf_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
-                                   S_0*np.logspace(-3.0, 0.0, 3), # vary K_IE
-                                   b_C*np.array([1.0]), # vary b_I
-                                   K_EH*np.array([1.0]), # vary K_EH
-                                   N_0*np.logspace(-1.0, np.log(1000/N_0), 5), # vary N_0
-                                   S_0*np.array([0.1]) # vary I_0
-                                           )).T.reshape(-1,6)
+        inf_sample = cancer_sample
 
     batch_num = int((sim_per_cpu_hour/len(inf_sample))*(run_time*num_cpu)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions.
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_model}-'+ f'{comment}.pkl')

@@ -48,7 +48,7 @@ b_C = 1/10 # growth rate of cancer
 
 # hyper parameters
 num_pnts = 10
-vir_prop = np.array(np.meshgrid(d_S*np.linspace(25, 100, num_pnts), # vary d_I
+infection_sample = np.array(np.meshgrid(d_S*np.linspace(25, 100, num_pnts), # vary d_I
                                    K_IE*np.logspace(0.0, 2, num_pnts), # vary K_IE
                                    b_I*np.array([1.5]), # vary b_I
                                    K_EH*np.logspace(0.0, 0.0, 1), # vary K_EH
@@ -56,7 +56,25 @@ vir_prop = np.array(np.meshgrid(d_S*np.linspace(25, 100, num_pnts), # vary d_I
                                    I_0*np.logspace(0.0, 0.0, 1) # vary I_0
                                            )).T.reshape(-1,6)
 
-vir_prop_select = vir_prop[vir_prop[:,2]*S_0 - vir_prop[:,0] >= 1/4]
+auto_sample = np.array(np.meshgrid(d_S*np.array([1.0, 5.0]), # vary d_I
+                                   K_SE*np.array([0.5, 1.0]), # vary K_IE
+                                   b_I*np.array([0.0]), # vary b_I
+                                   K_EH*np.array([1.0]), # vary K_EH
+                                   N_0*np.logspace(0.0, 0.0, 1), # vary N_0
+                                   I_0*np.array([0.0]) # vary I_0
+                                           )).T.reshape(-1,6)
+
+cancer_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
+                                   K_SE*np.logspace(-3.0, 0.0, 5), # vary K_IE
+                                   b_C*np.array([1.0]), # vary b_I
+                                   K_EH*np.array([1.0]), # vary K_EH
+                                   N_0*np.logspace(-1.0, 1, 5), # vary N_0
+                                   S_0*np.array([0.1]) # vary I_0
+                                           )).T.reshape(-1,6)
+
+infection_sample_select = np.vstack([infection_sample[infection_sample[:,2]*S_0 - infection_sample[:,0] >= 1/4],
+                                     auto_sample,
+                                     cancer_sample])
 
 # define reg options
 psi_max = 3.0
@@ -80,10 +98,10 @@ psi_2d_sparse = np.vstack((np.array(list(itertools.product(psi_2d_full.tolist(),
            np.array(list(itertools.product(bl_block, bl_block, psi_2d_full.tolist(), bl_block))).reshape(-1,16),
            np.array(list(itertools.product(bl_block, bl_block, bl_block, psi_2d_full.tolist()))).reshape(-1,16)))
 
-NE_psis = [psi_max, psi_max, 0.0, F0_max] # regulatory weights: psi_M_I, psi_M_H, psi_M_P
-EM_psis = [-psi_max, -psi_max, 0.0, -F0_max]
-act_psis = [psi_max, psi_max, 0.0, F0_max]
-exp_psis = [psi_max, psi_max, -psi_max, F0_max]
+act_psis = [psi_max, psi_max, -psi_max, F0_max]
+NE_psis = [psi_max, psi_max, -psi_max, F0_max] # regulatory weights: psi_M_I, psi_M_H, psi_M_P
+EM_psis = [-psi_max, -psi_max, psi_max, -F0_max]
+exp_psis = [psi_max, psi_max, -psi_max, 0.0]
 
 ### (2) Define functions for simulations
 # Define functions for simulations
@@ -390,14 +408,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         #### New binding events ####
         b_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = 0.0, psi_2 = psi_max, psi_1_2 = 0.0, F_0 = -psi_max/2, K_1 = S_0, K_2 = K_EH, K_3 = K_EH
+            psi_1 = 0.0, psi_2 = psi_max, psi_1_2 = 0.0, F_0 = -psi_max*np.log(2), K_1 = S_0, K_2 = K_EH, K_3 = K_EH
         ) / char_times[0] if cells_sensed >= 1 else 0.0
 
         b_unbind_t = bound_N * np.fmin(
             2 * bound_N_time / (
                 f_XtoY(
                     sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-                    psi_1 = psi_max, psi_2 = 0.0, psi_1_2 = 0.0, F_0 = -psi_max,
+                    psi_1 = psi_max, psi_2 = 0.0, psi_1_2 = 0.0, F_0 = -psi_max*np.log(2),
                     K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
                     K_2 = K_EH, K_3 = K_EH
                 ) * char_times[1] * 2 / np.sqrt(np.pi)
@@ -487,13 +505,16 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     N, Na, Ma, E = np.sum(N_m, axis = 1), np.sum(Na_m, axis = 1), np.sum(Ma_m, axis = 1), np.sum(E_m, axis = 1)
 
     T_pEcytM = np.concatenate(T_Ecyt) if N_0 > 0 else np.array([0.0]) # time that memory spends in effector
-    count_cM = np.sum(T_pEcytM == 0)
-    # T_pEcytM = T_Ecyt # time that memory spends in effector
+    count_cM = np.sum(T_pEcytM == 0
+                     ) if len(T_pEcytM[T_pEcytM == 0]) > 0 and N_0 > 0.0 else 0.0
+    count_eM = np.sum(memory_lifespan(T_pEcytM) > char_times[5]
+                     ) if len(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]]) > 0 and N_0 > 0.0 else 0.0
+
     # Project out surviving primary memory
-    M_duration = fsolve(
-        memory_protection, 1.0,
-        args=(T_pEcytM, char_times[5], N_0), xtol = 0.001
-    ).item()/365.25 if len(T_pEcytM) > N_0 and N_0 > 0.0 else 0.0
+    cM_duration = np.mean(memory_lifespan(T_pEcytM[T_pEcytM == 0])
+                         )/365.25 if len(T_pEcytM[T_pEcytM == 0]) > 0 and N_0 > 0.0 else 0.0
+    eM_duration = np.mean(memory_lifespan(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]])
+                         )/365.25 if len(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]]) > 0 and N_0 > 0.0 else 0.0
 
     zeros_n_0_var = np.zeros(N_0_var)
 
@@ -526,10 +547,11 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        np.amax(pI_d_SE),
                        np.sum(div_E_count),
                        np.argmax(pE)*dt + sim_duration*(np.max(pE) < 1.0),
-                       (np.mean(np.argmax(E_m > 0 , axis = 0)*dt*(np.amax(E_m, axis = 0) > 0 )) + sim_duration*(np.max(pE) < 1.0)) if N_0 > 0 else sim_duration,
-                       np.sum(memory_lifespan(T_pEcytM) >= sim_duration),
-                       M_duration if N_0 > 0 else 0.0,
-                       count_cM if N_0 > 0 else 0.0,
+                       (np.argmax(pE >= N_0 , axis = 0)*dt + sim_duration*(np.max(pE) < N_0)) if N_0 > 0 else sim_duration,
+                       count_eM,
+                       eM_duration,
+                       count_cM,
+                       cM_duration,
                        np.sum(pP*dt),
                        np.sum(pH*dt),
                        np.amin(pS)])
@@ -554,9 +576,10 @@ stat_names = [r"$\int_0^{T_{sim}} I_{p}dt$",
               r"$E_p^{max}$",
               r"$T_{E_p}^{max}$",
               r"$T_{E_p}^{start}$",
-              r"$(M_p)^{max}$",
-              r"$T_{M < N}$",
-              r"$(cM_p)^{max}$",
+              r"$(eM)^{max}$",
+              r"$T_{eM < N}$",
+              r"$(cM)^{max}$",
+              r"$T_{cM < N}$",
               r"$\int_0^{T_{sim}} P_p dt$",
               r"$\int_0^{T_{sim}} H_p dt$",
               r"$S_p^{min}$"]
@@ -582,7 +605,7 @@ param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_IE',
 
 stat_names_for_df = ['p_load', 'T_max_pI', 'T_min_pI', 'harm_pI',
                      'harm_pS', 'max_pE', 'T_pE_max', 'T_pE_start',
-                     'max_pM', 'T_pM_min', 'max_cM',
+                     'max_eM', 'T_eM_min', 'max_cM', 'T_cM_min',
                      'int_pP', 'int_pH', 'min_pS']
 
 Na_reg = ['psi_Na_I', 'psi_Na_H', 'psi_Na_P', 'F0_Na']
