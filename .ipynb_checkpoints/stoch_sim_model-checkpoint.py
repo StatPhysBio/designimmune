@@ -11,7 +11,7 @@ from scipy.optimize import fsolve, minimize
 ### (1) Define simulation parameters
 # Define simulation parameters
 sim_duration = 20
-sim_steps = int(0.20*(10**4))
+sim_steps = int(0.25*(10**4))
 
 # infection dynamics
 S_0 = 10**7 #susceptible cells
@@ -106,7 +106,7 @@ exp_psis = [psi_max, psi_max, -psi_max, 0.0]
 ### (2) Define functions for simulations
 # Define functions for simulations
 
-def f_XtoY_mwc_like(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_3 = 0.0, psi_1_2 = 0.0, psi_1_3 = 0.0, psi_2_3 = 0.0, F_0 = 0.0, K_1 = 1.0, K_2 = 1.0, K_3 = 1.0):
+def f_XtoY_mwc_like(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_3 = 0.0, F_0 = 0.0, K_1 = 1.0, K_2 = 1.0, K_3 = 1.0):
     ### variable
     # sig_. := signal .
     # psi_. := strength of regulatory action (psi > 0 means upregulation, psi = 0 means no regulation, and psi < 0 means down regulation
@@ -116,9 +116,6 @@ def f_XtoY_mwc_like(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 
         psi_1 * np.log(1 + sig_1 / K_1)
         + psi_2 * np.log(1 + sig_2 / K_2)
         + psi_3 * np.log(1 + sig_3 / K_3)
-        + psi_1_2 * np.log(1 + (sig_1 * sig_2) / (K_1 * K_2))
-        + psi_1_3 * np.log(1 + (sig_1 * sig_3) / (K_1 * K_3))
-        + psi_2_3 * np.log(1 + (sig_2 * sig_3) / (K_2 * K_3))
     )
     out = 1 / (1 + np.exp(-(F_1 + F_0)))
     return out
@@ -148,7 +145,7 @@ def f_XtoY_competition(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2
     out = 1 / (1 + np.exp(-(F_1 + F_0)))
     return out
 
-def f_XtoY_ret0(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_3 = 0.0, psi_1_2 = 0.0, psi_1_3 = 0.0, psi_2_3 = 0.0, F_0 = 0.0, K_1 = 1.0, K_2 = 1.0, K_3 = 1.0):
+def f_XtoY_ret0(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_3 = 0.0, F_0 = 0.0, K_1 = 1.0, K_2 = 1.0, K_3 = 1.0):
     ### variable
     # sig_. := signal .
     # psi_. := strength of regulatory action (psi > 0 means upregulation, psi = 0 means no regulation, and psi < 0 means down regulation
@@ -301,7 +298,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     #################################
     t = 0.0
     S[0] = S_0
-    I[0] = I_0 if infection_model == 'acute' or infection_model == 'cancer' else 0.0
+    I[0] = I_0
     H[0] = 0.0
     P[0] = 0.0
 
@@ -309,17 +306,20 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
     for i in np.arange(1, int_steps + 1):
         # select virulence model:
-        if infection_model == "acute":
+        if (b_I > 0 and I_0 <= S_0/1000) or infection_model == 'acute': # "acute"
             b_I_t = b_I
             d_Sauto = 0.0
-        elif infection_model == "cancer":
+            infection_model = 'acute'
+        elif (b_I > 0 and I_0 > S_0/1000) or infection_model == 'cancer': # "cancer"
             b_I_t = b_I/S_0
             d_Sauto = 0.0
-        elif infection_model == "autoimmune":
+            infection_model = 'cancer'
+        elif b_I == 0 or infection_model == 'autoimmune': # "autoimmune"
             b_I_t = 0.0
             d_Sauto = d_I
             K_SE = K_IE
             I_0 = 0.0
+            infection_model = 'autoimmune'
         else:
             b_I_t = b_I
             d_Sauto = 0
@@ -349,7 +349,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         immunopathology = (S_d_SE[i] - S_d_SE[i - 1]) + (I_d_IE[i] - I_d_IE[i - 1])
         cells_sensed = I[i - 1] + (S[i - 1] * K_IE / K_SE)
 
-        H[i] += H[i - 1] + b_H * harm_detected - dt * d_H * H[i - 1] * (H[i - 1] >= 0.0) # + 0*K_EH*np.exp(-(t/t_Hcancer)**2)*(infection_model == "cancer")
+        H[i] += H[i - 1] + b_H * harm_detected - dt * d_H * H[i - 1] * (H[i - 1] >= 0.0)
+        
         P[i] += P[i - 1] + b_H * immunopathology - dt * d_H * P[i - 1] * (P[i - 1] >= 0.0)
 
         ## I. Recruitment/Priming
@@ -408,14 +409,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         #### New binding events ####
         b_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = 0.0, psi_2 = psi_max, psi_1_2 = 0.0, F_0 = -psi_max*np.log(2), K_1 = S_0, K_2 = K_EH, K_3 = K_EH
+            psi_1 = 0.0, psi_2 = psi_max, psi_3 = 0.0, F_0 = -psi_max*np.log(2), K_1 = S_0, K_2 = K_EH, K_3 = K_EH
         ) / char_times[0] if cells_sensed >= 1 else 0.0
 
         b_unbind_t = bound_N * np.fmin(
             2 * bound_N_time / (
                 f_XtoY(
                     sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-                    psi_1 = psi_max, psi_2 = 0.0, psi_1_2 = 0.0, F_0 = -psi_max*np.log(2),
+                    psi_1 = psi_max, psi_2 = 0.0,psi_3 = 0.0, F_0 = -psi_max*np.log(2),
                     K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
                     K_2 = K_EH, K_3 = K_EH
                 ) * char_times[1] * 2 / np.sqrt(np.pi)
@@ -619,8 +620,8 @@ reg_stim = Na_reg[0:3] + NE_reg[0:3] + EM_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
-perf_vars = ["peff_protection", "peff_toxicity", "max_pM_fold", "T_pM_min" , "max_cM_fold"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Protection", "Toxicity", "Memory expansion", "Memory duration", "Central mem. exp."] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_vars = ["peff_protection", "peff_toxicity", "max_cM_fold", "max_eM_fold", "T_eM_min"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Protection", "Toxicity", "C. memory exp.", "E. memory exp.", "E. memory dur."] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
