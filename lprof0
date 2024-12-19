@@ -1,6 +1,6 @@
 Timer unit: 1e-09 s
 
-Total time: 1.7758 s
+Total time: 2.00863 s
 File: /mmfs1/home/oukogu/infoimmune/stoch_sim_model.py
 Function: lin_stoch_sim at line 195
 
@@ -20,10 +20,10 @@ Line #      Hits         Time  Per Hit   % Time  Line Contents
    206                                                             reg_model = "mwc_like",
    207                                                             out_data = "small",
    208                                                             seed = None):
-   209         1     207361.0 207361.0      0.0      rng = np.random.default_rng(seed)
+   209         1     162225.0 162225.0      0.0      rng = np.random.default_rng(seed)
    210                                           
    211         1        300.0    300.0      0.0      if reg_model == 'mwc_like':
-   212         1        460.0    460.0      0.0          f_XtoY = f_XtoY_mwc_like
+   212         1       1031.0   1031.0      0.0          f_XtoY = f_XtoY_mwc_like
    213                                               elif reg_model == 'competition_model':
    214                                                   f_XtoY = f_XtoY_competition
    215                                               else:
@@ -37,343 +37,347 @@ Line #      Hits         Time  Per Hit   % Time  Line Contents
    223                                               #################################
    224                                               ### SET META-VARIABLES FOR SIMULATION ###
    225                                               #################################
-   226         1        591.0    591.0      0.0      dt =  duration/steps
-   227         1        350.0    350.0      0.0      N_0_var = int(N_0)
-   228         1        360.0    360.0      0.0      b_S = S_0*d_S
+   226         1        651.0    651.0      0.0      dt =  duration/steps
+   227         1        711.0    711.0      0.0      N_0_var = int(N_0)
+   228         1        932.0    932.0      0.0      b_S = S_0*d_S
    229                                           
    230                                               # draw population of reponding cells for agent-based simulations
-   231         1        921.0    921.0      0.0      psi_Na_I, psi_Na_H, psi_Na_P, F0_Na = activation_regulation[0], activation_regulation[1], activation_regulation[2], activation_regulation[3]
-   232         1        390.0    390.0      0.0      psi_NE_I, psi_NE_H, psi_NE_P, F0_NE = NE_regulation[0], NE_regulation[1], NE_regulation[2], NE_regulation[3]
-   233         1       1001.0   1001.0      0.0      psi_EM_I, psi_EM_H, psi_EM_P, F0_EM = EM_regulation[0], EM_regulation[1], EM_regulation[2], EM_regulation[3]
-   234         1        570.0    570.0      0.0      psi_EE_I, psi_EE_H, psi_EE_P, F0_EE = expansion_regulation[0], expansion_regulation[1], expansion_regulation[2], expansion_regulation[3]
+   231         1       1432.0   1432.0      0.0      psi_Na_I, psi_Na_H, psi_Na_P, F0_Na = activation_regulation[0], activation_regulation[1], activation_regulation[2], activation_regulation[3]
+   232         1        882.0    882.0      0.0      psi_NE_I, psi_NE_H, psi_NE_P, F0_NE = NE_regulation[0], NE_regulation[1], NE_regulation[2], NE_regulation[3]
+   233         1        611.0    611.0      0.0      psi_EM_I, psi_EM_H, psi_EM_P, F0_EM = EM_regulation[0], EM_regulation[1], EM_regulation[2], EM_regulation[3]
+   234         1        882.0    882.0      0.0      psi_EE_I, psi_EE_H, psi_EE_P, F0_EE = expansion_regulation[0], expansion_regulation[1], expansion_regulation[2], expansion_regulation[3]
    235                                           
-   236         1        120.0    120.0      0.0      p_tcr = 1.0 #np.ones(N_0_var)
-   237         1        120.0    120.0      0.0      p_cyt = 1.0 #np.ones(N_0_var)
+   236         1        260.0    260.0      0.0      p_tcr = 1.0 #np.ones(N_0_var)
+   237         1        500.0    500.0      0.0      p_cyt = 1.0 #np.ones(N_0_var)
    238                                           
-   239         1        270.0    270.0      0.0      int_steps = int(steps)
+   239         1        641.0    641.0      0.0      int_steps = int(steps)
    240                                           
    241                                               # define variables for storage
-   242         1       3666.0   3666.0      0.0      I = np.zeros(int_steps+1)
-   243         1      49585.0  49585.0      0.0      S = np.zeros(int_steps+1)
-   244         1       2243.0   2243.0      0.0      H = np.zeros(int_steps+1)
-   245         1       1172.0   1172.0      0.0      P = np.zeros(int_steps+1)
-   246         1      77926.0  77926.0      0.0      I_d_I = np.zeros(int_steps+1)
-   247         1       4577.0   4577.0      0.0      I_d_IE = np.zeros(int_steps+1)
-   248         1      58458.0  58458.0      0.0      S_d_SE = np.zeros(int_steps+1)
+   242         1       6821.0   6821.0      0.0      I = np.zeros(int_steps+1)
+   243         1       1082.0   1082.0      0.0      S = np.zeros(int_steps+1)
+   244         1       1783.0   1783.0      0.0      H = np.zeros(int_steps+1)
+   245         1       1472.0   1472.0      0.0      P = np.zeros(int_steps+1)
+   246         1       1472.0   1472.0      0.0      I_d_I = np.zeros(int_steps+1)
+   247         1       1382.0   1382.0      0.0      I_d_IE = np.zeros(int_steps+1)
+   248         1       1372.0   1372.0      0.0      S_d_SE = np.zeros(int_steps+1)
    249                                           
-   250         1      30395.0  30395.0      0.0      N_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32)
-   251         1      27731.0  27731.0      0.0      N_m[0,:] +=1
-   252         1     441381.0 441381.0      0.0      T_Ecyt = [[] for i in np.arange(0, N_0_var)]
+   250         1      34642.0  34642.0      0.0      N_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32)
+   251         1      25709.0  25709.0      0.0      N_m[0,:] +=1
+   252         1     863081.0 863081.0      0.0      T_Ecyt = [[] for i in np.arange(0, N_0_var)]
    253                                               # T_Ecyt = np.zeros(int_steps+1, dtype = np.int32)
    254                                           
-   255         1      13911.0  13911.0      0.0      div_count = np.ones(N_0_var)
-   256         1       4777.0   4777.0      0.0      div_E_count = np.ones(N_0_var)
-   257         1       3746.0   3746.0      0.0      div_M_count = np.ones(N_0_var)
-   258         1       1402.0   1402.0      0.0      diff_EpM_count = np.zeros(N_0_var, dtype = np.int32)
+   255         1      31617.0  31617.0      0.0      div_count = np.ones(N_0_var)
+   256         1       8713.0   8713.0      0.0      div_E_count = np.ones(N_0_var)
+   257         1     178970.0 178970.0      0.0      div_M_count = np.ones(N_0_var)
+   258         1       2604.0   2604.0      0.0      diff_EpM_count = np.zeros(N_0_var, dtype = np.int32)
    259                                           
-   260         1       7851.0   7851.0      0.0      Na_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32)
-   261         1       5047.0   5047.0      0.0      Ma_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32)
-   262         1       4537.0   4537.0      0.0      E_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32) # effector in periphary
-   263         1       1542.0   1542.0      0.0      T_E = np.zeros(N_0_var)
+   260         1      10065.0  10065.0      0.0      Na_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32)
+   261         1       7682.0   7682.0      0.0      Ma_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32)
+   262         1       5298.0   5298.0      0.0      E_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32) # effector in periphary
+   263         1       1602.0   1602.0      0.0      T_E = np.zeros(N_0_var)
    264                                           
-   265         1        430.0    430.0      0.0      if out_data == "full":
+   265         1        371.0    371.0      0.0      if out_data == "full":
    266                                                   mycN_m = np.zeros((int_steps+1, N_0_var))
    267                                                   mycMa_m = np.zeros((int_steps+1, N_0_var))
    268                                                   mycE_m = np.zeros((int_steps+1, N_0_var))
    269                                           
-   270         1       3445.0   3445.0      0.0      bias_t = np.zeros((int_steps+1, 4))
+   270         1       9124.0   9124.0      0.0      bias_t = np.zeros((int_steps+1, 4))
    271                                           
    272                                               # Define event timer variables
-   273         1       1953.0   1953.0      0.0      bound_N = np.zeros(N_0_var, dtype =np.int32)
-   274         1       1462.0   1462.0      0.0      bound_N_time = np.zeros(N_0_var)
-   275         1       3526.0   3526.0      0.0      Na_div_flag = np.ones(N_0_var, dtype =np.int32)
-   276         1       3235.0   3235.0      0.0      Na_flag = np.ones(N_0_var, dtype =np.int32)
+   273         1       2284.0   2284.0      0.0      bound_N = np.zeros(N_0_var, dtype =np.int32)
+   274         1       1583.0   1583.0      0.0      bound_N_time = np.zeros(N_0_var)
+   275         1       5768.0   5768.0      0.0      Na_div_flag = np.ones(N_0_var, dtype =np.int32)
+   276         1       3395.0   3395.0      0.0      Na_flag = np.ones(N_0_var, dtype =np.int32)
    277                                           
-   278         1       1342.0   1342.0      0.0      mycN = np.zeros(N_0_var)
-   279         1       1342.0   1342.0      0.0      mycE = np.zeros(N_0_var)
-   280         1       1282.0   1282.0      0.0      mycMa = np.zeros(N_0_var)
+   278         1       1282.0   1282.0      0.0      mycN = np.zeros(N_0_var)
+   279         1       1102.0   1102.0      0.0      mycE = np.zeros(N_0_var)
+   280         1       1262.0   1262.0      0.0      mycMa = np.zeros(N_0_var)
    281                                           
-   282         1       5418.0   5418.0      0.0      r_NaE = np.zeros((int_steps+1, N_0_var))
-   283         1       4557.0   4557.0      0.0      r_EM = np.zeros((int_steps+1, N_0_var))
-   284         1       4116.0   4116.0      0.0      r_Na = np.zeros((int_steps+1, N_0_var))
-   285         1       5068.0   5068.0      0.0      r_EE = np.zeros((int_steps+1, N_0_var))
-   286         1       1412.0   1412.0      0.0      cum_r_NaE = np.zeros(N_0_var)
+   282         1       5238.0   5238.0      0.0      r_NaE = np.zeros((int_steps+1, N_0_var))
+   283         1       4637.0   4637.0      0.0      r_EM = np.zeros((int_steps+1, N_0_var))
+   284         1       4437.0   4437.0      0.0      r_Na = np.zeros((int_steps+1, N_0_var))
+   285         1       4607.0   4607.0      0.0      r_EE = np.zeros((int_steps+1, N_0_var))
+   286         1       1472.0   1472.0      0.0      cum_r_NaE = np.zeros(N_0_var)
    287                                           
-   288         1       1913.0   1913.0      0.0      b_unbind_t = np.zeros(N_0_var)
-   289         1       1342.0   1342.0      0.0      b_N_bind = np.zeros(N_0_var)
-   290         1      12128.0  12128.0      0.0      b_Na_div = np.ones(N_0_var)/char_times[2]
-   291         1        611.0    611.0      0.0      b_myc_t = np.zeros(N_0_var)
-   292         1       6209.0   6209.0      0.0      b_E_div = np.ones(N_0_var)/char_times[3]
-   293         1       5829.0   5829.0      0.0      b_Ma_div = np.ones(N_0_var)/char_times[4]
-   294         1       5448.0   5448.0      0.0      d_E_die = np.ones(N_0_var)/char_times[5]
+   288         1       1923.0   1923.0      0.0      b_unbind_t = np.zeros(N_0_var)
+   289         1       1562.0   1562.0      0.0      b_N_bind = np.zeros(N_0_var)
+   290         1      12268.0  12268.0      0.0      b_Na_div = np.ones(N_0_var)/char_times[2]
+   291         1        641.0    641.0      0.0      b_myc_t = np.zeros(N_0_var)
+   292         1       6911.0   6911.0      0.0      b_E_div = np.ones(N_0_var)/char_times[3]
+   293         1       5749.0   5749.0      0.0      b_Ma_div = np.ones(N_0_var)/char_times[4]
+   294         1       5198.0   5198.0      0.0      d_E_die = np.ones(N_0_var)/char_times[5]
    295                                           
    296                                               #################################
    297                                               ### RUN POPULATION SIMULATION ###
    298                                               #################################
-   299         1        131.0    131.0      0.0      t = 0.0
-   300         1        551.0    551.0      0.0      S[0] = S_0
-   301         1        401.0    401.0      0.0      I[0] = I_0 if infection_model == 'acute' or infection_model == 'cancer' else 0.0
-   302         1        271.0    271.0      0.0      H[0] = 0.0
-   303         1        231.0    231.0      0.0      P[0] = 0.0
+   299         1        140.0    140.0      0.0      t = 0.0
+   300         1        741.0    741.0      0.0      S[0] = S_0
+   301         1        170.0    170.0      0.0      I[0] = I_0
+   302         1        230.0    230.0      0.0      H[0] = 0.0
+   303         1        170.0    170.0      0.0      P[0] = 0.0
    304                                           
-   305         1        110.0    110.0      0.0      sum_e_m = 0
+   305         1        111.0    111.0      0.0      sum_e_m = 0
    306                                           
-   307      2501     504299.0    201.6      0.0      for i in np.arange(1, int_steps + 1):
+   307      2501     557967.0    223.1      0.0      for i in np.arange(1, int_steps + 1):
    308                                                   # select virulence model:
-   309      2500     473689.0    189.5      0.0          if infection_model == "acute":
-   310      2500     339974.0    136.0      0.0              b_I_t = b_I
-   311      2500     423216.0    169.3      0.0              d_Sauto = 0.0
-   312                                                   elif infection_model == "cancer":
-   313                                                       b_I_t = b_I/S_0
-   314                                                       d_Sauto = 0.0
-   315                                                   elif infection_model == "autoimmune":
-   316                                                       b_I_t = 0.0
-   317                                                       d_Sauto = d_I
-   318                                                       K_SE = K_IE
-   319                                                       I_0 = 0.0
-   320                                                   else:
-   321                                                       b_I_t = b_I
-   322                                                       d_Sauto = 0
-   323                                           
-   324                                                   # Compute total population of cell types
-   325                                                   # Use sum computed in previous iteration.
-   326      2500     350965.0    140.4      0.0          E_pop = sum_e_m
-   327                                           
-   328                                                   #### Run infection dynamics: replication and effector clearance ####
-   329                                           
-   330                                                   # Update state of susceptible, infected and inflammation
-   331                                                   # (a) event variables
-   332      2500    3690767.0   1476.3      0.2          S_to_I = dt * S[i - 1] * (I[i - 1] >= I_0) * b_I_t * I[i - 1] * (S[i - 1] >= 1.0)
-   333      2500    3767603.0   1507.0      0.2          I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_IE + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
-   334      2500    2331438.0    932.6      0.1          I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") # cells killed by infection
-   335      2500    3395689.0   1358.3      0.2          S_d_SE[i] += S_d_SE[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_SE + S[i - 1] + E_pop)) # susceptible cells killed by immune response
-   336                                           
-   337                                                   # (b) state variables
-   338      7500    2733077.0    364.4      0.2          S[i] += S[i - 1] - S_to_I + dt * (
-   339      5000    4965587.0    993.1      0.3              b_S - (d_S + (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2)) * S[i - 1]
-   340      2500    1016177.0    406.5      0.1              - (S_d_SE[i] - S_d_SE[i - 1])
-   341      2500     776435.0    310.6      0.0          ) * (S[i - 1] >= 1.0)
-   342                                           
-   343      2500    2997697.0   1199.1      0.2          I[i] += I[i - 1] + S_to_I - (I_d_IE[i] + I_d_I[i] - I_d_IE[i - 1] - I_d_I[i - 1])
-   344                                           
-   345      2500    4948520.0   1979.4      0.3          harm_detected = (I_d_I[i] - I_d_I[i - 1]) + dt * S[i - 1] * (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2) + S_to_I * (infection_model == "cancer")
-   346      2500    1922160.0    768.9      0.1          immunopathology = (S_d_SE[i] - S_d_SE[i - 1]) + (I_d_IE[i] - I_d_IE[i - 1])
-   347      2500    1707393.0    683.0      0.1          cells_sensed = I[i - 1] + (S[i - 1] * K_IE / K_SE)
-   348                                           
-   349      2500    3149842.0   1259.9      0.2          H[i] += H[i - 1] + b_H * harm_detected - dt * d_H * H[i - 1] * (H[i - 1] >= 0.0) # + 0*K_EH*np.exp(-(t/t_Hcancer)**2)*(infection_model == "cancer")
-   350      2500    2667955.0   1067.2      0.2          P[i] += P[i - 1] + b_H * immunopathology - dt * d_H * P[i - 1] * (P[i - 1] >= 0.0)
+   309      2500    1151196.0    460.5      0.1          if (b_I > 0 and I_0 <= S_0/1000) or infection_model == 'acute': # "acute"
+   310      2500     328074.0    131.2      0.0              b_I_t = b_I
+   311      2500     376966.0    150.8      0.0              d_Sauto = 0.0
+   312      2500     370233.0    148.1      0.0              infection_model = 'acute'
+   313                                                   elif (b_I > 0 and I_0 > S_0/1000) or infection_model == 'cancer': # "cancer"
+   314                                                       b_I_t = b_I/S_0
+   315                                                       d_Sauto = 0.0
+   316                                                       infection_model = 'cancer'
+   317                                                   elif b_I == 0 or infection_model == 'autoimmune': # "autoimmune"
+   318                                                       b_I_t = 0.0
+   319                                                       d_Sauto = d_I
+   320                                                       K_SE = K_IE
+   321                                                       I_0 = 0.0
+   322                                                       infection_model = 'autoimmune'
+   323                                                   else:
+   324                                                       b_I_t = b_I
+   325                                                       d_Sauto = 0
+   326                                           
+   327                                                   # Compute total population of cell types
+   328                                                   # Use sum computed in previous iteration.
+   329      2500     399797.0    159.9      0.0          E_pop = sum_e_m
+   330                                           
+   331                                                   #### Run infection dynamics: replication and effector clearance ####
+   332                                           
+   333                                                   # Update state of susceptible, infected and inflammation
+   334                                                   # (a) event variables
+   335      2500    3796855.0   1518.7      0.2          S_to_I = dt * S[i - 1] * (I[i - 1] >= I_0) * b_I_t * I[i - 1] * (S[i - 1] >= 1.0)
+   336      2500    3798826.0   1519.5      0.2          I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_IE + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
+   337      2500    2406559.0    962.6      0.1          I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") # cells killed by infection
+   338      2500    3489605.0   1395.8      0.2          S_d_SE[i] += S_d_SE[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_SE + S[i - 1] + E_pop)) # susceptible cells killed by immune response
+   339                                           
+   340                                                   # (b) state variables
+   341      7500    2797922.0    373.1      0.1          S[i] += S[i - 1] - S_to_I + dt * (
+   342      5000    5157933.0   1031.6      0.3              b_S - (d_S + (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2)) * S[i - 1]
+   343      2500    1097408.0    439.0      0.1              - (S_d_SE[i] - S_d_SE[i - 1])
+   344      2500     815055.0    326.0      0.0          ) * (S[i - 1] >= 1.0)
+   345                                           
+   346      2500    3152105.0   1260.8      0.2          I[i] += I[i - 1] + S_to_I - (I_d_IE[i] + I_d_I[i] - I_d_IE[i - 1] - I_d_I[i - 1])
+   347                                           
+   348      2500    4992148.0   1996.9      0.2          harm_detected = (I_d_I[i] - I_d_I[i - 1]) + dt * S[i - 1] * (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2) + S_to_I * (infection_model == "cancer")
+   349      2500    1957558.0    783.0      0.1          immunopathology = (S_d_SE[i] - S_d_SE[i - 1]) + (I_d_IE[i] - I_d_IE[i - 1])
+   350      2500    1847433.0    739.0      0.1          cells_sensed = I[i - 1] + (S[i - 1] * K_IE / K_SE)
    351                                           
-   352                                                   ## I. Recruitment/Priming
-   353                                           
-   354                                                   # (a) Phase 1: Naive cells encounter and bind APCs
-   355      2500     496971.0    198.8      0.0          if cells_sensed >= 1:
-   356      2500  224848913.0  89939.6     12.7              bound_N += rng.binomial(N_m[i - 1], b_N_bind * dt) - rng.binomial(N_m[i - 1], b_unbind_t * dt)
-   357                                                   else:
-   358                                                       bound_N = 0
-   359                                           
-   360      2500   28903137.0  11561.3      1.6          bound_N_time += dt * (bound_N - (1 - bound_N) * bound_N_time * N_m[i - 1]) # only reset to zero if the cell is not activated
-   361                                           
-   362                                                   # (b) Phase 2: Activated naive cells are bound to APCs and receive stimulation.
-   363      2500   20858199.0   8343.3      1.2          act_N = (1 - bound_N) * (mycN >= myc_thresh) * (N_m[i - 1] > 0)
-   364                                           
-   365                                                   # (c) Phase 3: Unbound activated naive cells divide and then differentiate
-   366      2500   71390155.0  28556.1      4.0          div_Na = rng.binomial(Na_m[i - 1] * Na_div_flag, dt * b_Na_div)
-   367                                           
-   368      5000   66496147.0  13299.2      3.7          diff_NaE = rng.binomial(
-   369      2500   12641030.0   5056.4      0.7              Na_m[i - 1] * (1 - Na_div_flag),
-   370      2500   31147477.0  12459.0      1.8              1 - np.exp(-cum_r_NaE*dt) if np.sum(Na_m[i - 1]) > 0 else 0
-   371                                                   )
-   372                                           
-   373                                                   ## II. Expansion
-   374                                           
-   375                                                   # (a) New central memory cells divide
-   376      2500   82912371.0  33164.9      4.7          div_Ma = rng.binomial(Ma_m[i - 1] - diff_EpM_count, dt * b_Ma_div)
-   377                                           
-   378                                                   # (b) Effector cells divide, differentiate, die
-   379      2500   84437089.0  33774.8      4.8          die_E = rng.binomial(E_m[i - 1], d_E_die * dt)
-   380      2500   80240450.0  32096.2      4.5          div_E = rng.binomial(E_m[i - 1] - die_E, dt * b_E_div)
-   381      2500   86695372.0  34678.1      4.9          diff_EM = rng.binomial(E_m[i - 1] - die_E, dt * r_EM[i - 1])
-   382                                           
-   383                                                   #### Update population dynamics: ####
-   384      2500   23617488.0   9447.0      1.3          N_m[i] += N_m[i - 1] - act_N
-   385      2500   48601142.0  19440.5      2.7          Na_m[i] += Na_m[i - 1] + div_Na + act_N - (1 - Na_div_flag) * Na_m[i - 1]
+   352      2500    3275987.0   1310.4      0.2          H[i] += H[i - 1] + b_H * harm_detected - dt * d_H * H[i - 1] * (H[i - 1] >= 0.0)
+   353                                                   
+   354      2500    2741950.0   1096.8      0.1          P[i] += P[i - 1] + b_H * immunopathology - dt * d_H * P[i - 1] * (P[i - 1] >= 0.0)
+   355                                           
+   356                                                   ## I. Recruitment/Priming
+   357                                           
+   358                                                   # (a) Phase 1: Naive cells encounter and bind APCs
+   359      2500     446422.0    178.6      0.0          if cells_sensed >= 1:
+   360      2500  253134736.0 101253.9     12.6              bound_N += rng.binomial(N_m[i - 1], b_N_bind * dt) - rng.binomial(N_m[i - 1], b_unbind_t * dt)
+   361                                                   else:
+   362                                                       bound_N = 0
+   363                                           
+   364      2500   30719291.0  12287.7      1.5          bound_N_time += dt * (bound_N - (1 - bound_N) * bound_N_time * N_m[i - 1]) # only reset to zero if the cell is not activated
+   365                                           
+   366                                                   # (b) Phase 2: Activated naive cells are bound to APCs and receive stimulation.
+   367      2500   21731878.0   8692.8      1.1          act_N = (1 - bound_N) * (mycN >= myc_thresh) * (N_m[i - 1] > 0)
+   368                                           
+   369                                                   # (c) Phase 3: Unbound activated naive cells divide and then differentiate
+   370      2500   76543019.0  30617.2      3.8          div_Na = rng.binomial(Na_m[i - 1] * Na_div_flag, dt * b_Na_div)
+   371                                           
+   372      5000   68231258.0  13646.3      3.4          diff_NaE = rng.binomial(
+   373      2500   13124981.0   5250.0      0.7              Na_m[i - 1] * (1 - Na_div_flag),
+   374      2500   32404339.0  12961.7      1.6              1 - np.exp(-cum_r_NaE*dt) if np.sum(Na_m[i - 1]) > 0 else 0
+   375                                                   )
+   376                                           
+   377                                                   ## II. Expansion
+   378                                           
+   379                                                   # (a) New central memory cells divide
+   380      2500   94912829.0  37965.1      4.7          div_Ma = rng.binomial(Ma_m[i - 1] - diff_EpM_count, dt * b_Ma_div)
+   381                                           
+   382                                                   # (b) Effector cells divide, differentiate, die
+   383      2500  103428880.0  41371.6      5.1          die_E = rng.binomial(E_m[i - 1], d_E_die * dt)
+   384      2500   91932565.0  36773.0      4.6          div_E = rng.binomial(E_m[i - 1] - die_E, dt * b_E_div)
+   385      2500  106143562.0  42457.4      5.3          diff_EM = rng.binomial(E_m[i - 1] - die_E, dt * r_EM[i - 1])
    386                                           
-   387      2500   46487991.0  18595.2      2.6          Ma_m[i] += Ma_m[i - 1] + div_Ma + (1 - Na_div_flag)*(Na_m[i - 1] - diff_NaE) + diff_EM # should I program memory death
-   388      2500   42729592.0  17091.8      2.4          E_m[i] += E_m[i - 1] + div_E + (1 - Na_div_flag) * (diff_NaE) - (die_E + diff_EM)
-   389                                           
-   390                                                   # Evaluate sums and create masks
-   391      2500   15962693.0   6385.1      0.9          sum_n_m = np.sum(N_m[i])
-   392      2500   12970908.0   5188.4      0.7          sum_e_m = np.sum(E_m[i])
-   393      2500    5548862.0   2219.5      0.3          e_m_nonzero_mask = E_m[i] > 0
-   394      2500    4386766.0   1754.7      0.2          n_m_nonzero_mask = N_m[i] > 0
-   395      2500    4250555.0   1700.2      0.2          na_m_nonzero_mask = Na_m[i] > 0
-   396      2500    2457206.0    982.9      0.1          n_na_sum_nonzero_mask = n_m_nonzero_mask | na_m_nonzero_mask
-   397                                           
-   398                                                   # Update division flag to allow division to proceed
-   399      2500    6606898.0   2642.8      0.4          Na_div_flag = (Na_m[i] < max_Na)*(na_m_nonzero_mask)
-   400      2500   12768625.0   5107.4      0.7          div_count += div_Na + div_E + div_Ma
-   401      2500    6205309.0   2482.1      0.3          div_E_count += div_E
-   402      2500    6061702.0   2424.7      0.3          div_M_count += div_Ma
-   403      2500    7773068.0   3109.2      0.4          diff_EpM_count += diff_EM
-   404                                           
-   405                                                   #### New binding events ####
-   406      7500   33173513.0   4423.1      1.9          b_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
-   407      2500    1833919.0    733.6      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-   408      2500    4116058.0   1646.4      0.2              psi_1 = 0.0, psi_2 = psi_max, psi_3 = 0.0, F_0 = -psi_max*np.log(2), K_1 = S_0, K_2 = K_EH, K_3 = K_EH
-   409      5000    1322695.0    264.5      0.1          ) / char_times[0] if cells_sensed >= 1 else 0.0
-   410                                           
-   411      4999   12955259.0   2591.6      0.7          b_unbind_t = bound_N * np.fmin(
-   412      4998   11468746.0   2294.7      0.6              2 * bound_N_time / (
-   413     12495   11933296.0    955.0      0.7                  f_XtoY(
-   414      2499    1383825.0    553.8      0.1                      sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-   415      2499    3261277.0   1305.0      0.2                      psi_1 = psi_max, psi_2 = 0.0,psi_3 = 0.0, F_0 = -psi_max*np.log(2),
-   416      2499     903967.0    361.7      0.1                      K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
-   417      2499     285653.0    114.3      0.0                      K_2 = K_EH, K_3 = K_EH
-   418      7497    3488513.0    465.3      0.2                  ) * char_times[1] * 2 / np.sqrt(np.pi)
-   419      4998     811106.0    162.3      0.0              )**2, 1 / dt
-   420      2500   14230602.0   5692.2      0.8          ) if np.sum(bound_N) >= 1 else 0.0
-   421                                           
-   422      7500   16778073.0   2237.1      0.9          b_myc_t = b_myc * f_XtoY(
-   423      2500    1267448.0    507.0      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-   424      2500     357924.0    143.2      0.0              psi_1 = psi_Na_I, psi_2 = psi_Na_H, psi_3 = psi_Na_P, F_0 = F0_Na,
-   425      2500     601036.0    240.4      0.0              K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
-   426      2500     249133.0     99.7      0.0              K_2 = K_EH, K_3 = K_EH
-   427      2500     245932.0     98.4      0.0          ) * bound_N
-   428                                           
-   429                                                   #### MYC Dynamics ####
-   430     15000   50771304.0   3384.8      2.9          mycN = (mycN + dt * (b_myc_t - (1 - bound_N) * f_XtoY(
-   431      2500    1256758.0    502.7      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-   432      2500     501319.0    200.5      0.0              psi_1 = -psi_EE_I, psi_2 = -psi_EE_H, psi_3 = -psi_EE_P, F_0 = -F0_EE,
-   433      2500     550311.0    220.1      0.0              K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
-   434      2500     268931.0    107.6      0.0              K_2 = K_EH, K_3 = K_EH
-   435     10000    5558543.0    555.9      0.3          ) * mycN * d_myc * (mycN > 0))) * n_na_sum_nonzero_mask # (1 - bound_N)*
-   436                                           
-   437     15000   35237302.0   2349.2      2.0          mycE = (mycE - dt * (f_XtoY(
-   438      2500    1193921.0    477.6      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-   439      2500     496935.0    198.8      0.0              psi_1 = -psi_EE_I, psi_2 = -psi_EE_H, psi_3 = -psi_EE_P, F_0 = -F0_EE,
-   440      2500     551183.0    220.5      0.0              K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
-   441      7500     854120.0    113.9      0.0              K_2 = K_EH, K_3 = K_EH)*mycE*d_myc)
-   442      5000   10630677.0   2126.1      0.6          ) * (E_m[i] >= 1) + mycN * (na_m_nonzero_mask)
-   443                                           
-   444      2500   29004548.0  11601.8      1.6          mycMa = (mycMa - dt * mycMa * d_myc) * (Ma_m[i] > 0) + mycN * na_m_nonzero_mask # higher decay rate of myc
-   445                                           
-   446                                                   #### Time-dependent rates modulated by antigen and cytokine signals ####
-   447      2500     680707.0    272.3      0.0          b_Na_div = 1 / char_times[2]
-   448      2500   17435967.0   6974.4      1.0          b_E_div = (mycE >= myc_thresh) * (div_count < max_expand) / char_times[3]
-   449      2500   15778453.0   6311.4      0.9          b_Ma_div = (mycMa >= myc_thresh) * (div_count < max_expand) / char_times[4]
-   450                                           
-   451                                                   #### Transition probabilities modulated by antigen and cytokine signals ####
-   452      2500   34185193.0  13674.1      1.9          r_Na[i] += b_myc_t / myc_thresh
-   453                                           
-   454     10000   73344112.0   7334.4      4.1          r_NaE[i] += (r_NaE[i - 1] + 2 * (mycN >= myc_thresh) * dt * f_XtoY(
-   455      2500    1280742.0    512.3      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-   456      2500     323886.0    129.6      0.0              psi_1 = psi_NE_I, psi_2 = psi_NE_H, psi_3 = psi_NE_P,F_0 = F0_NE,
-   457      2500     630813.0    252.3      0.0              K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
-   458      2500     273962.0    109.6      0.0              K_2 = K_EH, K_3 = K_EH
-   459      5000    3780218.0    756.0      0.2          ) / (2 / np.sqrt(np.pi) * (char_times[1] - char_times[6]))**2) * n_na_sum_nonzero_mask
-   460                                           
-   461     10000   48189821.0   4819.0      2.7          r_EM[i] += (r_EM[i - 1] + 2 * dt * f_XtoY(
-   462      2500    1180771.0    472.3      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-   463      2500     452797.0    181.1      0.0              psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_3 = psi_EM_P, F_0 = F0_EM,
-   464      2500     609881.0    244.0      0.0              K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
-   465      2500     270209.0    108.1      0.0              K_2 = K_EH, K_3 = K_EH
-   466      5000    3307173.0    661.4      0.2          ) / (2 / np.sqrt(np.pi) * (char_times[1] + char_times[6]))**2) * e_m_nonzero_mask # char_times[6] + char_times[6] to reverse priming and differentiation
-   467                                           
-   468      2500   26571423.0  10628.6      1.5          r_EE[i] += b_E_div
-   469                                           
-   470      2500    3614944.0   1446.0      0.2          cum_r_NaE += r_NaE[i]
+   387                                                   #### Update population dynamics: ####
+   388      2500   26549414.0  10619.8      1.3          N_m[i] += N_m[i - 1] - act_N
+   389      2500   51336588.0  20534.6      2.6          Na_m[i] += Na_m[i - 1] + div_Na + act_N - (1 - Na_div_flag) * Na_m[i - 1]
+   390                                           
+   391      2500   49204956.0  19682.0      2.4          Ma_m[i] += Ma_m[i - 1] + div_Ma + (1 - Na_div_flag)*(Na_m[i - 1] - diff_NaE) + diff_EM # should I program memory death
+   392      2500   45404891.0  18162.0      2.3          E_m[i] += E_m[i - 1] + div_E + (1 - Na_div_flag) * (diff_NaE) - (die_E + diff_EM)
+   393                                           
+   394                                                   # Evaluate sums and create masks
+   395      2500   16478562.0   6591.4      0.8          sum_n_m = np.sum(N_m[i])
+   396      2500   13383097.0   5353.2      0.7          sum_e_m = np.sum(E_m[i])
+   397      2500    5866204.0   2346.5      0.3          e_m_nonzero_mask = E_m[i] > 0
+   398      2500    4523243.0   1809.3      0.2          n_m_nonzero_mask = N_m[i] > 0
+   399      2500    4433652.0   1773.5      0.2          na_m_nonzero_mask = Na_m[i] > 0
+   400      2500    2511829.0   1004.7      0.1          n_na_sum_nonzero_mask = n_m_nonzero_mask | na_m_nonzero_mask
+   401                                           
+   402                                                   # Update division flag to allow division to proceed
+   403      2500    6760609.0   2704.2      0.3          Na_div_flag = (Na_m[i] < max_Na)*(na_m_nonzero_mask)
+   404      2500   13001452.0   5200.6      0.6          div_count += div_Na + div_E + div_Ma
+   405      2500    6458004.0   2583.2      0.3          div_E_count += div_E
+   406      2500    6594604.0   2637.8      0.3          div_M_count += div_Ma
+   407      2500    7972286.0   3188.9      0.4          diff_EpM_count += diff_EM
+   408                                           
+   409                                                   #### New binding events ####
+   410      7500   34973500.0   4663.1      1.7          b_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
+   411      2500    1907761.0    763.1      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
+   412      2500    4137683.0   1655.1      0.2              psi_1 = 0.0, psi_2 = psi_max, psi_3 = 0.0, F_0 = -psi_max*np.log(2), K_1 = S_0, K_2 = K_EH, K_3 = K_EH
+   413      5000    1366341.0    273.3      0.1          ) / char_times[0] if cells_sensed >= 1 else 0.0
+   414                                           
+   415      4999   13669942.0   2734.5      0.7          b_unbind_t = bound_N * np.fmin(
+   416      4998   12057439.0   2412.5      0.6              2 * bound_N_time / (
+   417     12495   12226177.0    978.5      0.6                  f_XtoY(
+   418      2499    1431859.0    573.0      0.1                      sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
+   419      2499    3267804.0   1307.6      0.2                      psi_1 = psi_max, psi_2 = 0.0,psi_3 = 0.0, F_0 = -psi_max*np.log(2),
+   420      2499     816799.0    326.9      0.0                      K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
+   421      2499     304811.0    122.0      0.0                      K_2 = K_EH, K_3 = K_EH
+   422      7497    3776312.0    503.7      0.2                  ) * char_times[1] * 2 / np.sqrt(np.pi)
+   423      4998     843916.0    168.9      0.0              )**2, 1 / dt
+   424      2500   14446456.0   5778.6      0.7          ) if np.sum(bound_N) >= 1 else 0.0
+   425                                           
+   426      7500   16955017.0   2260.7      0.8          b_myc_t = b_myc * f_XtoY(
+   427      2500    1363890.0    545.6      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
+   428      2500     374560.0    149.8      0.0              psi_1 = psi_Na_I, psi_2 = psi_Na_H, psi_3 = psi_Na_P, F_0 = F0_Na,
+   429      2500     598146.0    239.3      0.0              K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
+   430      2500     253434.0    101.4      0.0              K_2 = K_EH, K_3 = K_EH
+   431      2500     263991.0    105.6      0.0          ) * bound_N
+   432                                           
+   433                                                   #### MYC Dynamics ####
+   434     15000   52342712.0   3489.5      2.6          mycN = (mycN + dt * (b_myc_t - (1 - bound_N) * f_XtoY(
+   435      2500    1340701.0    536.3      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
+   436      2500     488036.0    195.2      0.0              psi_1 = -psi_EE_I, psi_2 = -psi_EE_H, psi_3 = -psi_EE_P, F_0 = -F0_EE,
+   437      2500     587463.0    235.0      0.0              K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
+   438      2500     260424.0    104.2      0.0              K_2 = K_EH, K_3 = K_EH
+   439     10000    5794838.0    579.5      0.3          ) * mycN * d_myc * (mycN > 0))) * n_na_sum_nonzero_mask # (1 - bound_N)*
+   440                                           
+   441     15000   36278031.0   2418.5      1.8          mycE = (mycE - dt * (f_XtoY(
+   442      2500    1271872.0    508.7      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
+   443      2500     464404.0    185.8      0.0              psi_1 = -psi_EE_I, psi_2 = -psi_EE_H, psi_3 = -psi_EE_P, F_0 = -F0_EE,
+   444      2500     553643.0    221.5      0.0              K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
+   445      7500     892784.0    119.0      0.0              K_2 = K_EH, K_3 = K_EH)*mycE*d_myc)
+   446      5000   11646264.0   2329.3      0.6          ) * (E_m[i] >= 1) + mycN * (na_m_nonzero_mask)
+   447                                           
+   448      2500   29993427.0  11997.4      1.5          mycMa = (mycMa - dt * mycMa * d_myc) * (Ma_m[i] > 0) + mycN * na_m_nonzero_mask # higher decay rate of myc
+   449                                           
+   450                                                   #### Time-dependent rates modulated by antigen and cytokine signals ####
+   451      2500     711056.0    284.4      0.0          b_Na_div = 1 / char_times[2]
+   452      2500   18201610.0   7280.6      0.9          b_E_div = (mycE >= myc_thresh) * (div_count < max_expand) / char_times[3]
+   453      2500   15887595.0   6355.0      0.8          b_Ma_div = (mycMa >= myc_thresh) * (div_count < max_expand) / char_times[4]
+   454                                           
+   455                                                   #### Transition probabilities modulated by antigen and cytokine signals ####
+   456      2500   37275752.0  14910.3      1.9          r_Na[i] += b_myc_t / myc_thresh
+   457                                           
+   458     10000   77049987.0   7705.0      3.8          r_NaE[i] += (r_NaE[i - 1] + 2 * (mycN >= myc_thresh) * dt * f_XtoY(
+   459      2500    1351018.0    540.4      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
+   460      2500     356739.0    142.7      0.0              psi_1 = psi_NE_I, psi_2 = psi_NE_H, psi_3 = psi_NE_P,F_0 = F0_NE,
+   461      2500     588806.0    235.5      0.0              K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
+   462      2500     274495.0    109.8      0.0              K_2 = K_EH, K_3 = K_EH
+   463      5000    3906514.0    781.3      0.2          ) / (2 / np.sqrt(np.pi) * (char_times[1] - char_times[6]))**2) * n_na_sum_nonzero_mask
+   464                                           
+   465     10000   51168914.0   5116.9      2.5          r_EM[i] += (r_EM[i - 1] + 2 * dt * f_XtoY(
+   466      2500    1197990.0    479.2      0.1              sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
+   467      2500     365406.0    146.2      0.0              psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_3 = psi_EM_P, F_0 = F0_EM,
+   468      2500     604201.0    241.7      0.0              K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
+   469      2500     278336.0    111.3      0.0              K_2 = K_EH, K_3 = K_EH
+   470      5000    3439515.0    687.9      0.2          ) / (2 / np.sqrt(np.pi) * (char_times[1] + char_times[6]))**2) * e_m_nonzero_mask # char_times[6] + char_times[6] to reverse priming and differentiation
    471                                           
-   472                                                   # store time cells become effector
-   473      2500    8929080.0   3571.6      0.5          T_E += dt * e_m_nonzero_mask if sum_e_m > 0 else 0.0
-   474      2500   16642311.0   6656.9      0.9          d_E_die = 0.5 * np.sqrt(np.pi) * e_m_nonzero_mask * T_E / char_times[5]**2
+   472      2500   29447682.0  11779.1      1.5          r_EE[i] += b_E_div
+   473                                           
+   474      2500    3619768.0   1447.9      0.2          cum_r_NaE += r_NaE[i]
    475                                           
-   476                                                   # store time an effector spends in cytotoxic state
-   477      2500   11005583.0   4402.2      0.6          for_where = (diff_NaE + div_Ma + diff_EM > 0)
-   478      2500    6805246.0   2722.1      0.4          where_output = np.where(for_where)[0]
-   479     11432    6010402.0    525.8      0.3          for l in where_output:
-   480      8932   14005901.0   1568.1      0.8              T_Ecyt[l] += (diff_NaE[l] + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()]
-   481                                           
-   482                                                   #### Store myc levels ####
-   483      2500     577164.0    230.9      0.0          if out_data == "full":
-   484                                                       mycN_m[i] += mycN
-   485                                                       mycMa_m[i] += mycMa
-   486                                                       mycE_m[i] += mycE
-   487                                           
-   488                                                   #### Store differentiation biases
-   489      2500    1623074.0    649.2      0.1          to_add_to_bias = np.zeros(4)
-   490      2500    4217754.0   1687.1      0.2          if sum_n_m > 0.:
-   491      2500   41041959.0  16416.8      2.3              to_add_to_bias[0] = np.mean(r_Na[i][n_m_nonzero_mask])
-   492      2500   29040227.0  11616.1      1.6              to_add_to_bias[1] = np.mean(r_NaE[i][n_m_nonzero_mask])
-   493      2500    3397740.0   1359.1      0.2          if sum_e_m > 0.:
-   494      2412   21059032.0   8730.9      1.2              to_add_to_bias[2] = np.mean(r_EM[i][e_m_nonzero_mask])
-   495      2412   19662826.0   8152.1      1.1              to_add_to_bias[3] = np.mean(r_EE[i][e_m_nonzero_mask])
-   496      2500    2794020.0   1117.6      0.2          bias_t[i] += to_add_to_bias
-   497                                           
-   498                                                   # Increment time
-   499      2500     721308.0    288.5      0.0          t += dt
-   500                                           
-   501                                               # Collect population dynamics
-   502         1   14721366.0    1e+07      0.8      N, Na, Ma, E = np.sum(N_m, axis = 1), np.sum(Na_m, axis = 1), np.sum(Ma_m, axis = 1), np.sum(E_m, axis = 1)
-   503                                           
-   504         1    1495399.0    1e+06      0.1      T_pEcytM = np.concatenate(T_Ecyt) if N_0 > 0 else np.array([0.0]) # time that memory spends in effector
-   505         1      18077.0  18077.0      0.0      count_cM = np.sum(T_pEcytM == 0
-   506         1      56775.0  56775.0      0.0                       ) if len(T_pEcytM[T_pEcytM == 0]) > 0 and N_0 > 0.0 else 0.0
-   507         1      26139.0  26139.0      0.0      count_eM = np.sum(memory_lifespan(T_pEcytM) > char_times[5]
-   508         1      42294.0  42294.0      0.0                       ) if len(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]]) > 0 and N_0 > 0.0 else 0.0
-   509                                           
-   510                                               # Project out surviving primary memory
-   511         2      32638.0  16319.0      0.0      cM_duration = np.mean(memory_lifespan(T_pEcytM[T_pEcytM == 0])
-   512         2      10106.0   5053.0      0.0                           )/365.25 if len(T_pEcytM[T_pEcytM == 0]) > 0 and N_0 > 0.0 else 0.0
-   513         2      41753.0  20876.5      0.0      eM_duration = np.mean(memory_lifespan(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]])
-   514         2      26099.0  13049.5      0.0                           )/365.25 if len(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]]) > 0 and N_0 > 0.0 else 0.0
-   515                                           
-   516         1       1823.0   1823.0      0.0      zeros_n_0_var = np.zeros(N_0_var)
-   517                                           
-   518         2      39900.0  19950.0      0.0      lineage_comp = np.vstack([
-   519         1    1331554.0    1e+06      0.1          np.amax(Na_m, axis = 0), div_M_count, div_E_count,
-   520         1       6680.0   6680.0      0.0          p_tcr + zeros_n_0_var, p_cyt + zeros_n_0_var
-   521                                               ])
-   522                                           
-   523         1      25338.0  25338.0      0.0      dyn_data = np.array([S, I, N, Na, E, Ma, H, I_d_I + I_d_IE, S_d_SE, P]).T # add I_d_IE as a separate variable
-   524         1        300.0    300.0      0.0      prim_bias = bias_t
-   525                                           
-   526         1      45578.0  45578.0      0.0      ts = np.linspace(0, duration, int_steps + 1)
-   527                                           
-   528                                               # Compute summary statistics from simulations
-   529                                               ## extract primary/secondary infection dynamics
-   530         1      10125.0  10125.0      0.0      pS, pI, N, Na, pE, pM, pH, pI_d_I, pI_d_SE, pP = dyn_data[:,0], dyn_data[:,1], dyn_data[:,2], dyn_data[:, 3], dyn_data[:,4], dyn_data[:,5], dyn_data[:,6], dyn_data[:,7], dyn_data[:,8], dyn_data[:,9]
+   476                                                   # store time cells become effector
+   477      2500    9416537.0   3766.6      0.5          T_E += dt * e_m_nonzero_mask if sum_e_m > 0 else 0.0
+   478      2500   17338511.0   6935.4      0.9          d_E_die = 0.5 * np.sqrt(np.pi) * e_m_nonzero_mask * T_E / char_times[5]**2
+   479                                           
+   480                                                   # store time an effector spends in cytotoxic state
+   481      2500   11291177.0   4516.5      0.6          for_where = (diff_NaE + div_Ma + diff_EM > 0)
+   482      2500    8260264.0   3304.1      0.4          where_output = np.where(for_where)[0]
+   483     59397   13012613.0    219.1      0.6          for l in where_output:
+   484     56897   75110137.0   1320.1      3.7              T_Ecyt[l] += (diff_NaE[l] + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()]
+   485                                           
+   486                                                   #### Store myc levels ####
+   487      2500     624573.0    249.8      0.0          if out_data == "full":
+   488                                                       mycN_m[i] += mycN
+   489                                                       mycMa_m[i] += mycMa
+   490                                                       mycE_m[i] += mycE
+   491                                           
+   492                                                   #### Store differentiation biases
+   493      2500    1621406.0    648.6      0.1          to_add_to_bias = np.zeros(4)
+   494      2500    4082128.0   1632.9      0.2          if sum_n_m > 0.:
+   495      2500   48200321.0  19280.1      2.4              to_add_to_bias[0] = np.mean(r_Na[i][n_m_nonzero_mask])
+   496      2500   34389042.0  13755.6      1.7              to_add_to_bias[1] = np.mean(r_NaE[i][n_m_nonzero_mask])
+   497      2500    3439804.0   1375.9      0.2          if sum_e_m > 0.:
+   498      2337   23696325.0  10139.6      1.2              to_add_to_bias[2] = np.mean(r_EM[i][e_m_nonzero_mask])
+   499      2337   21518577.0   9207.8      1.1              to_add_to_bias[3] = np.mean(r_EE[i][e_m_nonzero_mask])
+   500      2500    2872587.0   1149.0      0.1          bias_t[i] += to_add_to_bias
+   501                                           
+   502                                                   # Increment time
+   503      2500     729346.0    291.7      0.0          t += dt
+   504                                           
+   505                                               # Collect population dynamics
+   506         1   13035329.0    1e+07      0.6      N, Na, Ma, E = np.sum(N_m, axis = 1), np.sum(Na_m, axis = 1), np.sum(Ma_m, axis = 1), np.sum(E_m, axis = 1)
+   507                                           
+   508         1    4898540.0    5e+06      0.2      T_pEcytM = np.concatenate(T_Ecyt) if N_0 > 0 else np.array([0.0]) # time that memory spends in effector
+   509         1      46030.0  46030.0      0.0      count_cM = np.sum(T_pEcytM == 0
+   510         1     110938.0 110938.0      0.0                       ) if len(T_pEcytM[T_pEcytM == 0]) > 0 and N_0 > 0.0 else 0.0
+   511         1     165920.0 165920.0      0.0      count_eM = np.sum(memory_lifespan(T_pEcytM) > char_times[5]
+   512         1     472993.0 472993.0      0.0                       ) if len(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]]) > 0 and N_0 > 0.0 else 0.0
+   513                                           
+   514                                               # Project out surviving primary memory
+   515         2      84368.0  42184.0      0.0      cM_duration = np.mean(memory_lifespan(T_pEcytM[T_pEcytM == 0])
+   516         2      55033.0  27516.5      0.0                           )/365.25 if len(T_pEcytM[T_pEcytM == 0]) > 0 and N_0 > 0.0 else 0.0
+   517         2     261884.0 130942.0      0.0      eM_duration = np.mean(memory_lifespan(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]])
+   518         2     179811.0  89905.5      0.0                           )/365.25 if len(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]]) > 0 and N_0 > 0.0 else 0.0
+   519                                           
+   520         1       2483.0   2483.0      0.0      zeros_n_0_var = np.zeros(N_0_var)
+   521                                           
+   522         2      45468.0  22734.0      0.0      lineage_comp = np.vstack([
+   523         1    1521292.0    2e+06      0.1          np.amax(Na_m, axis = 0), div_M_count, div_E_count,
+   524         1       6229.0   6229.0      0.0          p_tcr + zeros_n_0_var, p_cyt + zeros_n_0_var
+   525                                               ])
+   526                                           
+   527         1      20460.0  20460.0      0.0      dyn_data = np.array([S, I, N, Na, E, Ma, H, I_d_I + I_d_IE, S_d_SE, P]).T # add I_d_IE as a separate variable
+   528         1        220.0    220.0      0.0      prim_bias = bias_t
+   529                                           
+   530         1      58057.0  58057.0      0.0      ts = np.linspace(0, duration, int_steps + 1)
    531                                           
-   532         1        741.0    741.0      0.0      dt = ts[1]-ts[0]
-   533                                           
-   534         3       9374.0   3124.7      0.0      parameters = np.concatenate((np.array([S_0, I_0, b_I, d_S, d_I, d_IE, K_IE,
-   535         1        140.0    140.0      0.0                b_H, d_H, K_EH,
-   536         1        141.0    141.0      0.0                N_0, max_Na, b_myc, d_myc, myc_thresh]),
-   537         1        101.0    101.0      0.0                char_times,
-   538         1        330.0    330.0      0.0                activation_regulation, NE_regulation, EM_regulation, expansion_regulation))
-   539                                           
-   540         2      22594.0  11297.0      0.0      sim_summary = np.array([np.sum(pI*dt) + np.sum(pS*dt)*(infection_model == "autoimmune"),
-   541         1       9825.0   9825.0      0.0                         np.argmax(pI)*dt,
-   542         1       6480.0   6480.0      0.0                         np.argmax(pI < I_0)*dt,
-   543         1       7691.0   7691.0      0.0                         np.amax(pI_d_I) + I[-1],
-   544         1       4717.0   4717.0      0.0                         np.amax(pI_d_SE),
-   545         1       5178.0   5178.0      0.0                         np.sum(div_E_count),
-   546         1      10766.0  10766.0      0.0                         np.argmax(pE)*dt + sim_duration*(np.max(pE) < 1.0),
-   547         1      12889.0  12889.0      0.0                         (np.argmax(pE >= N_0 , axis = 0)*dt + sim_duration*(np.max(pE) < N_0)) if N_0 > 0 else sim_duration,
-   548         1         90.0     90.0      0.0                         count_eM,
-   549         1        120.0    120.0      0.0                         eM_duration,
-   550         1        131.0    131.0      0.0                         count_cM,
-   551         1        200.0    200.0      0.0                         cM_duration,
-   552         1       6770.0   6770.0      0.0                         np.sum(pP*dt),
-   553         1       6320.0   6320.0      0.0                         np.sum(pH*dt),
-   554         1       7141.0   7141.0      0.0                         np.amin(pS)])
-   555                                           
-   556                                               # down-size timeseries
-   557         1        972.0    972.0      0.0      pnts = int(0.1*steps)
-   558         1      46019.0  46019.0      0.0      keep = [i*10 for i in np.arange(0,pnts)]
+   532                                               # Compute summary statistics from simulations
+   533                                               ## extract primary/secondary infection dynamics
+   534         1       3325.0   3325.0      0.0      pS, pI, N, Na, pE, pM, pH, pI_d_I, pI_d_SE, pP = dyn_data[:,0], dyn_data[:,1], dyn_data[:,2], dyn_data[:, 3], dyn_data[:,4], dyn_data[:,5], dyn_data[:,6], dyn_data[:,7], dyn_data[:,8], dyn_data[:,9]
+   535                                           
+   536         1        721.0    721.0      0.0      dt = ts[1]-ts[0]
+   537                                           
+   538         3      10115.0   3371.7      0.0      parameters = np.concatenate((np.array([S_0, I_0, b_I, d_S, d_I, d_IE, K_IE,
+   539         1        150.0    150.0      0.0                b_H, d_H, K_EH,
+   540         1        160.0    160.0      0.0                N_0, max_Na, b_myc, d_myc, myc_thresh]),
+   541         1        100.0    100.0      0.0                char_times,
+   542         1        340.0    340.0      0.0                activation_regulation, NE_regulation, EM_regulation, expansion_regulation))
+   543                                           
+   544         2      22014.0  11007.0      0.0      sim_summary = np.array([np.sum(pI*dt) + np.sum(pS*dt)*(infection_model == "autoimmune"),
+   545         1      14783.0  14783.0      0.0                         np.argmax(pI)*dt,
+   546         1       7892.0   7892.0      0.0                         np.argmax(pI < I_0)*dt,
+   547         1       7311.0   7311.0      0.0                         np.amax(pI_d_I) + I[-1],
+   548         1       4306.0   4306.0      0.0                         np.amax(pI_d_SE),
+   549         1       5107.0   5107.0      0.0                         np.sum(div_E_count),
+   550         1      12559.0  12559.0      0.0                         np.argmax(pE)*dt + sim_duration*(np.max(pE) < 1.0),
+   551         1      13531.0  13531.0      0.0                         (np.argmax(pE >= N_0 , axis = 0)*dt + sim_duration*(np.max(pE) < N_0)) if N_0 > 0 else sim_duration,
+   552         1        130.0    130.0      0.0                         count_eM,
+   553         1        180.0    180.0      0.0                         eM_duration,
+   554         1        110.0    110.0      0.0                         count_cM,
+   555         1        200.0    200.0      0.0                         cM_duration,
+   556         1       6550.0   6550.0      0.0                         np.sum(pP*dt),
+   557         1       6500.0   6500.0      0.0                         np.sum(pH*dt),
+   558         1       9544.0   9544.0      0.0                         np.amin(pS)])
    559                                           
-   560         1        270.0    270.0      0.0      if out_data == "full":
-   561                                                   out_dict = {"reg_coeffs": np.concatenate((activation_regulation, NE_regulation, EM_regulation, expansion_regulation)), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "eff_by_lin": (E_m), "N_myc_by_lin": mycN_m, "Ma_myc_by_lin": mycMa_m, "E_myc_by_lin": mycE_m, "parameters": parameters, "summary_stats": sim_summary, "pmemory_formed": T_pEcytM if N_0 > 0 else []}
-   562         1        391.0    391.0      0.0      elif out_data == "small":
-   563         1      31507.0  31507.0      0.0          out_dict = {"cell_time_series": dyn_data[keep], "prim_diff_bias": prim_bias[keep],"parameters": parameters, "summary_stats": sim_summary}
-   564                                           
-   565         1        110.0    110.0      0.0      return out_dict
+   560                                               # down-size timeseries
+   561         1       1412.0   1412.0      0.0      pnts = int(0.1*steps)
+   562         1      39980.0  39980.0      0.0      keep = [i*10 for i in np.arange(0,pnts)]
+   563                                           
+   564         1        511.0    511.0      0.0      if out_data == "full":
+   565                                                   out_dict = {"reg_coeffs": np.concatenate((activation_regulation, NE_regulation, EM_regulation, expansion_regulation)), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "eff_by_lin": (E_m), "N_myc_by_lin": mycN_m, "Ma_myc_by_lin": mycMa_m, "E_myc_by_lin": mycE_m, "parameters": parameters, "summary_stats": sim_summary, "pmemory_formed": T_pEcytM if N_0 > 0 else []}
+   566         1        200.0    200.0      0.0      elif out_data == "small":
+   567         1      33270.0  33270.0      0.0          out_dict = {"cell_time_series": dyn_data[keep], "prim_diff_bias": prim_bias[keep],"parameters": parameters, "summary_stats": sim_summary}
+   568                                           
+   569         1        100.0    100.0      0.0      return out_dict

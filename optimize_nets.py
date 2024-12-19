@@ -18,9 +18,9 @@ def run(
     comment = "sparse-reg",
     inf_sample = infection_sample_select,
     runs = 5,
-    infection_model = 'acute_all',
+    infection_model = "autoimmune", #'acute_all',
     default_reg = act_psis + NE_psis + EM_psis + exp_psis,
-    sim_per_cpu_hour = 2250,
+    sim_per_cpu_hour = 1800,
     num_cpu = num_cpu,
     run_time = run_time,
     seed = None

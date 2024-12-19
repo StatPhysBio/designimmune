@@ -56,11 +56,11 @@ infection_sample = np.array(np.meshgrid(d_S*np.linspace(25, 100, num_pnts), # va
                                    I_0*np.logspace(0.0, 0.0, 1) # vary I_0
                                            )).T.reshape(-1,6)
 
-auto_sample = np.array(np.meshgrid(d_S*np.array([1.0, 5.0]), # vary d_I
-                                   K_SE*np.array([0.5, 1.0]), # vary K_IE
+auto_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
+                                   K_SE*np.array([1.0]), # vary K_IE
                                    b_I*np.array([0.0]), # vary b_I
                                    K_EH*np.array([1.0]), # vary K_EH
-                                   N_0*np.logspace(0.0, 0.0, 1), # vary N_0
+                                   N_0*np.logspace(-1.0, 1, 5), # vary N_0
                                    I_0*np.array([0.0]) # vary I_0
                                            )).T.reshape(-1,6)
 
