@@ -32,7 +32,7 @@ K_SE = 10*S_0
 N_0 = 300
 max_Na = 2**2
 max_expand = 2**14 #(Marchingo et al.)
-t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_act = 1.0, 3/4, 1/4, 1/3, 1/2, 2.5, 1/4
+t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_act, t_bind_eM = 1.0, 3/4, 1/4, 1/3, 1/2, 2.5, 1/4, 1/10
 t_long_M = 5*365.25 # years
 t_short_M = 0.8*365.25 # years
 
@@ -410,7 +410,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         b_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
             psi_1 = 0.0, psi_2 = psi_max, psi_3 = 0.0, F_0 = -psi_max*np.log(2), K_1 = S_0, K_2 = K_EH, K_3 = K_EH
-        ) / char_times[0] if cells_sensed >= 1 else 0.0
+        ) / (char_times[0] if infection_model != "autoimmune" else t_bind_eM) if cells_sensed >= 1 else 0.0
 
         b_unbind_t = bound_N * np.fmin(
             2 * bound_N_time / (
