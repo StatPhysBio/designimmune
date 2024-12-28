@@ -1,5 +1,3 @@
-import itertools
-
 ### Stochastic model dynamics ###
 import numpy as np
 from scipy import stats
@@ -156,9 +154,7 @@ def f_XtoY_ret0(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0,
 
 def memory_lifespan(T_eff, T_degrade = t_E_die, min_time = 0):
 
-    out = np.maximum(t_long_M - (t_long_M - t_short_M)*T_eff/T_degrade, min_time)
-
-    return out
+    return np.maximum(t_long_M - (t_long_M - t_short_M)*T_eff/T_degrade, min_time)
 
 def memory_protection(t, T_eff, T_degrade = t_E_die, target = N_0, min_time = 1):
 
@@ -205,6 +201,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                   steps = sim_steps,
                   reg_model = "mwc_like",
                   out_data = "small",
+                  memory_death = False,
                   seed = None):
     rng = np.random.default_rng(seed)
 
@@ -250,12 +247,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     N_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32)
     N_m[0,:] +=1
     T_Ecyt = [[] for i in np.arange(0, N_0_var)]
+    survive_M = [[] for i in np.arange(0, N_0_var)]
     # T_Ecyt = np.zeros(int_steps+1, dtype = np.int32)
 
     div_count = np.ones(N_0_var)
-    div_E_count = np.ones(N_0_var)
-    div_M_count = np.ones(N_0_var)
+    div_E_count = np.zeros(N_0_var)
+    div_M_count = np.zeros(N_0_var)
     diff_EpM_count = np.zeros(N_0_var, dtype = np.int32)
+    die_M = np.zeros(N_0_var, dtype = np.int32)
 
     Na_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32)
     Ma_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32)
@@ -378,18 +377,19 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         # (a) New central memory cells divide
         div_Ma = rng.binomial(Ma_m[i - 1] - diff_EpM_count, dt * b_Ma_div)
-
+        
         # (b) Effector cells divide, differentiate, die
         die_E = rng.binomial(E_m[i - 1], d_E_die * dt)
-        div_E = rng.binomial(E_m[i - 1] - die_E, dt * b_E_div)
         diff_EM = rng.binomial(E_m[i - 1] - die_E, dt * r_EM[i - 1])
+        div_E = rng.binomial(E_m[i - 1] - die_E - diff_EM, dt * b_E_div)
+        diff_EpM_count += diff_EM - die_M
 
         #### Update population dynamics: ####
         N_m[i] += N_m[i - 1] - act_N
         Na_m[i] += Na_m[i - 1] + div_Na + act_N - (1 - Na_div_flag) * Na_m[i - 1]
 
-        Ma_m[i] += Ma_m[i - 1] + div_Ma + (1 - Na_div_flag)*(Na_m[i - 1] - diff_NaE) + diff_EM # should I program memory death
-        E_m[i] += E_m[i - 1] + div_E + (1 - Na_div_flag) * (diff_NaE) - (die_E + diff_EM)
+        Ma_m[i] += Ma_m[i - 1] + div_Ma + (1 - Na_div_flag)*(Na_m[i - 1] - diff_NaE) + diff_EM - die_M
+        E_m[i] += E_m[i - 1] + div_E + (1 - Na_div_flag) * diff_NaE - (die_E + diff_EM)
 
         # Evaluate sums and create masks
         sum_n_m = np.sum(N_m[i])
@@ -397,14 +397,38 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         e_m_nonzero_mask = E_m[i] > 0
         n_m_nonzero_mask = N_m[i] > 0
         na_m_nonzero_mask = Na_m[i] > 0
+        ma_m_nonzero_mask = Ma_m[i] + Ma_m[i-1]> 0
         n_na_sum_nonzero_mask = n_m_nonzero_mask | na_m_nonzero_mask
+
+        # store time cells spend in effector effector
+        T_E += dt * e_m_nonzero_mask if sum_e_m > 0 else 0.0
+        d_E_die = 0.5 * np.sqrt(np.pi) * e_m_nonzero_mask * T_E / char_times[5]**2
+        die_M = 0*die_M
+
+        # store time an effector spends in cytotoxic state
+        for_where = ((1 - Na_div_flag)*(Na_m[i-1] - diff_NaE) + div_Ma + diff_EM + ma_m_nonzero_mask*memory_death > 0)
+        where_output = np.where(for_where)[0]
+        for l in where_output:
+
+            if memory_death:
+                if Ma_m[i,l] > 0:
+                    T_Ecyt[l] = list(itertools.compress(T_Ecyt[l], survive_M[l])) + ((1 - Na_div_flag[l])*(Na_m[i-1,l] - diff_NaE[l]) + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()]
+                    arr = np.array(T_Ecyt[l])
+                    survive_M[l] = (rng.random(size = Ma_m[i,l]) > (arr > 0)*dt/memory_lifespan(arr, min_time = dt))
+                    die_M[l] = Ma_m[i,l] - np.sum(survive_M[l])
+                else:
+                    T_Ecyt[l] += ((1 - Na_div_flag[l])*(Na_m[i-1,l] - diff_NaE[l]) + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()]
+                    arr = np.array([])
+                    survive_M[l] = []
+                    die_M[l] = 0
+            else:
+                T_Ecyt[l] += ((1 - Na_div_flag[l])*(Na_m[i-1,l] - diff_NaE[l]) + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()]
 
         # Update division flag to allow division to proceed
         Na_div_flag = (Na_m[i] < max_Na)*(na_m_nonzero_mask)
         div_count += div_Na + div_E + div_Ma
-        div_E_count += div_E
+        div_E_count += div_E 
         div_M_count += div_Ma
-        diff_EpM_count += diff_EM
 
         #### New binding events ####
         b_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
@@ -472,16 +496,6 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         r_EE[i] += b_E_div
 
         cum_r_NaE += r_NaE[i]
-
-        # store time cells become effector
-        T_E += dt * e_m_nonzero_mask if sum_e_m > 0 else 0.0
-        d_E_die = 0.5 * np.sqrt(np.pi) * e_m_nonzero_mask * T_E / char_times[5]**2
-
-        # store time an effector spends in cytotoxic state
-        for_where = (diff_NaE + div_Ma + diff_EM > 0)
-        where_output = np.where(for_where)[0]
-        for l in where_output:
-            T_Ecyt[l] += (diff_NaE[l] + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()]
 
         #### Store myc levels ####
         if out_data == "full":
