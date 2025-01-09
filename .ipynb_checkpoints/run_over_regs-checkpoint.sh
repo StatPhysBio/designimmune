@@ -1,13 +1,13 @@
 #!/bin/bash
 script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-max_job=44 # change depending on number of inputs
+max_job=1407 # change depending on number of inputs
 # if some jobs don't run, run the following:
-# rerun_list=(889)
+rerun_list=(423 685)
 
-# for i in "${rerun_list[@]}";
+for i in "${rerun_list[@]}";
 
-for ((i=0; i<=${max_job}; i++));
+# for ((i=0; i<=${max_job}; i++));
 
 do
     sbatch ${script_dir}/submit_app_job.sh "${script_dir}/submit_optimize_nets.sh $i"

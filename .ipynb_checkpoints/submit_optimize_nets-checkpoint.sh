@@ -15,7 +15,7 @@ mamba activate maximmune
 SLURM_OUTDIR=/gscratch/scrubbed/oukogu/slurm_output/
 d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/raw"
 comment="sparse-reg"
-infection_model='autoimmune' #"acute_all"
+infection_model='acute_all' #"acute_all"
 
 if [ ! -d "$d" ]; then
   mkdir $d

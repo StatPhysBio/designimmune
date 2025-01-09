@@ -98,7 +98,7 @@ psi_2d_sparse = np.vstack((np.array(list(itertools.product(psi_2d_full.tolist(),
 
 act_psis = [psi_max, psi_max, -psi_max, F0_max]
 NE_psis = [psi_max, psi_max, -psi_max, F0_max] # regulatory weights: psi_M_I, psi_M_H, psi_M_P
-EM_psis = [-psi_max, -psi_max, psi_max, -F0_max]
+EM_psis = [-psi_max, -psi_max, 0*psi_max, -F0_max]
 exp_psis = [psi_max, psi_max, -psi_max, 0.0]
 
 ### (2) Define functions for simulations
@@ -153,8 +153,9 @@ def f_XtoY_ret0(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0,
     return 0.0
 
 def memory_lifespan(T_eff, T_degrade = t_E_die, min_time = 0):
-
-    return np.maximum(t_long_M - (t_long_M - t_short_M)*T_eff/T_degrade, min_time)
+    # out =  np.maximum(t_long_M - (t_long_M - t_short_M)*T_eff/T_degrade, min_time)
+    out = t_long_M*np.exp(-T_eff/T_degrade*np.log(t_long_M/t_short_M))
+    return out
 
 def memory_protection(t, T_eff, T_degrade = t_E_die, target = N_0, min_time = 1):
 
@@ -250,9 +251,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     survive_M = [[] for i in np.arange(0, N_0_var)]
     # T_Ecyt = np.zeros(int_steps+1, dtype = np.int32)
 
-    div_count = np.ones(N_0_var)
-    div_E_count = np.zeros(N_0_var)
-    div_M_count = np.zeros(N_0_var)
+    div_count = np.zeros(N_0_var)
+    div_E_count = np.log2(max_Na)*np.ones(N_0_var)
+    div_M_count = np.log2(max_Na)*np.ones(N_0_var)
     diff_EpM_count = np.zeros(N_0_var, dtype = np.int32)
     die_M = np.zeros(N_0_var, dtype = np.int32)
 
@@ -425,10 +426,10 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                 T_Ecyt[l] += ((1 - Na_div_flag[l])*(Na_m[i-1,l] - diff_NaE[l]) + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()]
 
         # Update division flag to allow division to proceed
-        Na_div_flag = (Na_m[i] < max_Na)*(na_m_nonzero_mask)
         div_count += div_Na + div_E + div_Ma
-        div_E_count += div_E 
+        div_E_count += div_E
         div_M_count += div_Ma
+        Na_div_flag = (Na_m[i] < max_Na)*(na_m_nonzero_mask)
 
         #### New binding events ####
         b_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
