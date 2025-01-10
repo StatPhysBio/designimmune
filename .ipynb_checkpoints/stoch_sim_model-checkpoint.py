@@ -636,7 +636,7 @@ reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
 perf_vars = ["peff_protection", "peff_toxicity", "max_cM_fold", "max_eM_fold", "T_eM_min"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Protection", "Toxicity", "C. memory exp.", "E. memory exp.", "E. memory dur."] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_labels = ["Protection", "Toxicity", "C. memory\n expansion", "E. memory\n expansion", "E. memory\n duration"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
