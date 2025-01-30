@@ -76,12 +76,12 @@ infection_sample_select = np.vstack([infection_sample[infection_sample[:,2]*S_0 
 
 # define reg options
 psi_max = 3.0
-F0_max = 4.0
+L0_max = 2*np.log(10)
 pnts = 5
 psi_2d_full = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
-                                 np.linspace(-F0_max, F0_max, int(pnts)).tolist())))
+                                 np.linspace(-L0_max, L0_max, int(pnts)).tolist())))
 
 psi_2d = psi_2d_full[(np.abs(psi_2d_full[:,0]) + np.abs(psi_2d_full[:,1]) + 2*np.abs(psi_2d_full[:,2]) <= psi_max)]
 psi_2d_pos = psi_2d[(psi_2d[:,0] >= 0)*(psi_2d[:,1] >= 0)*(psi_2d[:,2] >= 0)]
@@ -90,39 +90,39 @@ psi_2d_comp = psi_2d[(psi_2d[:,2] == 0)]
 psi_2d_nobias = psi_2d[(psi_2d[:,3] == 0)]
 psi_2d_comp_bias = np.array(list(itertools.product([0.0],[ 0.0], [0.0], np.linspace(-(1 + psi_max), (1 + psi_max), 11).tolist())))
 
-bl_block = list(itertools.product([0.0],[ 0.0], [0.0], np.linspace(-F0_max, F0_max, int(pnts)).tolist()))
+bl_block = list(itertools.product([0.0],[ 0.0], [0.0], np.linspace(-L0_max, L0_max, int(pnts)).tolist()))
 psi_2d_sparse = np.vstack((np.array(list(itertools.product(psi_2d_full.tolist(), bl_block, bl_block, bl_block))).reshape(-1,16),
            np.array(list(itertools.product(bl_block, psi_2d_full.tolist(), bl_block, bl_block))).reshape(-1,16),
            np.array(list(itertools.product(bl_block, bl_block, psi_2d_full.tolist(), bl_block))).reshape(-1,16),
            np.array(list(itertools.product(bl_block, bl_block, bl_block, psi_2d_full.tolist()))).reshape(-1,16)))
 
-act_psis = [psi_max, psi_max, -psi_max, F0_max]
-NE_psis = [psi_max, psi_max, -psi_max, F0_max] # regulatory weights: psi_M_I, psi_M_H, psi_M_P
-EM_psis = [-psi_max, -psi_max, 0*psi_max, -F0_max]
+act_psis = [psi_max, psi_max, -psi_max, L0_max]
+NE_psis = [psi_max, psi_max, -psi_max, L0_max] # regulatory weights: psi_M_I, psi_M_H, psi_M_P
+EM_psis = [-psi_max, -psi_max, 0*psi_max, -L0_max]
 exp_psis = [psi_max, psi_max, -psi_max, 0.0]
 
 ### (2) Define functions for simulations
 # Define functions for simulations
 
-def f_XtoY_mwc_like(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_3 = 0.0, F_0 = 0.0, K_1 = 1.0, K_2 = 1.0, K_3 = 1.0):
+def f_XtoY_mwc_like(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_3 = 0.0, L_0 = 0.0, K_1 = 1.0, K_2 = 1.0, K_3 = 1.0):
     ### variable
     # sig_. := signal .
     # psi_. := strength of regulatory action (psi > 0 means upregulation, psi = 0 means no regulation, and psi < 0 means down regulation
-    # F_0 := bias towards transitioning from state X to Y in the absense of stimuli
+    # L_0 := bias towards transitioning from state X to Y in the absense of stimuli
     # K_. := associated concentration thresholds for the tranistions
-    F_1 = (
+    L_1 = (
         psi_1 * np.log(1 + sig_1 / K_1)
         + psi_2 * np.log(1 + sig_2 / K_2)
         + psi_3 * np.log(1 + sig_3 / K_3)
     )
-    out = 1 / (1 + np.exp(-(F_1 + F_0)))
+    out = 1 / (1 + np.exp(-(L_1 + L_0)))
     return out
 
-def f_XtoY_competition(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_3 = 0.0, psi_1_2 = 0.0, psi_1_3 = 0.0, psi_2_3 = 0.0, F_0 = 0.0, K_1 = 1.0, K_2 = 1.0, K_3 = 1.0):
+def f_XtoY_competition(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_3 = 0.0, psi_1_2 = 0.0, psi_1_3 = 0.0, psi_2_3 = 0.0, L_0 = 0.0, K_1 = 1.0, K_2 = 1.0, K_3 = 1.0):
     ### variable
     # sig_. := signal .
     # psi_. := strength of regulatory action (psi > 0 means upregulation, psi = 0 means no regulation, and psi < 0 means down regulation
-    # F_0 := bias towards transitioning from state X to Y in the absense of stimuli
+    # L_0 := bias towards transitioning from state X to Y in the absense of stimuli
     # K_. := associated concentration thresholds for the tranistions
     log_sig1_k1 = np.log(1 + sig_1 / K_1)
     log_sig2_k2 = np.log(1 + sig_2 / K_2)
@@ -130,7 +130,7 @@ def f_XtoY_competition(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2
     psi1_mult_log_sig1_k1 = psi_1 * log_sig1_k1
     psi2_mult_log_sig2_k2 = psi_2 * log_sig2_k2
     psi3_mult_log_sig3_k3 = psi_3 * log_sig3_k3
-    F_1 = (
+    L_1 = (
         psi1_mult_log_sig1_k1 * log_sig1_k1
         + psi2_mult_log_sig2_k2 * log_sig2_k2
         + psi3_mult_log_sig3_k3 * log_sig3_k3
@@ -139,15 +139,15 @@ def f_XtoY_competition(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2
     ) + (
         psi1_mult_log_sig1_k1 + psi2_mult_log_sig2_k2 + psi3_mult_log_sig3_k3
     )
-    F_1 *= 0.5
-    out = 1 / (1 + np.exp(-(F_1 + F_0)))
+    L_1 *= 0.5
+    out = 1 / (1 + np.exp(-(L_1 + L_0)))
     return out
 
-def f_XtoY_ret0(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_3 = 0.0, F_0 = 0.0, K_1 = 1.0, K_2 = 1.0, K_3 = 1.0):
+def f_XtoY_ret0(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0, psi_3 = 0.0, L_0 = 0.0, K_1 = 1.0, K_2 = 1.0, K_3 = 1.0):
     ### variable
     # sig_. := signal .
     # psi_. := strength of regulatory action (psi > 0 means upregulation, psi = 0 means no regulation, and psi < 0 means down regulation
-    # F_0 := bias towards transitioning from state X to Y in the absense of stimuli
+    # L_0 := bias towards transitioning from state X to Y in the absense of stimuli
     # K_. := associated concentration thresholds for the tranistions
 
     return 0.0
@@ -226,10 +226,10 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     b_S = S_0*d_S
 
     # draw population of reponding cells for agent-based simulations
-    psi_Na_I, psi_Na_H, psi_Na_P, F0_Na = activation_regulation[0], activation_regulation[1], activation_regulation[2], activation_regulation[3]
-    psi_NE_I, psi_NE_H, psi_NE_P, F0_NE = NE_regulation[0], NE_regulation[1], NE_regulation[2], NE_regulation[3]
-    psi_EM_I, psi_EM_H, psi_EM_P, F0_EM = EM_regulation[0], EM_regulation[1], EM_regulation[2], EM_regulation[3]
-    psi_EE_I, psi_EE_H, psi_EE_P, F0_EE = expansion_regulation[0], expansion_regulation[1], expansion_regulation[2], expansion_regulation[3]
+    psi_Na_I, psi_Na_H, psi_Na_P, L0_Na = activation_regulation[0], activation_regulation[1], activation_regulation[2], activation_regulation[3]
+    psi_NE_I, psi_NE_H, psi_NE_P, L0_NE = NE_regulation[0], NE_regulation[1], NE_regulation[2], NE_regulation[3]
+    psi_EM_I, psi_EM_H, psi_EM_P, L0_EM = EM_regulation[0], EM_regulation[1], EM_regulation[2], EM_regulation[3]
+    psi_EE_I, psi_EE_H, psi_EE_P, L0_EE = expansion_regulation[0], expansion_regulation[1], expansion_regulation[2], expansion_regulation[3]
 
     p_tcr = 1.0 #np.ones(N_0_var)
     p_cyt = 1.0 #np.ones(N_0_var)
@@ -434,14 +434,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         #### New binding events ####
         b_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = 0.0, psi_2 = psi_max, psi_3 = 0.0, F_0 = -psi_max*np.log(2), K_1 = S_0, K_2 = K_EH, K_3 = K_EH
+            psi_1 = 0.0, psi_2 = psi_max, psi_3 = 0.0, L_0 = -psi_max*np.log(2), K_1 = S_0, K_2 = K_EH, K_3 = K_EH
         ) / (char_times[0] if infection_model != "autoimmune" else t_bind_eM) if cells_sensed >= 1 else 0.0
 
         b_unbind_t = bound_N * np.fmin(
             2 * bound_N_time / (
                 f_XtoY(
                     sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-                    psi_1 = psi_max, psi_2 = 0.0,psi_3 = 0.0, F_0 = -psi_max*np.log(2),
+                    psi_1 = psi_max, psi_2 = 0.0,psi_3 = 0.0, L_0 = -psi_max*np.log(2),
                     K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
                     K_2 = K_EH, K_3 = K_EH
                 ) * char_times[1] * 2 / np.sqrt(np.pi)
@@ -450,7 +450,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         b_myc_t = b_myc * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = psi_Na_I, psi_2 = psi_Na_H, psi_3 = psi_Na_P, F_0 = F0_Na,
+            psi_1 = psi_Na_I, psi_2 = psi_Na_H, psi_3 = psi_Na_P, L_0 = L0_Na,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH
         ) * bound_N
@@ -458,14 +458,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         #### MYC Dynamics ####
         mycN = (mycN + dt * (b_myc_t - (1 - bound_N) * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = -psi_EE_I, psi_2 = -psi_EE_H, psi_3 = -psi_EE_P, F_0 = -F0_EE,
+            psi_1 = -psi_EE_I, psi_2 = -psi_EE_H, psi_3 = -psi_EE_P, L_0 = -L0_EE,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH
         ) * mycN * d_myc * (mycN > 0))) * n_na_sum_nonzero_mask # (1 - bound_N)*
 
         mycE = (mycE - dt * (f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = -psi_EE_I, psi_2 = -psi_EE_H, psi_3 = -psi_EE_P, F_0 = -F0_EE,
+            psi_1 = -psi_EE_I, psi_2 = -psi_EE_H, psi_3 = -psi_EE_P, L_0 = -L0_EE,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH)*mycE*d_myc)
         ) * (E_m[i] >= 1) + mycN * (na_m_nonzero_mask)
@@ -482,14 +482,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         r_NaE[i] += (r_NaE[i - 1] + 2 * (mycN >= myc_thresh) * dt * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = psi_NE_I, psi_2 = psi_NE_H, psi_3 = psi_NE_P,F_0 = F0_NE,
+            psi_1 = psi_NE_I, psi_2 = psi_NE_H, psi_3 = psi_NE_P,L_0 = L0_NE,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH
         ) / (2 / np.sqrt(np.pi) * (char_times[1] - char_times[6]))**2) * n_na_sum_nonzero_mask
 
         r_EM[i] += (r_EM[i - 1] + 2 * dt * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_3 = psi_EM_P, F_0 = F0_EM,
+            psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_3 = psi_EM_P, L_0 = L0_EM,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH
         ) / (2 / np.sqrt(np.pi) * (char_times[1] + char_times[6]))**2) * e_m_nonzero_mask # char_times[6] + char_times[6] to reverse priming and differentiation
@@ -604,30 +604,30 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
                r"$b_H$", r"$d_H$", r"$K_{E,I}$", r"$K_{E,H}$",
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N,A_{in}}$", r"$\tau_{N \cdot A_{in}}$", r"$\tau_{N^*,N^*}$", r"$\tau_{E_,E}$", r"$\tau_{M,M}$", r"$\tau_{E_{die}}$", r"$\tau_{N^*}$",
-               r"$\psi_{N^*}^{(I)}$", r"$\psi_{N^*}^{(H)}$", r"$\psi_{N^*}^{(P)}$", r"$F_{N^*}$",
-               r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(H)}$", r"$\psi_{N,E}^{(P)}$", r"$F_{N^{*},E}$",
-               r"$\psi_{E,M}^{(I)}$", r"$\psi_{E,M}^{(H)}$", r"$\psi_{E,M}^{(P)}$", r"$F_{E,M}$",
-               r"$\psi_{E^*}^{(I)}$", r"$\psi_{E^*}^{(H)}$", r"$\psi_{E^*}^{(P)}$", r"$F_{E^*}$"]
+               r"$\psi_{N^*}^{(I)}$", r"$\psi_{N^*}^{(H)}$", r"$\psi_{N^*}^{(P)}$", r"$L_{N^*}$",
+               r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(H)}$", r"$\psi_{N,E}^{(P)}$", r"$L_{N^{*},E}$",
+               r"$\psi_{E,M}^{(I)}$", r"$\psi_{E,M}^{(H)}$", r"$\psi_{E,M}^{(P)}$", r"$L_{E,M}$",
+               r"$\psi_{E^*}^{(I)}$", r"$\psi_{E^*}^{(H)}$", r"$\psi_{E^*}^{(P)}$", r"$L_{E^*}$"]
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_IE',
                       'b_H', 'd_H', 'K_EH',
                       'N_0', 'max_Na', 'b_myc', 'd_myc', 'myc_thresh',
                       't_bind', 't_unbind', 't_Na_div', 't_E_div', 't_M_div', 't_E_die', 't_act',
-                      'psi_Na_I', 'psi_Na_H', 'psi_Na_P', 'F0_Na',
-                      'psi_NE_I', 'psi_NE_H', 'psi_NE_P', 'F0_NE',
-                      'psi_EM_I', 'psi_EM_H', 'psi_EM_P', 'F0_EM',
-                      'psi_EE_I', 'psi_EE_H', 'psi_EE_P', 'F0_EE']
+                      'psi_Na_I', 'psi_Na_H', 'psi_Na_P', 'L0_Na',
+                      'psi_NE_I', 'psi_NE_H', 'psi_NE_P', 'L0_NE',
+                      'psi_EM_I', 'psi_EM_H', 'psi_EM_P', 'L0_EM',
+                      'psi_EE_I', 'psi_EE_H', 'psi_EE_P', 'L0_EE']
 
 stat_names_for_df = ['p_load', 'T_max_pI', 'T_min_pI', 'harm_pI',
                      'harm_pS', 'max_pE', 'T_pE_max', 'T_pE_start',
                      'max_eM', 'T_eM_min', 'max_cM', 'T_cM_min',
                      'int_pP', 'int_pH', 'min_pS']
 
-Na_reg = ['psi_Na_I', 'psi_Na_H', 'psi_Na_P', 'F0_Na']
-NE_reg = ['psi_NE_I', 'psi_NE_H', 'psi_NE_P', 'F0_NE']
-EM_reg = ['psi_EM_I', 'psi_EM_H', 'psi_EM_P', 'F0_EM']
-EE_reg = ['psi_EE_I', 'psi_EE_H', 'psi_EE_P', 'F0_EE']
+Na_reg = ['psi_Na_I', 'psi_Na_H', 'psi_Na_P', 'L0_Na']
+NE_reg = ['psi_NE_I', 'psi_NE_H', 'psi_NE_P', 'L0_NE']
+EM_reg = ['psi_EM_I', 'psi_EM_H', 'psi_EM_P', 'L0_EM']
+EE_reg = ['psi_EE_I', 'psi_EE_H', 'psi_EE_P', 'L0_EE']
 
 module_labels = ['$N \longrightarrow N^*$', '$N^* \longrightarrow E$', '$E \longrightarrow M$', '$E \longrightarrow E + E$']
 modules = ['Na', 'NE', 'EM', 'EE']
@@ -635,8 +635,8 @@ reg_stim = Na_reg[0:3] + NE_reg[0:3] + EM_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
-perf_vars = ["peff_protection", "peff_toxicity", "max_cM_fold", "max_eM_fold", "T_eM_min"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Protection", "Toxicity", "C. memory\n expansion", "E. memory\n expansion", "E. memory\n duration"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_vars = ["peff_clearance", "peff_toxicity", "max_cM_fold", "max_eM_fold", "T_eM_min"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Clearance", "Toxicity", "C. memory\n expansion", "E. memory\n expansion", "E. memory\n duration"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
