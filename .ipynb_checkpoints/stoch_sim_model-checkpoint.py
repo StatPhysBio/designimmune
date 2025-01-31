@@ -96,8 +96,9 @@ psi_2d_sparse = np.vstack((np.array(list(itertools.product(psi_2d_full.tolist(),
            np.array(list(itertools.product(bl_block, bl_block, psi_2d_full.tolist(), bl_block))).reshape(-1,16),
            np.array(list(itertools.product(bl_block, bl_block, bl_block, psi_2d_full.tolist()))).reshape(-1,16)))
 
+# default regulatory weights:
 act_psis = [psi_max, psi_max, -psi_max, L0_max]
-NE_psis = [psi_max, psi_max, -psi_max, L0_max] # regulatory weights: psi_M_I, psi_M_H, psi_M_P
+NE_psis = [psi_max, psi_max, -psi_max, L0_max]
 EM_psis = [-psi_max, -psi_max, 0*psi_max, -L0_max]
 exp_psis = [psi_max, psi_max, -psi_max, 0.0]
 
@@ -226,10 +227,10 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     b_S = S_0*d_S
 
     # draw population of reponding cells for agent-based simulations
-    psi_Na_I, psi_Na_H, psi_Na_P, L0_Na = activation_regulation[0], activation_regulation[1], activation_regulation[2], activation_regulation[3]
-    psi_NE_I, psi_NE_H, psi_NE_P, L0_NE = NE_regulation[0], NE_regulation[1], NE_regulation[2], NE_regulation[3]
-    psi_EM_I, psi_EM_H, psi_EM_P, L0_EM = EM_regulation[0], EM_regulation[1], EM_regulation[2], EM_regulation[3]
-    psi_EE_I, psi_EE_H, psi_EE_P, L0_EE = expansion_regulation[0], expansion_regulation[1], expansion_regulation[2], expansion_regulation[3]
+    psi_Na_I, psi_Na_HI, psi_Na_HE, L0_Na = activation_regulation[0], activation_regulation[1], activation_regulation[2], activation_regulation[3]
+    psi_NE_I, psi_NE_HI, psi_NE_HE, L0_NE = NE_regulation[0], NE_regulation[1], NE_regulation[2], NE_regulation[3]
+    psi_EM_I, psi_EM_HI, psi_EM_HE, L0_EM = EM_regulation[0], EM_regulation[1], EM_regulation[2], EM_regulation[3]
+    psi_EE_I, psi_EE_HI, psi_EE_HE, L0_EE = expansion_regulation[0], expansion_regulation[1], expansion_regulation[2], expansion_regulation[3]
 
     p_tcr = 1.0 #np.ones(N_0_var)
     p_cyt = 1.0 #np.ones(N_0_var)
@@ -239,8 +240,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     # define variables for storage
     I = np.zeros(int_steps+1)
     S = np.zeros(int_steps+1)
-    H = np.zeros(int_steps+1)
-    P = np.zeros(int_steps+1)
+    HI = np.zeros(int_steps+1)
+    HE = np.zeros(int_steps+1)
     I_d_I = np.zeros(int_steps+1)
     I_d_IE = np.zeros(int_steps+1)
     S_d_SE = np.zeros(int_steps+1)
@@ -299,8 +300,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     t = 0.0
     S[0] = S_0
     I[0] = I_0
-    H[0] = 0.0
-    P[0] = 0.0
+    HI[0] = 0.0
+    HE[0] = 0.0
 
     sum_e_m = 0
 
@@ -349,9 +350,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         immunopathology = (S_d_SE[i] - S_d_SE[i - 1]) + (I_d_IE[i] - I_d_IE[i - 1])
         cells_sensed = I[i - 1] + (S[i - 1] * K_IE / K_SE)
 
-        H[i] += H[i - 1] + b_H * harm_detected - dt * d_H * H[i - 1] * (H[i - 1] >= 0.0)
+        HI[i] += HI[i - 1] + b_H * harm_detected - dt * d_H * HI[i - 1] * (HI[i - 1] >= 0.0)
         
-        P[i] += P[i - 1] + b_H * immunopathology - dt * d_H * P[i - 1] * (P[i - 1] >= 0.0)
+        HE[i] += HE[i - 1] + b_H * immunopathology - dt * d_H * HE[i - 1] * (HE[i - 1] >= 0.0)
 
         ## I. Recruitment/Priming
 
@@ -433,14 +434,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         #### New binding events ####
         b_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
+            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = 0.0, psi_2 = psi_max, psi_3 = 0.0, L_0 = -psi_max*np.log(2), K_1 = S_0, K_2 = K_EH, K_3 = K_EH
         ) / (char_times[0] if infection_model != "autoimmune" else t_bind_eM) if cells_sensed >= 1 else 0.0
 
         b_unbind_t = bound_N * np.fmin(
             2 * bound_N_time / (
                 f_XtoY(
-                    sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
+                    sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
                     psi_1 = psi_max, psi_2 = 0.0,psi_3 = 0.0, L_0 = -psi_max*np.log(2),
                     K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
                     K_2 = K_EH, K_3 = K_EH
@@ -449,23 +450,23 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         ) if np.sum(bound_N) >= 1 else 0.0
 
         b_myc_t = b_myc * f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = psi_Na_I, psi_2 = psi_Na_H, psi_3 = psi_Na_P, L_0 = L0_Na,
+            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+            psi_1 = psi_Na_I, psi_2 = psi_Na_HI, psi_3 = psi_Na_HE, L_0 = L0_Na,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH
         ) * bound_N
 
         #### MYC Dynamics ####
         mycN = (mycN + dt * (b_myc_t - (1 - bound_N) * f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = -psi_EE_I, psi_2 = -psi_EE_H, psi_3 = -psi_EE_P, L_0 = -L0_EE,
+            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+            psi_1 = -psi_EE_I, psi_2 = -psi_EE_HI, psi_3 = -psi_EE_HE, L_0 = -L0_EE,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH
         ) * mycN * d_myc * (mycN > 0))) * n_na_sum_nonzero_mask # (1 - bound_N)*
 
         mycE = (mycE - dt * (f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = -psi_EE_I, psi_2 = -psi_EE_H, psi_3 = -psi_EE_P, L_0 = -L0_EE,
+            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+            psi_1 = -psi_EE_I, psi_2 = -psi_EE_HI, psi_3 = -psi_EE_HE, L_0 = -L0_EE,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH)*mycE*d_myc)
         ) * (E_m[i] >= 1) + mycN * (na_m_nonzero_mask)
@@ -481,15 +482,15 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         r_Na[i] += b_myc_t / myc_thresh
 
         r_NaE[i] += (r_NaE[i - 1] + 2 * (mycN >= myc_thresh) * dt * f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = psi_NE_I, psi_2 = psi_NE_H, psi_3 = psi_NE_P,L_0 = L0_NE,
+            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+            psi_1 = psi_NE_I, psi_2 = psi_NE_HI, psi_3 = psi_NE_HE,L_0 = L0_NE,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH
         ) / (2 / np.sqrt(np.pi) * (char_times[1] - char_times[6]))**2) * n_na_sum_nonzero_mask
 
         r_EM[i] += (r_EM[i - 1] + 2 * dt * f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*H[i], sig_3 = p_cyt*P[i],
-            psi_1 = psi_EM_I, psi_2 = psi_EM_H, psi_3 = psi_EM_P, L_0 = L0_EM,
+            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+            psi_1 = psi_EM_I, psi_2 = psi_EM_HI, psi_3 = psi_EM_HE, L_0 = L0_EM,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH
         ) / (2 / np.sqrt(np.pi) * (char_times[1] + char_times[6]))**2) * e_m_nonzero_mask # char_times[6] + char_times[6] to reverse priming and differentiation
@@ -539,14 +540,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         p_tcr + zeros_n_0_var, p_cyt + zeros_n_0_var
     ])
 
-    dyn_data = np.array([S, I, N, Na, E, Ma, H, I_d_I + I_d_IE, S_d_SE, P]).T # add I_d_IE as a separate variable
+    dyn_data = np.array([S, I, N, Na, E, Ma, HI, I_d_I + I_d_IE, S_d_SE, HE]).T # add I_d_IE as a separate variable
     prim_bias = bias_t
 
     ts = np.linspace(0, duration, int_steps + 1)
 
     # Compute summary statistics from simulations
     ## extract primary/secondary infection dynamics
-    pS, pI, N, Na, pE, pM, pH, pI_d_I, pI_d_SE, pP = dyn_data[:,0], dyn_data[:,1], dyn_data[:,2], dyn_data[:, 3], dyn_data[:,4], dyn_data[:,5], dyn_data[:,6], dyn_data[:,7], dyn_data[:,8], dyn_data[:,9]
+    pS, pI, N, Na, pE, pM, pHI, pI_d_I, pI_d_SE, pHE = dyn_data[:,0], dyn_data[:,1], dyn_data[:,2], dyn_data[:, 3], dyn_data[:,4], dyn_data[:,5], dyn_data[:,6], dyn_data[:,7], dyn_data[:,8], dyn_data[:,9]
 
     dt = ts[1]-ts[0]
 
@@ -568,8 +569,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        eM_duration,
                        count_cM,
                        cM_duration,
-                       np.sum(pP*dt),
-                       np.sum(pH*dt),
+                       np.sum(pHE*dt),
+                       np.sum(pHI*dt),
                        np.amin(pS)])
 
     # down-size timeseries
@@ -596,38 +597,38 @@ stat_names = [r"$\int_0^{T_{sim}} I_{p}dt$",
               r"$T_{eM < N}$",
               r"$(cM)^{max}$",
               r"$T_{cM < N}$",
-              r"$\int_0^{T_{sim}} P_p dt$",
-              r"$\int_0^{T_{sim}} H_p dt$",
+              r"$\int_0^{T_{sim}} HE_p dt$",
+              r"$\int_0^{T_{sim}} HI_p dt$",
               r"$S_p^{min}$"]
 
 param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"$d_{I,H}$", r"$K_{I,E}$", r"$K_{I,H}$",
                r"$b_H$", r"$d_H$", r"$K_{E,I}$", r"$K_{E,H}$",
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N,A_{in}}$", r"$\tau_{N \cdot A_{in}}$", r"$\tau_{N^*,N^*}$", r"$\tau_{E_,E}$", r"$\tau_{M,M}$", r"$\tau_{E_{die}}$", r"$\tau_{N^*}$",
-               r"$\psi_{N^*}^{(I)}$", r"$\psi_{N^*}^{(H)}$", r"$\psi_{N^*}^{(P)}$", r"$L_{N^*}$",
-               r"$\psi_{N,E}^{(I)}$", r"$\psi_{N,E}^{(H)}$", r"$\psi_{N,E}^{(P)}$", r"$L_{N^{*},E}$",
-               r"$\psi_{E,M}^{(I)}$", r"$\psi_{E,M}^{(H)}$", r"$\psi_{E,M}^{(P)}$", r"$L_{E,M}$",
-               r"$\psi_{E^*}^{(I)}$", r"$\psi_{E^*}^{(H)}$", r"$\psi_{E^*}^{(P)}$", r"$L_{E^*}$"]
+               r"$\psi_{N^*}^{(Ag)}$", r"$\psi_{N^*}^{(H_I)}$", r"$\psi_{N^*}^{(H_E)}$", r"$L_{N^*}$",
+               r"$\psi_{N,E}^{(Ag)}$", r"$\psi_{N,E}^{(H_I)}$", r"$\psi_{N,E}^{(H_E)}$", r"$L_{N^{*},E}$",
+               r"$\psi_{E,M}^{(Ag)}$", r"$\psi_{E,M}^{(H_I)}$", r"$\psi_{E,M}^{(H_E)}$", r"$L_{E,M}$",
+               r"$\psi_{E^*}^{(Ag)}$", r"$\psi_{E^*}^{(H_I)}$", r"$\psi_{E^*}^{(H_E)}$", r"$L_{E \to 2E}$"]
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_IE',
                       'b_H', 'd_H', 'K_EH',
                       'N_0', 'max_Na', 'b_myc', 'd_myc', 'myc_thresh',
                       't_bind', 't_unbind', 't_Na_div', 't_E_div', 't_M_div', 't_E_die', 't_act',
-                      'psi_Na_I', 'psi_Na_H', 'psi_Na_P', 'L0_Na',
-                      'psi_NE_I', 'psi_NE_H', 'psi_NE_P', 'L0_NE',
-                      'psi_EM_I', 'psi_EM_H', 'psi_EM_P', 'L0_EM',
-                      'psi_EE_I', 'psi_EE_H', 'psi_EE_P', 'L0_EE']
+                      'psi_Na_I', 'psi_Na_HI', 'psi_Na_HE', 'L0_Na',
+                      'psi_NE_I', 'psi_NE_HI', 'psi_NE_HE', 'L0_NE',
+                      'psi_EM_I', 'psi_EM_HI', 'psi_EM_HE', 'L0_EM',
+                      'psi_EE_I', 'psi_EE_HI', 'psi_EE_HE', 'L0_EE']
 
 stat_names_for_df = ['p_load', 'T_max_pI', 'T_min_pI', 'harm_pI',
                      'harm_pS', 'max_pE', 'T_pE_max', 'T_pE_start',
                      'max_eM', 'T_eM_min', 'max_cM', 'T_cM_min',
-                     'int_pP', 'int_pH', 'min_pS']
+                     'int_pHE', 'int_pHI', 'min_pS']
 
-Na_reg = ['psi_Na_I', 'psi_Na_H', 'psi_Na_P', 'L0_Na']
-NE_reg = ['psi_NE_I', 'psi_NE_H', 'psi_NE_P', 'L0_NE']
-EM_reg = ['psi_EM_I', 'psi_EM_H', 'psi_EM_P', 'L0_EM']
-EE_reg = ['psi_EE_I', 'psi_EE_H', 'psi_EE_P', 'L0_EE']
+Na_reg = ['psi_Na_I', 'psi_Na_HI', 'psi_Na_HE', 'L0_Na']
+NE_reg = ['psi_NE_I', 'psi_NE_HI', 'psi_NE_HE', 'L0_NE']
+EM_reg = ['psi_EM_I', 'psi_EM_HI', 'psi_EM_HE', 'L0_EM']
+EE_reg = ['psi_EE_I', 'psi_EE_HI', 'psi_EE_HE', 'L0_EE']
 
 module_labels = ['$N \longrightarrow N^*$', '$N^* \longrightarrow E$', '$E \longrightarrow M$', '$E \longrightarrow E + E$']
 modules = ['Na', 'NE', 'EM', 'EE']
