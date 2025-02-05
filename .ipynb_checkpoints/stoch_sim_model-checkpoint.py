@@ -27,7 +27,7 @@ K_EH = d_S*S_0/d_H # half-max level of innate/inflammatory response required to 
 K_SE = 10*S_0
 
 # Immune cells
-N_0 = 300
+N_0 = 1000
 max_Na = 2**2
 max_expand = 2**14 #(Marchingo et al.)
 t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_act, t_bind_eM = 1.0, 3/4, 1/4, 1/3, 1/2, 2.5, 1/4, 1/10
@@ -58,7 +58,7 @@ auto_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
                                    K_SE*np.array([1.0]), # vary K_IE
                                    b_I*np.array([0.0]), # vary b_I
                                    K_EH*np.array([1.0]), # vary K_EH
-                                   N_0*np.logspace(-1.0, 1, 5), # vary N_0
+                                   N_0*np.logspace(-1.0, np.log10(3), 5), # vary N_0
                                    I_0*np.array([0.0]) # vary I_0
                                            )).T.reshape(-1,6)
 
@@ -66,7 +66,7 @@ cancer_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
                                    K_SE*np.logspace(-3.0, 0.0, 5), # vary K_IE
                                    b_C*np.array([1.0]), # vary b_I
                                    K_EH*np.array([1.0]), # vary K_EH
-                                   N_0*np.logspace(-1.0, 1, 5), # vary N_0
+                                   N_0*np.logspace(-1.0, np.log10(3), 5), # vary N_0
                                    S_0*np.array([0.1]) # vary I_0
                                            )).T.reshape(-1,6)
 
