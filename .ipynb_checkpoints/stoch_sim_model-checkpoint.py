@@ -76,7 +76,7 @@ infection_sample_select = np.vstack([infection_sample[infection_sample[:,2]*S_0 
 
 # define reg options
 psi_max = 3.0
-L0_max = 2*np.log(10)
+L0_max = 5 # > 2*np.log(10)
 pnts = 5
 psi_2d_full = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
@@ -404,7 +404,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         # store time cells spend in effector effector
         T_E += dt * e_m_nonzero_mask if sum_e_m > 0 else 0.0
-        d_E_die = 0.5 * np.sqrt(np.pi) * e_m_nonzero_mask * T_E / char_times[5]**2
+        d_E_die = 0.5 * np.pi * e_m_nonzero_mask * T_E / char_times[5]**2
         die_M = 0*die_M
 
         # store time an effector spends in cytotoxic state
@@ -637,7 +637,7 @@ reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
 perf_vars = ["peff_clearance", "peff_toxicity", "max_cM_fold", "max_eM_fold", "T_eM_min"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Clearance", "Toxicity", "C. memory\n expansion", "E. memory\n expansion", "E. memory\n duration"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_labels = ["Clearance \n[$d_S\cdot S_{max}\cdot T_{sim}$]", "Toxicity \n[$d_S\cdot S_{max}\cdot T_{sim}$]", "C. memory\n expansion [$N_0$]", "E. memory\n expansion [$N_0$]", "E. memory\n duration [Years]"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
