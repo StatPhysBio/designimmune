@@ -9,7 +9,7 @@ from scipy.optimize import fsolve, minimize
 ### (1) Define simulation parameters
 # Define simulation parameters
 sim_duration = 20
-sim_steps = int(0.25*(10**4))
+sim_steps = int(0.20*(10**4))
 
 # infection dynamics
 S_0 = 10**7 #susceptible cells
@@ -35,9 +35,9 @@ t_long_M = 5*365.25 # years
 t_short_M = 0.8*365.25 # years
 
 # Division timer
-d_myc = 1.0 # Heinzel et al (2017)
+d_myc = t_Na_div # see Heinzel et al (2017) for bio-number
 myc_thresh = 1.0
-b_myc = myc_thresh/t_act # Prlic et al. (2006)
+b_myc = myc_thresh/t_Na_div # See Prlic et al. (2006) for bio-number
 
 # Auto-immunity and cancer
 t_Hauto = 0.5 # duration of autoimmune inflammation
@@ -75,8 +75,8 @@ infection_sample_select = np.vstack([infection_sample[infection_sample[:,2]*S_0 
                                      cancer_sample])
 
 # define reg options
-psi_max = 3.0
-L0_max = 5 # > 2*np.log(10)
+psi_max = 2.0
+L0_max = np.ceil(np.log(10**3))
 pnts = 5
 psi_2d_full = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
@@ -193,7 +193,7 @@ def sigmoid_1d(x, y_range, y_min, b, w):
 def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, K_IE = K_IE, K_SE = K_SE,
                   b_H = b_H, d_H = d_H, K_EH = K_EH,
                   N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh, max_expand = max_expand,
-                  char_times = [t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_act],
+                  char_times = [t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_Na_div],
                   NE_regulation = NE_psis,
                   EM_regulation = EM_psis,
                   activation_regulation = act_psis,
@@ -486,14 +486,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             psi_1 = psi_NE_I, psi_2 = psi_NE_HI, psi_3 = psi_NE_HE,L_0 = L0_NE,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH
-        ) / (2 / np.sqrt(np.pi) * (char_times[1] - char_times[6]))**2) * n_na_sum_nonzero_mask
+        ) / (2 / np.sqrt(np.pi) * char_times[2])**2) * n_na_sum_nonzero_mask
 
         r_EM[i] += (r_EM[i - 1] + 2 * dt * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = psi_EM_I, psi_2 = psi_EM_HI, psi_3 = psi_EM_HE, L_0 = L0_EM,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
             K_2 = K_EH, K_3 = K_EH
-        ) / (2 / np.sqrt(np.pi) * (char_times[1] + char_times[6]))**2) * e_m_nonzero_mask # char_times[6] + char_times[6] to reverse priming and differentiation
+        ) / (2 / np.sqrt(np.pi) * char_times[2])**2) * e_m_nonzero_mask # char_times[6] + char_times[6] to reverse priming and differentiation
 
         r_EE[i] += b_E_div
 
@@ -569,8 +569,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        eM_duration,
                        count_cM,
                        cM_duration,
-                       np.sum(pHE*dt),
-                       np.sum(pHI*dt),
+                       np.amax(pHE),
+                       np.amax(pHI),
                        np.amin(pS)])
 
     # down-size timeseries
@@ -597,8 +597,8 @@ stat_names = [r"$\int_0^{T_{sim}} I_{p}dt$",
               r"$T_{eM < N}$",
               r"$(cM)^{max}$",
               r"$T_{cM < N}$",
-              r"$\int_0^{T_{sim}} HE_p dt$",
-              r"$\int_0^{T_{sim}} HI_p dt$",
+              r"$HE_p^{max}$",
+              r"$HI_p^{max}$",
               r"$S_p^{min}$"]
 
 param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"$d_{I,H}$", r"$K_{I,E}$", r"$K_{I,H}$",
