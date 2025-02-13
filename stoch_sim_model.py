@@ -341,7 +341,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         # (b) state variables
         S[i] += S[i - 1] - S_to_I + dt * (
             b_S - (d_S + (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2)) * S[i - 1]
-            - (S_d_SE[i] - S_d_SE[i - 1])
+            - (S_d_SE[i] - S_d_SE[i - 1])/dt
         ) * (S[i - 1] >= 1.0)
 
         I[i] += I[i - 1] + S_to_I - (I_d_IE[i] + I_d_I[i] - I_d_IE[i - 1] - I_d_I[i - 1])
@@ -372,7 +372,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         diff_NaE = rng.binomial(
             Na_m[i - 1] * (1 - Na_div_flag),
-            1 - np.exp(-cum_r_NaE*dt) if np.sum(Na_m[i - 1]) > 0 else 0
+            1 - np.exp(-cum_r_NaE * dt) if np.sum(Na_m[i - 1]) > 0 else 0
         )
 
         ## II. Expansion
@@ -394,7 +394,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         E_m[i] += E_m[i - 1] + div_E + (1 - Na_div_flag) * diff_NaE - (die_E + diff_EM)
 
         # Evaluate sums and create masks
-        sum_n_m = np.sum(N_m[i])
+        sum_n_m = np.sum(N_m[i]*bound_N)
+        sum_na_m = np.sum(Na_m[i])
         sum_e_m = np.sum(E_m[i])
         e_m_nonzero_mask = E_m[i] > 0
         n_m_nonzero_mask = N_m[i] > 0
@@ -481,19 +482,17 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         #### Transition probabilities modulated by antigen and cytokine signals ####
         r_Na[i] += b_myc_t / myc_thresh
 
-        r_NaE[i] += (r_NaE[i - 1] + 2 * (mycN >= myc_thresh) * dt * f_XtoY(
+        r_NaE[i] += (mycN >= myc_thresh) * bound_N * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = psi_NE_I, psi_2 = psi_NE_HI, psi_3 = psi_NE_HE,L_0 = L0_NE,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
-            K_2 = K_EH, K_3 = K_EH
-        ) / (2 / np.sqrt(np.pi) * char_times[2])**2) * n_na_sum_nonzero_mask
+            K_2 = K_EH, K_3 = K_EH)/char_times[2]
 
-        r_EM[i] += (r_EM[i - 1] + 2 * dt * f_XtoY(
+        r_EM[i] += f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = psi_EM_I, psi_2 = psi_EM_HI, psi_3 = psi_EM_HE, L_0 = L0_EM,
             K_1 = (K_IE*(infection_model != "autoimmune") + K_SE*(infection_model == "autoimmune")),
-            K_2 = K_EH, K_3 = K_EH
-        ) / (2 / np.sqrt(np.pi) * char_times[2])**2) * e_m_nonzero_mask # char_times[6] + char_times[6] to reverse priming and differentiation
+            K_2 = K_EH, K_3 = K_EH)/char_times[2] * e_m_nonzero_mask # char_times[6] + char_times[6] to reverse priming and differentiation
 
         r_EE[i] += b_E_div
 
@@ -508,8 +507,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         #### Store differentiation biases
         to_add_to_bias = np.zeros(4)
         if sum_n_m > 0.:
-            to_add_to_bias[0] = np.mean(r_Na[i][n_m_nonzero_mask])
-            to_add_to_bias[1] = np.mean(r_NaE[i][n_m_nonzero_mask])
+            to_add_to_bias[0] = np.mean(r_Na[i][n_m_nonzero_mask*bound_N])
+            to_add_to_bias[1] = np.mean(r_NaE[i][(mycN >= myc_thresh)*bound_N])
         if sum_e_m > 0.:
             to_add_to_bias[2] = np.mean(r_EM[i][e_m_nonzero_mask])
             to_add_to_bias[3] = np.mean(r_EE[i][e_m_nonzero_mask])
@@ -636,8 +635,8 @@ reg_stim = Na_reg[0:3] + NE_reg[0:3] + EM_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
-perf_vars = ["peff_clearance", "peff_toxicity", "max_cM_fold", "max_eM_fold", "T_eM_min"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Clearance \n[$d_S\cdot S_{max}\cdot T_{sim}$]", "Toxicity \n[$d_S\cdot S_{max}\cdot T_{sim}$]", "C. memory\n expansion [$N_0$]", "E. memory\n expansion [$N_0$]", "E. memory\n duration [Years]"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_vars = ["log_min_pS", "peff_clearance", "peff_toxicity", "max_cM_fold", "max_eM_fold", "T_eM_min"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Protection \n[$S_{max}$]", "Clearance \n[$d_S\cdot S_{max}\cdot T_{sim}$]", "Toxicity \n[$d_S\cdot S_{max}\cdot T_{sim}$]", "C. memory\n expansion [$N_0$]", "E. memory\n expansion [$N_0$]", "E. memory\n duration [Years]"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
