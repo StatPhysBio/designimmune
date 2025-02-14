@@ -1,5 +1,4 @@
 import os
-
 from joblib import Parallel, delayed
 import numpy as np
 import pickle
@@ -9,7 +8,7 @@ from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
 num_cpu = 25 # number of CPUs used to benchmark expected runtime
-add_cpu = 15 # additional cpus requested as a buffer
+add_cpu = 10 # additional cpus requested as a buffer
 run_time = 4.0
 
 def run(
@@ -39,18 +38,13 @@ def run(
 
     # Find psis to run
     if "full-reg" in comment:
-        index_start, index_end = batch[0]*int(batch_num)/len(psi_2d)**3, (batch[0]+1)*int(batch_num)/len(psi_2d)**3 # fix psi for activation
-        big_psis = np.array(list(itertools.product(psi_2d[int(index_start):int(index_end)+1].tolist(), psi_2d.tolist(), psi_2d.tolist(), psi_2d.tolist()))).reshape(-1,16)
-        run_psis = big_psis[int(np.ceil((index_start - int(index_start))*len(psi_2d)**3)): int((index_end - int(index_start))*len(psi_2d)**3)]
-
-    elif "full_nobias-reg" in comment:
-        index_start, index_end = batch[0]*int(batch_num)/len(psi_2d_nobias)**3, (batch[0]+1)*int(batch_num)/len(psi_2d_nobias)**3 # fix psi for activation
-        big_psis = np.array(list(itertools.product(psi_2d_nobias[int(index_start):int(index_end)+1].tolist(), psi_2d_nobias.tolist(), psi_2d_nobias.tolist(), psi_2d_nobias.tolist()))).reshape(-1,16)
-        run_psis = big_psis[int(np.ceil((index_start - int(index_start))*len(psi_2d_nobias)**3)): int((index_end - int(index_start))*len(psi_2d_nobias)**3)]
+        index_start, index_end = batch[0]*int(batch_num)/len(psi_4d)**3, (batch[0]+1)*int(batch_num)/len(psi_4d)**3 # fix psi for activation
+        big_psis = np.array(list(itertools.product(psi_4d[int(index_start):int(index_end)+1].tolist(), psi_4d.tolist(), psi_4d.tolist(), psi_4d.tolist()))).reshape(-1,16)
+        run_psis = big_psis[int(np.ceil((index_start - int(index_start))*len(psi_4d)**3)): int((index_end - int(index_start))*len(psi_4d)**3)]
 
     elif "sparse-reg" in comment:
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
-        run_psis = psi_2d_sparse[index_start:index_end]
+        run_psis = psi_sparse[index_start:index_end]
 
     elif "single-reg" in comment:
         run_psis = np.array([default_reg])
@@ -67,7 +61,7 @@ def run(
 
     batch_size = max(int(len(params) / (num_cpu + add_cpu)), 1)
     psi_list = Parallel(n_jobs=num_cpu + add_cpu, batch_size=batch_size)(delayed(lin_stoch_sim)(
-        d_I = param[0], K_IE = param[1], b_I = param[2], K_EH = param[3], N_0 = param[4], I_0 = param[5],
+        d_I = param[0], K_I = param[1], b_I = param[2], K_H = param[3], N_0 = param[4], I_0 = param[5],
         activation_regulation = param[-16:-12], NE_regulation = param[-12:-8], EM_regulation = param[-8:-4],
         expansion_regulation = param[-4:],
         infection_model = infection_model,
