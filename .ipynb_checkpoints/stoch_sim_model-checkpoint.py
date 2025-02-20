@@ -27,14 +27,14 @@ K_S = 10*S_0 # effector avidity (half-max) for susceptible cells
 N_0 = 1000 # initial number of naive cells
 max_Na = 2**2 # number of myc-independent divisions after activation
 max_expand = 2**14 # maximum clone size (Marchingo et al.)
-t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_act, t_bind_eM = 1.0, 3/4, 8.8/24, 8/24, 12/24, 2.5, 1/4, 1/10
+t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_act, t_bind_eM = 1.0, 1.0, 8.8/24, 8/24, 12/24, 2.5, 1/4, 1/10
 t_long_M = 5*365.25 # lifespan of central memory cells
 t_short_M = 365.25/12 # lifespan of effector memory cells
 
 # Division timer
-d_myc = t_E_div # decay rate of MYC, see Heinzel et al (2017) for bio-number
+d_myc = 1/(20/(60*24)) # decay rate of MYC, see Heinzel et al (2017) for bio-number
 myc_thresh = 1.0 # Myc threshold
-b_myc = myc_thresh/t_Na_div # Max production rate of MYC, See Prlic et al. (2006) for bio-number
+b_myc = myc_thresh/(5/(60*24)) # Max production rate of MYC, See Prlic et al. (2006) for bio-number
 
 # Auto-immunity and cancer
 t_Hauto = 0.5 # duration of autoimmune inflammation
@@ -54,7 +54,7 @@ auto_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
                                    K_S*np.array([1.0]), # vary K_I
                                    b_I*np.array([0.0]), # vary b_I
                                    K_H*np.array([1.0]), # vary K_H
-                                   N_0*np.logspace(-1.0, 0.5, 5), # vary N_0
+                                   N_0*np.logspace(-1.0, np.log10(2), 5), # vary N_0
                                    I_0*np.array([0.0]) # vary I_0
                                            )).T.reshape(-1,6)
 
@@ -62,7 +62,7 @@ cancer_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
                                    K_S*np.logspace(-4.0, 0.0, 5), # vary K_I
                                    b_C*np.array([1.0]), # vary b_I
                                    K_H*np.array([1.0]), # vary K_H
-                                   N_0*np.logspace(-1.0, 0.5, 3), # vary N_0
+                                   N_0*np.logspace(-1.0, np.log10(2), 3), # vary N_0
                                    S_0*np.array([0.1]) # vary I_0
                                            )).T.reshape(-1,6)
 
@@ -73,7 +73,7 @@ infection_sample_select = np.vstack([infection_sample,
 # Design space hyper parameters
 pnts = 5
 psi_max = 2.0
-L0_max = np.ceil(np.log(10**3))
+L0_max = 4.0
 psi_4d = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
@@ -89,7 +89,7 @@ psi_sparse = np.vstack((np.array(list(itertools.product(psi_4d.tolist(), bl_bloc
 act_psis = [psi_max, psi_max, -psi_max, L0_max]
 NE_psis = [psi_max, psi_max, -psi_max, L0_max]
 EM_psis = [-psi_max, -psi_max, 0*psi_max, -L0_max]
-exp_psis = [psi_max, psi_max, -psi_max, 0.0]
+contract_psis = [psi_max, psi_max, -psi_max, 0.0]
 
 ### (2) Define functions for simulations
 # Define functions for simulations
@@ -155,7 +155,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                   NE_regulation = NE_psis,
                   EM_regulation = EM_psis,
                   activation_regulation = act_psis,
-                  expansion_regulation = exp_psis,
+                  contraction_regulation = contract_psis,
                   infection_model = "acute",
                   duration = sim_duration,
                   steps = sim_steps,
@@ -184,10 +184,10 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     b_S = S_0*d_S
 
     # draw population of reponding cells for agent-based simulations
-    psi_Na_I, psi_Na_HI, psi_Na_HE, L0_Na = activation_regulation[0], activation_regulation[1], activation_regulation[2], activation_regulation[3]
+    psi_myc_I, psi_myc_HI, psi_myc_HE, L0_Na = activation_regulation[0], activation_regulation[1], activation_regulation[2], activation_regulation[3]
     psi_NE_I, psi_NE_HI, psi_NE_HE, L0_NE = NE_regulation[0], NE_regulation[1], NE_regulation[2], NE_regulation[3]
     psi_EM_I, psi_EM_HI, psi_EM_HE, L0_EM = EM_regulation[0], EM_regulation[1], EM_regulation[2], EM_regulation[3]
-    psi_EE_I, psi_EE_HI, psi_EE_HE, L0_EE = expansion_regulation[0], expansion_regulation[1], expansion_regulation[2], expansion_regulation[3]
+    psi_Edie_I, psi_Edie_HI, psi_Edie_HE, L0_Edie = contraction_regulation[0], contraction_regulation[1], contraction_regulation[2], contraction_regulation[3]
 
     p_tcr = 1.0 #np.ones(N_0_var)
     p_cyt = 1.0 #np.ones(N_0_var)
@@ -239,7 +239,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     r_NaE = np.zeros((int_steps+1, N_0_var))
     r_EM = np.zeros((int_steps+1, N_0_var))
     r_Na = np.zeros((int_steps+1, N_0_var))
-    r_EE = np.zeros((int_steps+1, N_0_var))
+    r_Edie = np.zeros((int_steps+1, N_0_var))
     cum_r_NaE = np.zeros(N_0_var)
 
     r_unbind_t = np.zeros(N_0_var)
@@ -248,7 +248,6 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     r_myc_t = np.zeros(N_0_var)
     r_E_div = np.ones(N_0_var)/char_times[3]
     r_Ma_div = np.ones(N_0_var)/char_times[4]
-    r_E_die = np.ones(N_0_var)/char_times[5]
 
     #################################
     ### RUN POPULATION SIMULATION ###
@@ -342,7 +341,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         div_Ma = rng.binomial(Ma_m[i - 1] - diff_EpM_count, dt * r_Ma_div)
         
         # (b) Effector cells divide, differentiate, die
-        die_E = rng.binomial(E_m[i - 1], r_E_die * dt)
+        die_E = rng.binomial(E_m[i - 1], r_Edie[i - 1] * dt)
         diff_EM = rng.binomial(E_m[i - 1] - die_E, dt * r_EM[i - 1])
         div_E = rng.binomial(E_m[i - 1] - die_E - diff_EM, dt * r_E_div)
         diff_EpM_count += diff_EM - die_M
@@ -361,12 +360,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         e_m_nonzero_mask = E_m[i] > 0
         n_m_nonzero_mask = N_m[i] > 0
         na_m_nonzero_mask = Na_m[i] > 0
+        bound_na_sum_nonzero_mask = Na_m[i] > 0 | bound_N
         ma_m_nonzero_mask = Ma_m[i] + Ma_m[i-1] > 0
         n_na_sum_nonzero_mask = n_m_nonzero_mask | na_m_nonzero_mask
 
         # store time cells spend in effector effector
         T_E += dt * e_m_nonzero_mask if sum_e_m > 0 else 0.0
-        r_E_die = 0.5 * np.pi * e_m_nonzero_mask * T_E / char_times[5]**2
         die_M = 0*die_M
 
         # store time an effector spends in cytotoxic state
@@ -413,31 +412,22 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         r_myc_t = b_myc * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
-            psi_1 = psi_Na_I, psi_2 = psi_Na_HI, psi_3 = psi_Na_HE, L_0 = L0_Na,
+            psi_1 = psi_myc_I, psi_2 = psi_myc_HI, psi_3 = psi_myc_HE, L_0 = L0_Na,
             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
             K_2 = K_H, K_3 = K_H
-        ) * bound_N
+        )
 
         #### MYC Dynamics ####
-        mycN = (mycN + dt * (r_myc_t - (1 - bound_N) * d_myc * f_XtoY(
+        mycN = (mycN + dt * (r_myc_t - d_myc * mycN * (mycN > 0)) ) * n_na_sum_nonzero_mask
+
+        mycE = (mycE + dt * (r_myc_t - d_myc * mycE * (mycE > 0)) ) * e_m_nonzero_mask + mycN * (na_m_nonzero_mask)
+
+        mycMa = 0*(mycMa + dt * (b_myc * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
-            psi_1 = -psi_EE_I, psi_2 = -psi_EE_HI, psi_3 = -psi_EE_HE, L_0 = -L0_EE,
+            psi_1 = psi_myc_I, psi_2 = 0.0, psi_3 = 0.0, L_0 = L0_Na,
             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
             K_2 = K_H, K_3 = K_H
-        ) * mycN * (mycN > 0))) * n_na_sum_nonzero_mask
-
-        mycE = (mycE - dt * (d_myc * f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
-            psi_1 = -psi_EE_I, psi_2 = -psi_EE_HI, psi_3 = -psi_EE_HE, L_0 = -L0_EE,
-            K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
-            K_2 = K_H, K_3 = K_H) * mycE)
-        ) * (E_m[i] >= 1) + mycN * (na_m_nonzero_mask)
-
-        mycMa = (mycMa - dt * (d_myc * f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
-            psi_1 = -psi_EE_I, psi_2 = -psi_EE_HI, psi_3 = -psi_EE_HE, L_0 = -L0_EE,
-            K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
-            K_2 = K_H, K_3 = K_H) * mycMa) ) * (Ma_m[i] > 0) + mycN * na_m_nonzero_mask # E and cM will share the same division time duration
+        ) - d_myc * mycMa * (mycMa > 0)) ) * ma_m_nonzero_mask + mycN * na_m_nonzero_mask # Unclear division dynamics for central memory
 
         #### Time-dependent rates modulated by antigen and cytokine signals ####
         r_Na_div = 1 / char_times[2]
@@ -445,9 +435,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         r_Ma_div = (mycMa >= myc_thresh) * (div_count < max_expand) / char_times[4]
 
         #### Transition probabilities modulated by antigen and cytokine signals ####
-        r_Na[i] += r_myc_t / myc_thresh
+        r_Na[i] += r_E_div
 
-        r_NaE[i] += (mycN >= myc_thresh) * bound_N * f_XtoY(
+        r_NaE[i] += (mycN >= myc_thresh) * bound_na_sum_nonzero_mask * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = psi_NE_I, psi_2 = psi_NE_HI, psi_3 = psi_NE_HE,L_0 = L0_NE,
             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
@@ -459,7 +449,11 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
             K_2 = K_H, K_3 = K_H)/char_times[3] * e_m_nonzero_mask # char_times[6] + char_times[6] to reverse priming and differentiation
 
-        r_EE[i] += r_E_div
+        r_Edie[i] += f_XtoY(
+            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+            psi_1 = -psi_Edie_I, psi_2 = -psi_Edie_HI, psi_3 = -psi_Edie_HE, L_0 = -L0_Edie,
+            K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
+            K_2 = K_H, K_3 = K_H)/char_times[3] * e_m_nonzero_mask
 
         cum_r_NaE += r_NaE[i]
 
@@ -471,13 +465,13 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         #### Store differentiation biases
         to_add_to_bias = np.zeros(4)
-        if sum_n_m > 0.:
-            to_add_to_bias[0] = np.mean(r_Na[i][n_m_nonzero_mask*bound_N])
-            to_add_to_bias[1] = np.mean(r_NaE[i][(mycN >= myc_thresh)*bound_N])
+        if np.sum(bound_na_sum_nonzero_mask) > 0.:
+            to_add_to_bias[1] = np.mean(r_NaE[i][bound_na_sum_nonzero_mask])
             
         if sum_e_m > 0.:
+            to_add_to_bias[0] = np.mean(r_Na[i][e_m_nonzero_mask])
             to_add_to_bias[2] = np.mean(r_EM[i][e_m_nonzero_mask])
-            to_add_to_bias[3] = np.mean(r_EE[i][e_m_nonzero_mask])
+            to_add_to_bias[3] = np.mean(r_Edie[i][e_m_nonzero_mask])
             
         bias_t[i] += to_add_to_bias
 
@@ -490,14 +484,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     T_pEcytM = np.concatenate(T_Ecyt) if N_0 > 0 else np.array([0.0]) # time that memory spends in effector
     count_cM = np.sum(T_pEcytM == 0
                      ) if len(T_pEcytM[T_pEcytM == 0]) > 0 and N_0 > 0.0 else 0.0
-    count_eM = np.sum(memory_lifespan(T_pEcytM) > char_times[5]
-                     ) if len(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]]) > 0 and N_0 > 0.0 else 0.0
+    count_eM = np.sum(T_pEcytM > 0
+                     ) if len(T_pEcytM[T_pEcytM == 0]) > 0 and N_0 > 0.0 else 0.0
 
     # Project out surviving primary memory
-    cM_duration = np.mean(memory_lifespan(T_pEcytM[T_pEcytM == 0])
-                         )/365.25 if len(T_pEcytM[T_pEcytM == 0]) > 0 and N_0 > 0.0 else 0.0
-    eM_duration = np.mean(memory_lifespan(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]])
-                         )/365.25 if len(T_pEcytM[memory_lifespan(T_pEcytM) > char_times[5]]) > 0 and N_0 > 0.0 else 0.0
+    mean_frac_cM = count_cM/(max_Na*N_0) if N_0 > 0 and np.sum(div_E_count + div_M_count) > 0.0 else 0.0
+    mean_T_pEcyteM = np.mean(T_pEcytM[T_pEcytM > 0]) if len(T_pEcytM[T_pEcytM > 0]) > 0 and N_0 > 0.0 else 0.0
 
     zeros_n_0_var = np.zeros(N_0_var)
 
@@ -521,7 +513,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
               b_H, d_H, K_H,
               N_0, max_Na, b_myc, d_myc, myc_thresh]),
               char_times,
-              activation_regulation, NE_regulation, EM_regulation, expansion_regulation))
+              activation_regulation, NE_regulation, EM_regulation, contraction_regulation))
 
     sim_summary = np.array([np.amax(pI) + np.amax(pS)*(infection_model == "autoimmune"),
                        np.argmax(pI)*dt,
@@ -532,9 +524,9 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                        np.argmax(pE)*dt + sim_duration*(np.max(pE) < 1.0),
                        (np.argmax(pE >= N_0 , axis = 0)*dt + sim_duration*(np.max(pE) < N_0)) if N_0 > 0 else sim_duration,
                        count_eM,
-                       eM_duration,
+                       mean_T_pEcyteM,
                        count_cM,
-                       cM_duration,
+                       mean_frac_cM,
                        np.amax(pHE),
                        np.amax(pHI),
                        np.amin(pS)])
@@ -544,7 +536,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     keep = [i*10 for i in np.arange(0,pnts)]
 
     if out_data == "full":
-        out_dict = {"reg_coeffs": np.concatenate((activation_regulation, NE_regulation, EM_regulation, expansion_regulation)), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "eff_by_lin": (E_m), "N_myc_by_lin": mycN_m, "Ma_myc_by_lin": mycMa_m, "E_myc_by_lin": mycE_m, "parameters": parameters, "summary_stats": sim_summary, "pmemory_formed": T_pEcytM if N_0 > 0 else []}
+        out_dict = {"reg_coeffs": np.concatenate((activation_regulation, NE_regulation, EM_regulation, contraction_regulation)), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "eff_by_lin": (E_m), "N_myc_by_lin": mycN_m, "Ma_myc_by_lin": mycMa_m, "E_myc_by_lin": mycE_m, "parameters": parameters, "summary_stats": sim_summary, "pmemory_formed": T_pEcytM if N_0 > 0 else []}
     elif out_data == "small":
         out_dict = {"cell_time_series": dyn_data[keep], "prim_diff_bias": prim_bias[keep],"parameters": parameters, "summary_stats": sim_summary}
 
@@ -560,9 +552,9 @@ stat_names = [r"$I_{p}^{max}$",
               r"$T_{E_p}^{max}$",
               r"$T_{E_p}^{start}$",
               r"$(eM)^{max}$",
-              r"$T_{eM < N}$",
+              r"$\langle T_{E} \rangle_{eM}$",
               r"$(cM)^{max}$",
-              r"$T_{cM < N}$",
+              r"$cM/(E + cM)$",
               r"$HE_p^{max}$",
               r"$HI_p^{max}$",
               r"$S_p^{min}$"]
@@ -581,20 +573,20 @@ param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_I',
                       'b_H', 'd_H', 'K_H',
                       'N_0', 'max_Na', 'b_myc', 'd_myc', 'myc_thresh',
                       't_bind', 't_unbind', 't_Na_div', 't_E_div', 't_M_div', 't_E_die', 't_act',
-                      'psi_Na_I', 'psi_Na_HI', 'psi_Na_HE', 'L0_Na',
+                      'psi_myc_I', 'psi_myc_HI', 'psi_myc_HE', 'L0_Na',
                       'psi_NE_I', 'psi_NE_HI', 'psi_NE_HE', 'L0_NE',
                       'psi_EM_I', 'psi_EM_HI', 'psi_EM_HE', 'L0_EM',
-                      'psi_EE_I', 'psi_EE_HI', 'psi_EE_HE', 'L0_EE']
+                      'psi_Edie_I', 'psi_Edie_HI', 'psi_Edie_HE', 'L0_Edie']
 
 stat_names_for_df = ['p_load', 'T_max_pI', 'T_min_pI', 'harm_pI',
                      'harm_pS', 'max_pE', 'T_pE_max', 'T_pE_start',
-                     'max_eM', 'T_eM_min', 'max_cM', 'T_cM_min',
+                     'max_eM', 'T_pEcyteM', 'max_cM', 'frac_cM',
                      'int_pHE', 'int_pHI', 'min_pS']
 
-Na_reg = ['psi_Na_I', 'psi_Na_HI', 'psi_Na_HE', 'L0_Na']
+Na_reg = ['psi_myc_I', 'psi_myc_HI', 'psi_myc_HE', 'L0_Na']
 NE_reg = ['psi_NE_I', 'psi_NE_HI', 'psi_NE_HE', 'L0_NE']
 EM_reg = ['psi_EM_I', 'psi_EM_HI', 'psi_EM_HE', 'L0_EM']
-EE_reg = ['psi_EE_I', 'psi_EE_HI', 'psi_EE_HE', 'L0_EE']
+EE_reg = ['psi_Edie_I', 'psi_Edie_HI', 'psi_Edie_HE', 'L0_Edie']
 
 module_labels = ['$N \longrightarrow N^*$', '$N^* \longrightarrow E$', '$E \longrightarrow M$', '$E \longrightarrow 2E$']
 modules = ['Na', 'NE', 'EM', 'EE']

@@ -16,9 +16,9 @@ def run(
     outdir='',
     comment = "sparse-reg",
     inf_sample = infection_sample_select,
-    runs = 5,
+    runs = 1,
     infection_model = "acute_all", #'acute_all',
-    default_reg = act_psis + NE_psis + EM_psis + exp_psis,
+    default_reg = act_psis + NE_psis + EM_psis + contract_psis,
     sim_per_cpu_hour = 1440,
     num_cpu = num_cpu,
     run_time = run_time,
@@ -63,7 +63,7 @@ def run(
     psi_list = Parallel(n_jobs=num_cpu + add_cpu, batch_size=batch_size)(delayed(lin_stoch_sim)(
         d_I = param[0], K_I = param[1], b_I = param[2], K_H = param[3], N_0 = param[4], I_0 = param[5],
         activation_regulation = param[-16:-12], NE_regulation = param[-12:-8], EM_regulation = param[-8:-4],
-        expansion_regulation = param[-4:],
+        contraction_regulation = param[-4:],
         infection_model = infection_model,
         reg_model = "mwc_like",
         seed=child_rng)
