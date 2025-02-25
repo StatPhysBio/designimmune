@@ -16,12 +16,12 @@ I_0 = 10**(-3)*S_0 # initial detectable level of infected cells
 d_IE = 16 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
 K_I = I_0 # max effector avidity (half-max) for infected cells at low infection concetrations (Mayer et al 2019; Chao et al. 2004)
 d_I = np.minimum(25*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
+K_S = 10*S_0 # effector avidity (half-max) for susceptible cells
 
 # Inflammatory response
 d_H = 2.0 # decay of inflammatory response
 b_H = 1 # inflammation produced per killed cell
-K_H = K_I # half-max level of innate/inflammatory response required to trigger lymphocyte response
-K_S = 10*S_0 # effector avidity (half-max) for susceptible cells
+K_H = I_0 # half-max level of innate/inflammatory response required to trigger lymphocyte response
 
 # Immune cells
 N_0 = 100 # initial number of naive cells
@@ -306,7 +306,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         harm_detected = (I_d_I[i] - I_d_I[i - 1]) + dt * S[i - 1] * (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2) + S_to_I * (infection_model == "cancer")
         immunopathology = (S_d_SE[i] - S_d_SE[i - 1]) + (I_d_IE[i] - I_d_IE[i - 1])
-        cells_sensed = I[i - 1] + (S[i - 1] * K_I / K_S)
+        cells_sensed = I[i - 1] #+ (S[i - 1] * K_I / K_S)
 
         HI[i] += HI[i - 1] + b_H * harm_detected - dt * d_H * HI[i - 1] * (HI[i - 1] >= 0.0)
         
@@ -396,14 +396,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         #### New binding events ####
         r_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
-            psi_1 = 0.0, psi_2 = psi_max, psi_3 = 0.0, L_0 = -psi_max*np.log(2), K_1 = S_0, K_2 = K_H, K_3 = K_H
+            psi_1 = 0.0, psi_2 = psi_max, psi_3 = 0.0, L_0 = -L0_max, K_1 = S_0, K_2 = K_H, K_3 = K_H
         ) / (char_times[0]) if cells_sensed >= 1 else 0.0
 
         r_unbind_t = bound_N * np.fmin(
             2 * bound_N_time / (
                 f_XtoY(
                     sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
-                    psi_1 = psi_max, psi_2 = 0.0,psi_3 = 0.0, L_0 = -psi_max*np.log(2),
+                    psi_1 = psi_max, psi_2 = 0.0, psi_3 = 0.0, L_0 = -L0_max,
                     K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
                     K_2 = K_H, K_3 = K_H
                 ) * char_times[1] * 2 / np.sqrt(np.pi)
@@ -566,7 +566,7 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
                r"$\psi_{N^*}^{Ag}$", r"$\psi_{N^*}^{H_I}$", r"$\psi_{N^*}^{H_E}$", r"$L_{N^*}$",
                r"$\psi_{N,E}^{Ag}$", r"$\psi_{N,E}^{H_I}$", r"$\psi_{N,E}^{H_E}$", r"$L_{N^{*},E}$",
                r"$\psi_{E,M}^{Ag}$", r"$\psi_{E,M}^{H_I}$", r"$\psi_{E,M}^{H_E}$", r"$L_{E,M}$",
-               r"$\psi_{E,2E}^{Ag}$", r"$\psi_{E,2E}^{H_I}$", r"$\psi_{E,2E}^{H_E}$", r"$L_{E,2E}$"]
+               r"$\psi_{E,\emptyset}^{Ag}$", r"$\psi_{E,\emptyset}^{H_I}$", r"$\psi_{E,\emptyset}^{H_E}$", r"$L_{E,\emptyset}$"]
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_I',
@@ -595,7 +595,7 @@ reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
 perf_vars = ["scaled_min_pS", "peff_clearance", "peff_toxicity", "frac_cM", "max_eM_fold", "log_T_pEcyteM"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Min susceptible \n fraction [$S_{max}$]", "Clearance \n[$d_S\cdot S_{max}\cdot T_{sim}$]", "Toxicity \n[$d_S\cdot S_{max}\cdot T_{sim}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [Days]"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_labels = ["Min susceptible \n fraction [$S_{max}$]", "Clearance \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "Toxicity \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [Days]"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
