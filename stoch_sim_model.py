@@ -16,7 +16,7 @@ I_0 = 10**(-3)*S_0 # initial detectable level of infected cells
 d_IE = 16 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
 K_I = I_0 # max effector avidity (half-max) for infected cells at low infection concetrations (Mayer et al 2019; Chao et al. 2004)
 d_I = np.minimum(25*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
-K_S = 10*S_0 # effector avidity (half-max) for susceptible cells
+K_S = S_0 # effector avidity (half-max) for susceptible cells
 
 # Inflammatory response
 d_H = 2.0 # decay of inflammatory response
@@ -26,7 +26,7 @@ K_H = I_0 # half-max level of innate/inflammatory response required to trigger l
 # Immune cells
 N_0 = 100 # initial number of naive cells
 max_Na = 2**2 # number of myc-independent divisions after activation
-max_expand = 2**15 # maximum clone size (Marchingo et al.)
+max_expand = 2**14 # maximum clone size (Marchingo et al.)
 t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_cycle = 1.0, 1.0, 8.8/24, 8/24, 12/24, 10.0, 1/4
 t_long_M = 10*365.25 # lifespan of central memory cells
 t_short_M = 365.25/12 # lifespan of effector memory cells
@@ -141,7 +141,7 @@ def sigmoid(x, y_max, y_min,
 
 def sigmoid_1d(x, y_max, y_min, b, w):
 
-    out = y_max/(1 + np.exp(-w*x - b) ) + y_min
+    out = (y_max - y_min)/(1 + np.exp(-w*x - b) ) + y_min
     return out
 
 #######################
@@ -293,7 +293,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         # (a) event variables
         S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) * (I[i - 1] >= I_0)
         I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_I + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
-        I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") # cells killed by infection
+        I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") + S_to_I * (infection_model == "cancer") # cells killed by infection or cancer
         S_d_SE[i] += S_d_SE[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_S + S[i - 1] + E_pop)) # susceptible cells killed by immune response
 
         # (b) state variables
@@ -518,7 +518,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
     sim_summary = np.array([np.amax(pI) + np.amax(pS)*(infection_model == "autoimmune"),
                        np.argmax(pI)*dt,
                        np.argmax(pI < I_0)*dt,
-                       np.amax(pI_d_I), # + I[-1],
+                       np.amax(pI_d_I) + I[-1],
                        np.amax(pI_d_SE),
                        np.sum(div_E_count),
                        np.argmax(pE)*dt + sim_duration*(np.max(pE) < 1.0),
@@ -595,7 +595,7 @@ reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
 perf_vars = ["scaled_min_pS", "peff_clearance", "peff_toxicity", "frac_cM", "max_eM_fold", "log_T_pEcyteM"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Min susceptible \n fraction [$S_{max}$]", "Clearance \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "Toxicity \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [Days]"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_labels = ["Min susceptible \n fraction [$S_{max}$]", "Clearance \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "Toxicity \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
