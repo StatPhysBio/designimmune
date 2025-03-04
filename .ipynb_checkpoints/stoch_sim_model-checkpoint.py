@@ -12,22 +12,22 @@ sim_steps = int(0.20*(10**4))
 S_0 = 10**7 # max susceptible cells
 d_S = 0.01 # susceptible cell death rate
 b_I = 1.5*(10**(-7)) # fecudity of pathogen (Chao et al. 2004, Iwami et al. 2015)
-I_0 = 10**(-3)*S_0 # initial detectable level of infected cells
-d_IE = 16 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
-K_I = I_0 # max effector avidity (half-max) for infected cells at low infection concetrations (Mayer et al 2019; Chao et al. 2004)
+I_min = 10**(-3)*S_0 # initial detectable level of infected cells
+d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
+K_I = 10**(-3)*S_0 # max effector avidity (half-max) for infected cells at low infection concetrations (Mayer et al 2019; Chao et al. 2004)
 d_I = np.minimum(25*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
 K_S = S_0 # effector avidity (half-max) for susceptible cells
 
 # Inflammatory response
 d_H = 2.0 # decay of inflammatory response
 b_H = 1 # inflammation produced per killed cell
-K_H = I_0 # half-max level of innate/inflammatory response required to trigger lymphocyte response
+K_H = d_S*S_0 # half-max level of innate/inflammatory response required to trigger lymphocyte response
 
 # Immune cells
 N_0 = 100 # initial number of naive cells
 max_Na = 2**2 # number of myc-independent divisions after activation
-max_expand = 2**14 # maximum clone size (Marchingo et al.)
-t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_cycle = 1.0, 1.0, 8.8/24, 8/24, 12/24, 10.0, 1/4
+max_expand = 2**16 # maximum clone size (Marchingo et al.)
+t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_cycle = 1/2, 1.0, 8.8/24, 8/24, 12/24, 10.0, 1/4
 t_long_M = 10*365.25 # lifespan of central memory cells
 t_short_M = 365.25/12 # lifespan of effector memory cells
 
@@ -47,7 +47,7 @@ infection_sample = np.array(np.meshgrid(b_I*S_0*np.linspace(0.10, 1.0, num_pnts)
                                    b_I*np.array([1.0]), # vary b_I
                                    K_H*np.logspace(0.0, 0.0, 1), # vary K_H
                                    N_0*np.logspace(0.0, 0.0, 1), # vary N_0
-                                   I_0*np.logspace(0.0, 0.0, 1) # vary I_0
+                                   I_min*np.logspace(0.0, 0.0, 1) # vary I_0
                                            )).T.reshape(-1,6)
 
 auto_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
@@ -55,7 +55,7 @@ auto_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
                                    b_I*np.array([0.0]), # vary b_I
                                    K_H*np.array([1.0]), # vary K_H
                                    N_0*np.logspace(-1.0, 1, 5), # vary N_0
-                                   I_0*np.array([0.0]) # vary I_0
+                                   I_min*np.array([0.0]) # vary I_0
                                            )).T.reshape(-1,6)
 
 cancer_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
@@ -72,7 +72,7 @@ infection_sample_select = np.vstack([infection_sample,
 
 # Design space hyper parameters
 pnts = 5
-psi_max = 2.0
+psi_max = 3.0
 L0_max = 4.0
 psi_4d = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
@@ -123,7 +123,7 @@ def memory_lifespan(T_eff, T_degrade = t_E_die, min_time = 0):
     return out
 
 def antigenicity_over_harm(df):
-    out = np.log(1 + (df['K_H'] if 'K_H' in df.columns.tolist() else K_H)*(df['b_I']*(df['S_0'] if 'S_0' in df.columns.tolist() else S_0) - df['d_I'] + (df['d_H'] if 'd_H' in df.columns.tolist() else d_H) )/(df['d_I']*(df['I_0'] if 'I_0' in df.columns.tolist() else I_0)))/np.log(df['K_I']/(df['I_0'] if 'I_0' in df.columns.tolist() else I_0))
+    out = np.log(1 + (df['K_H'] if 'K_H' in df.columns.tolist() else K_H)*(df['b_I']*(df['S_0'] if 'S_0' in df.columns.tolist() else S_0) - df['d_I'] + (df['d_H'] if 'd_H' in df.columns.tolist() else d_H) )/(df['d_I']*(df['I_0'] if 'I_0' in df.columns.tolist() else I_0)))/np.log(df['K_I']/(df['I_0'] if 'I_0' in df.columns.tolist() else I_min))
     return out
 
 def sigmoid(x, y_max, y_min,
@@ -148,7 +148,7 @@ def sigmoid_1d(x, y_max, y_min, b, w):
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
 #######################
 
-def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, K_I = K_I, K_S = K_S,
+def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, K_I = K_I, K_S = K_S,
                   b_H = b_H, d_H = d_H, K_H = K_H,
                   N_0 = N_0, max_Na = max_Na, b_myc = b_myc, d_myc = d_myc, myc_thresh = myc_thresh, max_expand = max_expand,
                   char_times = [t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_cycle],
@@ -291,7 +291,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
         # Update state of susceptible, infected and inflammation
         # (a) event variables
-        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) * (I[i - 1] >= I_0)
+        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) *(I[i - 1] >= I_min/100)
         I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_I + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
         I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") + S_to_I * (infection_model == "cancer") # cells killed by infection or cancer
         S_d_SE[i] += S_d_SE[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_S + S[i - 1] + E_pop)) # susceptible cells killed by immune response
@@ -380,12 +380,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
                     survive_M[l] = (rng.random(size = Ma_m[i,l]) > (arr > 0)*dt/memory_lifespan(arr, min_time = dt))
                     die_M[l] = Ma_m[i,l] - np.sum(survive_M[l])
                 else:
-                    T_Ecyt[l] += ((1 - Na_div_flag[l])*(Na_m[i-1,l] - diff_NaE[l]) + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()]
+                    T_Ecyt[l].extend(((1 - Na_div_flag[l])*(Na_m[i-1,l] - diff_NaE[l]) + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()])
                     arr = np.array([])
                     survive_M[l] = []
                     die_M[l] = 0
             else:
-                T_Ecyt[l] += ((1 - Na_div_flag[l])*(Na_m[i-1,l] - diff_NaE[l]) + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()]
+                T_Ecyt[l].extend(((1 - Na_div_flag[l])*(Na_m[i-1,l] - diff_NaE[l]) + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()])
 
         # Update division flag to allow division to proceed
         div_count += div_Na + div_E + div_Ma
@@ -396,14 +396,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         #### New binding events ####
         r_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
-            psi_1 = 0.0, psi_2 = psi_max, psi_3 = 0.0, L_0 = -L0_max, K_1 = S_0, K_2 = K_H, K_3 = K_H
+            psi_1 = 0.0, psi_2 = 1/np.log(2), psi_3 = 0.0, L_0 = -1, K_1 = S_0, K_2 = K_H, K_3 = K_H # The rate of non-specific binding is important
         ) / (char_times[0]) if cells_sensed >= 1 else 0.0
 
         r_unbind_t = bound_N * np.fmin(
             2 * bound_N_time / (
                 f_XtoY(
                     sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
-                    psi_1 = psi_max, psi_2 = 0.0, psi_3 = 0.0, L_0 = -L0_max,
+                    psi_1 = L0_max/np.log(2), psi_2 = 0.0, psi_3 = 0.0, L_0 = -L0_max,
                     K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
                     K_2 = K_H, K_3 = K_H
                 ) * char_times[1] * 2 / np.sqrt(np.pi)
@@ -418,7 +418,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
         )
 
         #### MYC Dynamics ####
-        mycN = (mycN + dt * (r_myc_t - d_myc * mycN * (mycN > 0)) ) * n_na_sum_nonzero_mask
+        mycN = (mycN + dt * ((bound_N + na_m_nonzero_mask)*r_myc_t - d_myc * mycN * (mycN > 0)) ) * n_na_sum_nonzero_mask
 
         mycE = (mycE + dt * (r_myc_t - d_myc * mycE * (mycE > 0)) ) * e_m_nonzero_mask + mycN * (na_m_nonzero_mask)
 
@@ -517,7 +517,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_0, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = 
 
     sim_summary = np.array([np.amax(pI) + np.amax(pS)*(infection_model == "autoimmune"),
                        np.argmax(pI)*dt,
-                       np.argmax(pI < I_0)*dt,
+                       np.argmax(pI < I_min)*dt,
                        np.amax(pI_d_I) + I[-1],
                        np.amax(pI_d_SE),
                        np.sum(div_E_count),
