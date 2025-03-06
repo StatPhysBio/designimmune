@@ -12,7 +12,7 @@ sim_steps = int(0.20*(10**4))
 S_0 = 10**7 # max susceptible cells
 d_S = 0.01 # susceptible cell death rate
 b_I = 1.5*(10**(-7)) # fecudity of pathogen (Chao et al. 2004, Iwami et al. 2015)
-I_min = 10**(-3)*S_0 # initial detectable level of infected cells
+I_min = 10**(-4)*S_0 # initial detectable level of infected cells
 d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
 K_I = 10**(-3)*S_0 # max effector avidity (half-max) for infected cells at low infection concetrations (Mayer et al 2019; Chao et al. 2004)
 d_I = np.minimum(25*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
@@ -63,7 +63,7 @@ cancer_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
                                    b_C*np.array([1.0]), # vary b_I
                                    K_H*np.array([1.0]), # vary K_H
                                    N_0*np.logspace(-1.0, 1, 3), # vary N_0
-                                   S_0*np.array([0.1]) # vary I_0
+                                   S_0*np.array([0.05]) # vary I_0
                                            )).T.reshape(-1,6)
 
 infection_sample_select = np.vstack([infection_sample,
@@ -291,7 +291,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
         # Update state of susceptible, infected and inflammation
         # (a) event variables
-        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) *(I[i - 1] >= I_min/100)
+        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) *(I[i - 1] >= I_min/10)
         I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_I + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
         I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") + S_to_I * (infection_model == "cancer") # cells killed by infection or cancer
         S_d_SE[i] += S_d_SE[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_S + S[i - 1] + E_pop)) # susceptible cells killed by immune response
@@ -302,7 +302,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             - (S_d_SE[i] - S_d_SE[i - 1])/dt
         ) * (S[i - 1] >= 1.0)
 
-        I[i] += I[i - 1] + S_to_I - (I_d_IE[i] + I_d_I[i] - I_d_IE[i - 1] - I_d_I[i - 1])
+        I[i] += I[i - 1] + S_to_I - (I_d_IE[i] + I_d_I[i] - I_d_IE[i - 1] - I_d_I[i - 1]) + S_to_I * (infection_model == "cancer")
 
         harm_detected = (I_d_I[i] - I_d_I[i - 1]) + dt * S[i - 1] * (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2) + S_to_I * (infection_model == "cancer")
         immunopathology = (S_d_SE[i] - S_d_SE[i - 1]) + (I_d_IE[i] - I_d_IE[i - 1])

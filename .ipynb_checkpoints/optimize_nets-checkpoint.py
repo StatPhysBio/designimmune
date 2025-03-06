@@ -8,7 +8,7 @@ from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
 num_cpu = 25 # number of CPUs used to benchmark expected runtime
-add_cpu = 15 # additional cpus requested as a buffer
+add_cpu = 10 # additional cpus requested as a buffer
 run_time = 4.0
 
 def run(
