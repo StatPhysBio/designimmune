@@ -41,7 +41,7 @@ t_Hauto = 1.0 # duration of autoimmune inflammation
 b_C = 1/10 # growth rate of cancer
 
 # Pathogen space parameters
-num_pnts = 11
+num_pnts = 15
 infection_sample = np.array(np.meshgrid(b_I*S_0*np.linspace(0.10, 1.0, num_pnts), # vary d_I
                                    S_0*np.logspace(-3.0, 0, num_pnts), # vary K_I
                                    b_I*np.array([1.0]), # vary b_I

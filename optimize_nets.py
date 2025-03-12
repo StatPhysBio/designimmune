@@ -16,10 +16,10 @@ def run(
     outdir='',
     comment = "sparse-reg",
     inf_sample = infection_sample_select,
-    runs = 2,
+    runs = 3,
     infection_model = "acute_all", #'acute_all',
     default_reg = act_psis + NE_psis + EM_psis + contract_psis,
-    sim_per_cpu_hour = 2400,
+    sim_per_cpu_hour = 2571,
     num_cpu = num_cpu,
     run_time = run_time,
     seed = None
