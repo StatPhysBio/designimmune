@@ -6,7 +6,7 @@ from scipy.optimize import fsolve, minimize
 ### (1) Define simulation parameters
 # Define simulation hyperparameters
 sim_duration = 20
-sim_steps = int(0.20*(10**4))
+sim_steps = int(0.25*(10**4))
 
 # infection dynamics
 S_0 = 10**7 # max susceptible cells
@@ -262,12 +262,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
     for i in np.arange(1, int_steps + 1):
         # select virulence model:
-        if (b_I > 0 and I_0 <= S_0/1000) or infection_model == 'acute': # "acute"
+        if (b_I > 0 and I_0 <= 0.001*S_0) or infection_model == 'acute': # "acute"
             b_I_t = b_I
             d_Sauto = 0.0
             infection_model = 'acute'
             
-        elif (b_I > 0 and I_0 > 0.01*S_0) or infection_model == 'cancer': # "cancer"
+        elif (b_I > 0 and I_0 >= 0.01*S_0) or infection_model == 'cancer': # "cancer"
             b_I_t = b_I/S_0
             d_Sauto = 0.0
             infection_model = 'cancer'
@@ -290,13 +290,13 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         #### Run infection dynamics: replication and effector clearance ####
 
         # Update state of susceptible, infected and inflammation
-        # (a) event variables
-        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) *(I[i - 1] >= I_min/10)
+        # (a) Record new cell infections and cell killing events
+        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) *(I[i - 1] >= 0.1*I_min)
         I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_I + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
         I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") + S_to_I * (infection_model == "cancer") # cells killed by infection or cancer
         S_d_SE[i] += S_d_SE[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_S + S[i - 1] + E_pop)) # susceptible cells killed by immune response
 
-        # (b) state variables
+        # (b) Evolve susceptible and infected populations
         S[i] += S[i - 1] - S_to_I + dt * (
             b_S - (d_S + (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2)) * S[i - 1]
             - (S_d_SE[i] - S_d_SE[i - 1])/dt
@@ -304,9 +304,10 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
         I[i] += I[i - 1] + S_to_I - (I_d_IE[i] + I_d_I[i] - I_d_IE[i - 1] - I_d_I[i - 1]) + S_to_I * (infection_model == "cancer")
 
-        harm_detected = (I_d_I[i] - I_d_I[i - 1]) + dt * S[i - 1] * (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2) + S_to_I * (infection_model == "cancer")
+        # (C) Evolve inflammatory responses
+        harm_detected = (I_d_I[i] - I_d_I[i - 1]) + dt * S[i - 1] * (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2)
         immunopathology = (S_d_SE[i] - S_d_SE[i - 1]) + (I_d_IE[i] - I_d_IE[i - 1])
-        cells_sensed = I[i - 1] #+ (S[i - 1] * K_I / K_S)
+        cells_sensed = I[i - 1] # + (S[i - 1] * K_I / K_S)
 
         HI[i] += HI[i - 1] + b_H * harm_detected - dt * d_H * HI[i - 1] * (HI[i - 1] >= 0.0)
         
@@ -341,7 +342,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         div_Ma = rng.binomial(Ma_m[i - 1] - diff_EpM_count, dt * r_Ma_div)
         
         # (b) Effector cells divide, differentiate, die
-        die_E = rng.binomial(E_m[i - 1], r_Edie[i - 1] * dt)
+        die_E = rng.binomial(E_m[i - 1], dt * r_Edie[i - 1])
         diff_EM = rng.binomial(E_m[i - 1] - die_E, dt * r_EM[i - 1])
         div_E = rng.binomial(E_m[i - 1] - die_E - diff_EM, dt * r_E_div)
         diff_EpM_count += diff_EM - die_M
@@ -354,8 +355,6 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         E_m[i] += E_m[i - 1] + div_E + (1 - Na_div_flag) * diff_NaE - (die_E + diff_EM)
 
         # Evaluate sums and create masks
-        sum_n_m = np.sum(N_m[i]*bound_N)
-        sum_na_m = np.sum(Na_m[i])
         sum_e_m = np.sum(E_m[i])
         e_m_nonzero_mask = E_m[i] > 0
         n_m_nonzero_mask = N_m[i] > 0
@@ -434,14 +433,14 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         r_E_div = (mycE >= myc_thresh) * (div_count < max_expand) / char_times[3]
         r_Ma_div = (mycMa >= myc_thresh) * (div_count < max_expand) / char_times[4]
 
-        #### Transition probabilities modulated by antigen and cytokine signals ####
+        #### Transition rates modulated by antigen and cytokine signals ####
         r_Na[i] += r_E_div
 
-        r_NaE[i] += (mycN >= myc_thresh) * bound_na_sum_nonzero_mask * f_XtoY(
+        r_NaE[i] += f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = psi_NE_I, psi_2 = psi_NE_HI, psi_3 = psi_NE_HE,L_0 = L0_NE,
             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
-            K_2 = K_H, K_3 = K_H)/char_times[6]
+            K_2 = K_H, K_3 = K_H)/char_times[6] * (mycN >= myc_thresh) * bound_na_sum_nonzero_mask
 
         r_EM[i] += f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
@@ -505,7 +504,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
     # Compute summary statistics from simulations
     ## extract primary/secondary infection dynamics
-    pS, pI, N, Na, pE, pM, pHI, pI_d_I, pI_d_SE, pHE = dyn_data[:,0], dyn_data[:,1], dyn_data[:,2], dyn_data[:, 3], dyn_data[:,4], dyn_data[:,5], dyn_data[:,6], dyn_data[:,7], dyn_data[:,8], dyn_data[:,9]
+    pS, pI, N, Na, pE, pM, pHI, pI_d_I, pI_d_SE, pHE = dyn_data[:,0], dyn_data[:,1], dyn_data[:,2], dyn_data[:,3], dyn_data[:,4], dyn_data[:,5], dyn_data[:,6], dyn_data[:,7], dyn_data[:,8], dyn_data[:,9]
 
     dt = ts[1] - ts[0]
 
@@ -521,7 +520,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                        np.amax(pI_d_I) + I[-1],
                        np.amax(pI_d_SE),
                        np.sum(div_E_count),
-                       np.argmax(pE)*dt + sim_duration*(np.max(pE) < 1.0),
+                       # (sim_duration - (np.argmax(pE.reverse() >= N_0 , axis = 0)*dt) + sim_duration*(np.max(pE) < N_0)) if N_0 > 0 else sim_duration
+                       (np.argmax(pE)*dt*(np.max(pE) >= N_0) + sim_duration*(np.max(pE) < N_0)) if N_0 > 0 else sim_duration,
                        (np.argmax(pE >= N_0 , axis = 0)*dt + sim_duration*(np.max(pE) < N_0)) if N_0 > 0 else sim_duration,
                        count_eM,
                        mean_T_pEcyteM,
@@ -536,9 +536,23 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     keep = [i*10 for i in np.arange(0,pnts)]
 
     if out_data == "full":
-        out_dict = {"reg_coeffs": np.concatenate((activation_regulation, NE_regulation, EM_regulation, contraction_regulation)), "cell_time_series": dyn_data, "time": ts, "lineage_diff": lineage_comp, "prim_diff_bias": prim_bias, "eff_by_lin": (E_m), "N_myc_by_lin": mycN_m, "Ma_myc_by_lin": mycMa_m, "E_myc_by_lin": mycE_m, "parameters": parameters, "summary_stats": sim_summary, "pmemory_formed": T_pEcytM if N_0 > 0 else []}
+        out_dict = {"reg_coeffs": np.concatenate((activation_regulation, NE_regulation, EM_regulation, contraction_regulation)), 
+                    "cell_time_series": dyn_data, 
+                    "time": ts, 
+                    "lineage_diff": lineage_comp, 
+                    "prim_diff_bias": prim_bias, 
+                    "eff_by_lin": (E_m), 
+                    "N_myc_by_lin": mycN_m, 
+                    "Ma_myc_by_lin": mycMa_m, 
+                    "E_myc_by_lin": mycE_m, 
+                    "parameters": parameters, 
+                    "summary_stats": sim_summary, 
+                    "pmemory_formed": T_pEcytM if N_0 > 0 else []}
     elif out_data == "small":
-        out_dict = {"cell_time_series": dyn_data[keep], "prim_diff_bias": prim_bias[keep],"parameters": parameters, "summary_stats": sim_summary}
+        out_dict = {"cell_time_series": dyn_data[keep], 
+                    "prim_diff_bias": prim_bias[keep],
+                    "parameters": parameters, 
+                    "summary_stats": sim_summary}
 
     return out_dict
 
@@ -594,8 +608,8 @@ reg_stim = Na_reg[0:3] + NE_reg[0:3] + EM_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
-perf_vars = ["scaled_min_pS", "peff_clearance", "peff_toxicity", "frac_cM", "max_eM_fold", "log_T_pEcyteM"] # , "max_pE_fold", "T_max_pI", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Min susceptible \n fraction [$S_{max}$]", "Clearance \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "Toxicity \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] # "Response expansion", "Clear. timing \n (days)", "Resp. timing \n (days)", "Resp. clear \n (days)"]
+perf_vars = ["scaled_min_pS", "peff_clearance", "peff_toxicity", "frac_cM", "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Min susceptible \n fraction [$S_{max}$]", "Clearance \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "Toxicity \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
