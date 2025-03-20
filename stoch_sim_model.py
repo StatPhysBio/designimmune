@@ -5,7 +5,7 @@ from scipy.optimize import fsolve, minimize
 
 ### (1) Define simulation parameters
 # Define simulation hyperparameters
-sim_duration = 20
+sim_duration = 25
 sim_steps = int(0.25*(10**4))
 
 # infection dynamics
@@ -59,7 +59,7 @@ auto_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
                                            )).T.reshape(-1,6)
 
 cancer_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
-                                   S_0*np.logspace(-2.0, 0.0, 3), # vary K_I
+                                   S_0*np.logspace(-1.0, 1.0, 3), # vary K_I
                                    b_C*np.array([1.0]), # vary b_I
                                    K_H*np.array([1.0]), # vary K_H
                                    N_0*np.logspace(-1.0, 1, 3), # vary N_0
@@ -520,12 +520,11 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                        np.amax(pI_d_I) + I[-1],
                        np.amax(pI_d_SE),
                        np.sum(div_E_count),
-                       # (sim_duration - (np.argmax(pE.reverse() >= N_0 , axis = 0)*dt) + sim_duration*(np.max(pE) < N_0)) if N_0 > 0 else sim_duration
-                       (np.argmax(pE)*dt*(np.max(pE) >= N_0) + sim_duration*(np.max(pE) < N_0)) if N_0 > 0 else sim_duration,
+                       np.argmax(pE)*dt*(np.max(pE) >= N_0) if N_0 > 0 else sim_duration,
                        (np.argmax(pE >= N_0 , axis = 0)*dt + sim_duration*(np.max(pE) < N_0)) if N_0 > 0 else sim_duration,
                        count_eM,
                        mean_T_pEcyteM,
-                       count_cM,
+                       (sim_duration - (np.argmax(pE[::-1] >= N_0 , axis = 0)*dt))*(np.max(pE) >= N_0) if N_0 > 0 else sim_duration,
                        mean_frac_cM,
                        np.amax(pHE),
                        np.amax(pHI),
@@ -567,7 +566,7 @@ stat_names = [r"$I_{p}^{max}$",
               r"$T_{E_p}^{start}$",
               r"$(eM)^{max}$",
               r"$\langle T_{E} \rangle_{eM}$",
-              r"$(cM)^{max}$",
+              r"$T_{E_p}^{end}$",
               r"$cM/(E + cM)$",
               r"$HE_p^{max}$",
               r"$HI_p^{max}$",
@@ -594,7 +593,7 @@ param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_I',
 
 stat_names_for_df = ['p_load', 'T_max_pI', 'T_min_pI', 'harm_pI',
                      'harm_pS', 'max_pE', 'T_pE_max', 'T_pE_start',
-                     'max_eM', 'T_pEcyteM', 'max_cM', 'frac_cM',
+                     'max_eM', 'T_pEcyteM', 'T_pE_end', 'frac_cM',
                      'int_pHE', 'int_pHI', 'min_pS']
 
 Na_reg = ['psi_myc_I', 'psi_myc_HI', 'psi_myc_HE', 'L0_Na']
