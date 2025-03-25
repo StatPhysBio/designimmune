@@ -18,7 +18,7 @@ def run(
     inf_sample = infection_sample_select,
     runs = 3,
     infection_model = "acute_all", #'acute_all',
-    default_reg = act_psis + NE_psis + EM_psis + contract_psis,
+    default_reg = np.array([act_psis + NE_psis + EM_psis + contract_psis]),
     sim_per_cpu_hour = 2571,
     num_cpu = num_cpu,
     run_time = run_time,
@@ -46,8 +46,8 @@ def run(
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
         run_psis = psi_sparse[index_start:index_end]
 
-    elif "single-reg" in comment:
-        run_psis = np.array([default_reg])
+    else:
+        run_psis = default_reg
 
     params = [np.concatenate(q) for q in list(itertools.product( np.tile(inf_sample, (runs,1)).tolist(), run_psis.tolist()))]
 
@@ -66,6 +66,8 @@ def run(
         contraction_regulation = param[-4:],
         infection_model = infection_model,
         reg_model = "mwc_like",
+        duration = 10*sim_duration if 'long_sim' in comment else sim_duration,
+        steps = 5*sim_steps if 'long_sim' in comment else sim_duration,
         seed=child_rng)
         for param, child_rng in zip(params, child_rngs)
     )

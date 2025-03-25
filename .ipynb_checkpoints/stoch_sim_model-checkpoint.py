@@ -6,7 +6,7 @@ from scipy.optimize import fsolve, minimize
 ### (1) Define simulation parameters
 # Define simulation hyperparameters
 sim_duration = 25
-sim_steps = int(0.25*(10**4))
+sim_steps = int(0.20*(10**4))
 
 # infection dynamics
 S_0 = 10**7 # max susceptible cells
@@ -262,17 +262,17 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
     for i in np.arange(1, int_steps + 1):
         # select virulence model:
-        if (b_I > 0 and I_0 <= 0.001*S_0) or infection_model == 'acute': # "acute"
+        if (b_I > 0 and I_0 <= 0.001*S_0) or 'acute' in infection_model: # "acute"
             b_I_t = b_I
             d_Sauto = 0.0
             infection_model = 'acute'
             
-        elif (b_I > 0 and I_0 >= 0.01*S_0) or infection_model == 'cancer': # "cancer"
+        elif (b_I > 0 and I_0 >= 0.01*S_0) or 'cancer' in infection_model: # "cancer"
             b_I_t = b_I/S_0
             d_Sauto = 0.0
             infection_model = 'cancer'
             
-        elif b_I == 0 or infection_model == 'autoimmune': # "autoimmune"
+        elif b_I == 0 or 'autoimmune' in infection_model: # "autoimmune"
             b_I_t = 0.0
             d_Sauto = d_I
             K_S = K_I
@@ -520,11 +520,11 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                        np.amax(pI_d_I) + I[-1],
                        np.amax(pI_d_SE),
                        np.sum(div_E_count),
-                       np.argmax(pE)*dt*(np.max(pE + pM) >= max_Na) if N_0 > 0 else sim_duration,
-                       (np.argmax((pE + pM) >= max_Na, axis = 0)*dt + sim_duration*(np.amax(pE + pM) < max_Na)) if N_0 > 0 else sim_duration,
+                       np.argmax(pE)*dt*(np.max(pE + pM) >= max_Na) if N_0 > 0 else duration,
+                       (np.argmax((pE + pM) >= max_Na, axis = 0)*dt + duration*(np.amax(pE + pM) < max_Na)) if N_0 > 0 else duration,
                        count_eM,
                        mean_T_pEcyteM,
-                       (sim_duration - (np.argmax(pE[::-1] >= N_0 , axis = 0)*dt))*(np.max(pE) >= N_0) if N_0 > 0 else 0.0,
+                       (duration - (np.argmax(pE[::-1] >= N_0 , axis = 0)*dt))*(np.max(pE) >= N_0) if N_0 > 0 else 0.0,
                        mean_frac_cM,
                        np.amax(pHE),
                        np.amax(pHI),
@@ -608,7 +608,7 @@ reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
 perf_vars = ["scaled_min_pS", "peff_clearance", "peff_toxicity", "frac_cM", "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Min susceptible \n fraction [$S_{max}$]", "Clearance \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "Toxicity \n"+r"[$d_S\cdot S_{max}\cdot \text{day}^{-1}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
+perf_labels = ["Min susceptible \n fraction [$S_{max}$]", "Clearance \n"+r"[$S_{max}$]", "Toxicity \n"+r"[$S_{max}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
