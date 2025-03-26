@@ -291,7 +291,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
         # Update state of susceptible, infected and inflammation
         # (a) Record new cell infections and cell killing events
-        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) *(I[i - 1] >= 0.1*I_min)
+        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) *(I[i - 1] >= 0.5*I_min)
         I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_I + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
         I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") + S_to_I * (infection_model == "cancer") # cells killed by infection or cancer
         S_d_SE[i] += S_d_SE[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_S + S[i - 1] + E_pop)) # susceptible cells killed by immune response
