@@ -16,7 +16,7 @@ def run(
     outdir='',
     comment = "sparse-reg",
     inf_sample = infection_sample_select,
-    runs = 3,
+    runs = 1,
     infection_model = "acute_all", #'acute_all',
     default_reg = np.array([act_psis + NE_psis + EM_psis + contract_psis]),
     sim_per_cpu_hour = 2571,
@@ -66,8 +66,8 @@ def run(
         contraction_regulation = param[-4:],
         infection_model = infection_model,
         reg_model = "mwc_like",
-        duration = 10*sim_duration if 'long_sim' in comment else sim_duration,
-        steps = 5*sim_steps if 'long_sim' in comment else sim_duration,
+        duration = 4*sim_duration if 'long_sim' in comment else sim_duration,
+        steps = 4*sim_steps if 'long_sim' in comment else sim_steps,
         seed=child_rng)
         for param, child_rng in zip(params, child_rngs)
     )

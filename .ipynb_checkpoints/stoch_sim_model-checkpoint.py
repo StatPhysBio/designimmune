@@ -5,8 +5,8 @@ from scipy.optimize import fsolve, minimize
 
 ### (1) Define simulation parameters
 # Define simulation hyperparameters
-sim_duration = 25
-sim_steps = int(0.20*(10**4))
+sim_duration = 30
+sim_steps = int(0.30*(10**4))
 
 # infection dynamics
 S_0 = 10**7 # max susceptible cells
@@ -291,7 +291,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
         # Update state of susceptible, infected and inflammation
         # (a) Record new cell infections and cell killing events
-        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) *(I[i - 1] >= 0.5*I_min)
+        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) * (I[i - 1] >= I_min)
         I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_I + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
         I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") + S_to_I * (infection_model == "cancer") # cells killed by infection or cancer
         S_d_SE[i] += S_d_SE[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_S + S[i - 1] + E_pop)) # susceptible cells killed by immune response
@@ -608,9 +608,20 @@ reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
 perf_vars = ["scaled_min_pS", "peff_clearance", "peff_toxicity", "frac_cM", "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Min susceptible \n fraction [$S_{max}$]", "Clearance \n"+r"[$S_{max}$]", "Toxicity \n"+r"[$S_{max}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
+perf_labels = ["Minimum susceptible \n cells [$S_{max}$]", "Clearance \n"+r"[$S_{max}$]", "Toxicity \n"+r"[$S_{max}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
 
 vir_vars = ['d_I', 'K_I', 'b_I', 'K_H', 'N_0', 'S_0', 'I_0']
+
+reg_markers = ['o', 's', 'v', '^', 'X','*', 'D','>', '<']
+signal_classes = ["Ag. feedb.", "Inflam. feedb.", "Anti-inflam. feedb.", "Baseline"]
+opt_vars = ['psi_I', 'psi_HI', 'psi_HE', reg_bl[0], reg_bl[1], reg_bl[3]] #, reg_bl[3]]
+opt_vars_labels = [signal_classes[0]+r", $\psi_{E}^{Ag}$", 
+                   signal_classes[1]+r", $\psi_{E}^{H_I}$", 
+                   signal_classes[2]+r", $\psi_{E}^{H_E}$",
+                   module_labels[0]+r" base., $L_{0,N \to N^*}$", 
+                   module_labels[1]+r" base., $L_{0,N^* \to E}$",
+                   #module_labels[2]+r" base., $L_{0,E \to M}$",
+                   module_labels[3]+r" base., $L_{0,E \to \emptyset}$"]
