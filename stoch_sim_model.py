@@ -6,7 +6,7 @@ from scipy.optimize import fsolve, minimize
 ### (1) Define simulation parameters
 # Define simulation hyperparameters
 sim_duration = 30
-sim_steps = int(0.30*(10**4))
+sim_steps = int(0.25*(10**4))
 
 # infection dynamics
 S_0 = 10**7 # max susceptible cells
@@ -262,7 +262,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
     for i in np.arange(1, int_steps + 1):
         # select virulence model:
-        if (b_I > 0 and I_0 <= 0.001*S_0) or 'acute' in infection_model: # "acute"
+        if (b_I > 0 and I_0 <= 0.001*S_0) or infection_model == 'acute': # "acute"
             b_I_t = b_I
             d_Sauto = 0.0
             infection_model = 'acute'
@@ -616,7 +616,7 @@ key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
 vir_vars = ['d_I', 'K_I', 'b_I', 'K_H', 'N_0', 'S_0', 'I_0']
 
 reg_markers = ['o', 's', 'v', '^', 'X','*', 'D','>', '<']
-signal_classes = ["Ag. feedb.", "Inflam. feedb.", "Anti-inflam. feedb.", "Baseline"]
+signal_classes = ["Ag. sens.", "Inflam. sens.", "Anti-inflam. sens.", "Baseline"]
 opt_vars = ['psi_I', 'psi_HI', 'psi_HE', reg_bl[0], reg_bl[1], reg_bl[3]] #, reg_bl[3]]
 opt_vars_labels = [signal_classes[0]+r", $\psi_{E}^{Ag}$", 
                    signal_classes[1]+r", $\psi_{E}^{H_I}$", 
