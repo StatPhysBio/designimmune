@@ -6,7 +6,7 @@ from scipy.optimize import fsolve, minimize
 ### (1) Define simulation parameters
 # Define simulation hyperparameters
 sim_duration = 30
-sim_steps = int(0.25*(10**4))
+sim_steps = int(0.3*(10**4))
 
 # infection dynamics
 S_0 = 10**7 # max susceptible cells
@@ -26,7 +26,7 @@ K_H = d_S*S_0 # half-max level of innate/inflammatory response required to trigg
 # Immune cells
 N_0 = 100 # initial number of naive cells
 max_Na = 2**2 # number of myc-independent divisions after activation
-max_expand = 2**16 # maximum clone size (Marchingo et al.)
+max_expand = 2**15 # maximum clone size (Marchingo et al.)
 t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_cycle = 1/2, 1.0, 8.8/24, 8/24, 12/24, 10.0, 1/4
 t_long_M = 10*365.25 # lifespan of central memory cells
 t_short_M = 365.25/12 # lifespan of effector memory cells
@@ -608,7 +608,7 @@ reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
 
 perf_vars = ["scaled_min_pS", "peff_clearance", "peff_toxicity", "frac_cM", "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Minimum susceptible \n cells [$S_{max}$]", "Clearance \n"+r"[$S_{max}$]", "Toxicity \n"+r"[$S_{max}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
+perf_labels = ["Minimum susceptible \n cells [$S_{max}$]", "Clearance "+r"[$S_{max}$]", "Toxicity "+r"[$S_{max}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
