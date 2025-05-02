@@ -5,8 +5,8 @@ from scipy.optimize import fsolve, minimize
 
 ### (1) Define simulation parameters
 # Define simulation hyperparameters
-sim_duration = 30
-sim_steps = int(0.3*(10**4))
+sim_duration = 60
+sim_steps = int(0.5*(10**4))
 
 # infection dynamics
 S_0 = 10**7 # max susceptible cells
@@ -71,24 +71,41 @@ infection_sample_select = np.vstack([infection_sample,
                                      cancer_sample])
 
 # Design space hyper parameters
-pnts = 5
-psi_max = 3.0
-L0_max = 4.0
+pnts = 7
+psi_max = 2.0
+L0_max = 3.0
 psi_4d = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-L0_max, L0_max, int(pnts)).tolist())))
+psi_6d = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
+                                         np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
+                                         np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
+                                         np.linspace(-L0_max, L0_max, int(pnts)).tolist(),
+                                         np.linspace(-L0_max, L0_max, int(pnts)).tolist(),
+                                         np.linspace(-L0_max, L0_max, int(pnts)).tolist()
+                                        )))
 
-bl_block = list(itertools.product([0.0],[ 0.0], [0.0], np.linspace(-L0_max, L0_max, int(pnts)).tolist()))
-psi_sparse = np.vstack((np.array(list(itertools.product(psi_4d.tolist(), bl_block, bl_block, bl_block))).reshape(-1,16),
-           np.array(list(itertools.product(bl_block, psi_4d.tolist(), bl_block, bl_block))).reshape(-1,16),
-           np.array(list(itertools.product(bl_block, bl_block, psi_4d.tolist(), bl_block))).reshape(-1,16),
-           np.array(list(itertools.product(bl_block, bl_block, bl_block, psi_4d.tolist()))).reshape(-1,16)))
+# bl_block = list(itertools.product([0.0],[ 0.0], [0.0], np.linspace(-L0_max, L0_max, int(pnts)).tolist()))
+# em_block = list(itertools.product([0.0],[ 0.0], [0.0], [-L0_max**3]))
+# psi_sparse = np.vstack((np.array(list(itertools.product(psi_4d.tolist(), bl_block, em_block, bl_block))).reshape(-1,16),
+#                         np.array(list(itertools.product(bl_block, psi_4d.tolist(), em_block, bl_block))).reshape(-1,16),
+#                         np.array(list(itertools.product(bl_block, bl_block, em_block, psi_4d.tolist()))).reshape(-1,16),
+#                         np.array(list(itertools.product(np.random.uniform(np.amin(psi_4d, axis = 0), np.amax(psi_4d, axis = 0), (pnts**2, 4)).tolist(), 
+#                                                         np.random.uniform(np.amin(psi_4d, axis = 0), np.amax(psi_4d, axis = 0), (pnts**2, 4)).tolist(), 
+#                                                         em_block,
+#                                                         np.random.uniform(np.amin(psi_4d, axis = 0), np.amax(psi_4d, axis = 0), (pnts**2, 4)).tolist()))).reshape(-1,16)
+#                        ))
+
+psi_sparse = np.array([psi_6d[:,0], psi_6d[:,1], psi_6d[:,2], psi_6d[:,3], # Na
+          psi_6d[:,0], psi_6d[:,1], psi_6d[:,2], psi_6d[:,4], # NE
+          -0*psi_6d[:,0], -0*psi_6d[:,1], -0*psi_6d[:,2],-L0_max**3 -0*psi_6d[:,4], # EM
+          -psi_6d[:,0], -psi_6d[:,1], -psi_6d[:,2], psi_6d[:,5]]).T  # Edie
 
 # default regulatory weights:
 act_psis = [psi_max, psi_max, -psi_max, L0_max]
 NE_psis = [psi_max, psi_max, -psi_max, L0_max]
-EM_psis = [-psi_max, -psi_max, 0*psi_max, -L0_max]
+EM_psis = [-0*psi_max, -0*psi_max, 0*psi_max, -L0_max**2]
 contract_psis = [psi_max, psi_max, -psi_max, 0.0]
 
 ### (2) Define functions for simulations
@@ -127,14 +144,26 @@ def antigenicity_over_harm(df):
     return out
 
 def sigmoid(x, y_max, y_min,
-            w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14, w15,
+            w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11,
             a0 = 0, a1 = 0, a2 = 0, a3 = 0):
 
     out = (y_max - y_min) \
     *1/(1 + np.exp( -((x[:,0])*w0 + (x[:,1])*w1 + (x[:,2])*w2 + (x[:,3])*w3 + a0))) \
     *1/(1 + np.exp( -((x[:,4])*w4 + (x[:,5])*w5 + (x[:,6])*w6 + (x[:,7])*w7 + a1))) \
     *1/(1 + np.exp( -((x[:,8])*w8 + (x[:,9])*w9 + (x[:,10])*w10 + (x[:,11])*w11 + a2))) \
-    *1/(1 + np.exp( -((x[:,12])*w12 + (x[:,13])*w13 + (x[:,14])*w14 + (x[:,15])*w15 + a3))) \
+    + y_min
+
+    return out
+
+def modified_sigmoid(x, y_max, y_min,
+                     w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11,
+                     a0, a1, a2, a3,
+                    ):
+
+    out = (y_max - y_min) \
+    *1/(1 + np.exp( -((x[:,0])*w0 + (x[:,1])*w1 + (x[:,2])*w2 + (x[:,3])*w3 + a0))) \
+    *1/(1 + np.exp( -((x[:,4])*w4 + (x[:,5])*w5 + (x[:,6])*w6 + (x[:,7])*w7 + a1))) \
+    *1/(1 + np.exp( -((x[:,8])*w8 + (x[:,9])*w9 + (x[:,10])*w10 + (x[:,11])*w11 + a2))) \
     + y_min
 
     return out
@@ -601,14 +630,14 @@ NE_reg = ['psi_NE_I', 'psi_NE_HI', 'psi_NE_HE', 'L0_NE']
 EM_reg = ['psi_EM_I', 'psi_EM_HI', 'psi_EM_HE', 'L0_EM']
 EE_reg = ['psi_Edie_I', 'psi_Edie_HI', 'psi_Edie_HE', 'L0_Edie']
 
-module_labels = ['$N \longrightarrow N^*$', '$N^* \longrightarrow E$', '$E \longrightarrow M$', '$E \longrightarrow \emptyset$']
-modules = ['Na', 'NE', 'EM', 'EE']
-reg_stim = Na_reg[0:3] + NE_reg[0:3] + EM_reg[0:3] + EE_reg[0:3]
-reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EM_reg[3]] + [EE_reg[3]]
-reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-5]] + [param_names[-1]]
+module_labels = ['$N \longrightarrow N^*$', '$N^* \longrightarrow E$', '$E \longrightarrow \emptyset$']
+modules = ['Na', 'NE', 'EE']
+reg_stim = Na_reg[0:3] + NE_reg[0:3] + EE_reg[0:3]
+reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EE_reg[3]]
+reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-1]]
 
-perf_vars = ["scaled_min_pS", "peff_clearance", "peff_toxicity", "frac_cM", "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Minimum susceptible \n cells [$S_{max}$]", "Clearance "+r"[$S_{max}$]", "Toxicity "+r"[$S_{max}$]", "C. memory \n fraction", "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
+perf_vars = ["peff_protection", "peff_clearance", "peff_toxicity", "frac_cM"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Protection", "Clearance "+r"[$S_{max}$]", "Toxicity "+r"[$S_{max}$]", "C. memory \n fraction"] #, "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
@@ -617,11 +646,11 @@ vir_vars = ['d_I', 'K_I', 'b_I', 'K_H', 'N_0', 'S_0', 'I_0']
 
 reg_markers = ['o', 's', 'v', '^', 'X','*', 'D','>', '<']
 signal_classes = ["Ag. sens.", "Inflam. sens.", "Anti-inflam. sens.", "Baseline"]
-opt_vars = ['psi_I', 'psi_HI', 'psi_HE', reg_bl[0], reg_bl[1], reg_bl[3]] #, reg_bl[3]]
+opt_vars = ['psi_I', 'psi_HI', 'psi_HE', reg_bl[0], reg_bl[1], reg_bl[2]] #, reg_bl[3]]
 opt_vars_labels = [signal_classes[0]+r", $\psi_{E}^{Ag}$", 
                    signal_classes[1]+r", $\psi_{E}^{H_I}$", 
                    signal_classes[2]+r", $\psi_{E}^{H_E}$",
                    module_labels[0]+r" base., $L_{0,N \to N^*}$", 
                    module_labels[1]+r" base., $L_{0,N^* \to E}$",
                    #module_labels[2]+r" base., $L_{0,E \to M}$",
-                   module_labels[3]+r" base., $L_{0,E \to \emptyset}$"]
+                   module_labels[2]+r" base., $L_{0,E \to \emptyset}$"]

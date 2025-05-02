@@ -8,7 +8,7 @@ from stoch_sim_model import *
 
 ### Define function to run simulations and compute MI
 num_cpu = 25 # number of CPUs used to benchmark expected runtime
-add_cpu = 15 # additional cpus requested as a buffer
+add_cpu = 10 # additional cpus requested as a buffer
 run_time = 4.0
 
 def run(
@@ -19,7 +19,7 @@ def run(
     runs = 1,
     infection_model = "acute_all", #'acute_all',
     default_reg = np.array([act_psis + NE_psis + EM_psis + contract_psis]),
-    sim_per_cpu_hour = 2571,
+    sim_per_cpu_hour = 1800,
     num_cpu = num_cpu,
     run_time = run_time,
     seed = None
@@ -28,10 +28,6 @@ def run(
     start = time.time() # timestamp start
 
     # Run simulations over different infections
-    if infection_model == "autoimmune":
-        inf_sample = auto_sample
-    elif infection_model == "cancer":
-        inf_sample = cancer_sample
 
     batch_num = int((sim_per_cpu_hour/len(inf_sample))*(run_time*num_cpu)/runs) + 1 # number of simulations to run on a cpu w/ max(#cpu) = 40 given virus conditions.
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_model}-'+ f'{comment}.pkl')
