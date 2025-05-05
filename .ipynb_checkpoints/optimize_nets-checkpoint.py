@@ -62,8 +62,8 @@ def run(
         contraction_regulation = param[-4:],
         infection_model = infection_model,
         reg_model = "mwc_like",
-        duration = 3*sim_duration if 'long_sim' in comment else sim_duration,
-        steps = 3*sim_steps if 'long_sim' in comment else sim_steps,
+        duration = 1.5*sim_duration if 'long_sim' in comment else sim_duration,
+        steps = 1.5*sim_steps if 'long_sim' in comment else sim_steps,
         seed=child_rng)
         for param, child_rng in zip(params, child_rngs)
     )

@@ -68,10 +68,11 @@ cancer_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
 
 infection_sample_select = np.vstack([infection_sample,
                                      #auto_sample,
-                                     cancer_sample])
+                                     #cancer_sample
+                                    ])
 
 # Design space hyper parameters
-pnts = 7
+pnts = 9
 psi_max = 2.0
 L0_max = 3.0
 psi_4d = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
@@ -157,13 +158,13 @@ def sigmoid(x, y_max, y_min,
 
 def modified_sigmoid(x, y_max, y_min,
                      w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11,
-                     a0, a1, a2, a3,
-                    ):
+                     a0 = 0, a1 = 0, a2 =0, a3 =0,
+                     b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, b7 = 0, b8 = 0):
 
     out = (y_max - y_min) \
-    *1/(1 + np.exp( -((x[:,0])*w0 + (x[:,1])*w1 + (x[:,2])*w2 + (x[:,3])*w3 + a0))) \
-    *1/(1 + np.exp( -((x[:,4])*w4 + (x[:,5])*w5 + (x[:,6])*w6 + (x[:,7])*w7 + a1))) \
-    *1/(1 + np.exp( -((x[:,8])*w8 + (x[:,9])*w9 + (x[:,10])*w10 + (x[:,11])*w11 + a2))) \
+    *1/(1 + np.exp( -((x[:,0])*w0 + (x[:,1])*w1 + (x[:,2])*w2 + (x[:,3])*w3 + a0 + b0*(x[:,0]*x[:,1]) + b1*(x[:,0]*x[:,2]) + b2*(x[:,1]*x[:,2]) ))) \
+    *1/(1 + np.exp( -((x[:,4])*w4 + (x[:,5])*w5 + (x[:,6])*w6 + (x[:,7])*w7 + a1 + b3*(x[:,4]*x[:,5]) + b4*(x[:,4]*x[:,6]) + b5*(x[:,5]*x[:,6]) ))) \
+    *1/(1 + np.exp( -((x[:,8])*w8 + (x[:,9])*w9 + (x[:,10])*w10 + (x[:,11])*w11 + a2 + b6*(x[:,8]*x[:,9]) + b7*(x[:,8]*x[:,10]) + b8*(x[:,9]*x[:,10]) ))) \
     + y_min
 
     return out

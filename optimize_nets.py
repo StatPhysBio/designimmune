@@ -19,7 +19,7 @@ def run(
     runs = 1,
     infection_model = "acute_all", #'acute_all',
     default_reg = np.array([act_psis + NE_psis + EM_psis + contract_psis]),
-    sim_per_cpu_hour = 1440,
+    sim_per_cpu_hour = 1800,
     num_cpu = num_cpu,
     run_time = run_time,
     seed = None
