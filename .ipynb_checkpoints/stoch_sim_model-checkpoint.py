@@ -11,7 +11,7 @@ sim_steps = int(0.5*(10**4))
 # infection dynamics
 S_0 = 10**7 # max susceptible cells
 d_S = 0.01 # susceptible cell death rate
-b_I = 1.5*(10**(-7)) # fecudity of pathogen (Chao et al. 2004, Iwami et al. 2015)
+b_I = 1.0*(10**(-7)) # fecudity of pathogen (Chao et al. 2004, Iwami et al. 2015)
 I_min = 10**(-4)*S_0 # initial detectable level of infected cells
 d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
 K_I = 10**(-3)*S_0 # max effector avidity (half-max) for infected cells at low infection concetrations (Mayer et al 2019; Chao et al. 2004)
@@ -41,8 +41,8 @@ t_Hauto = 1.0 # duration of autoimmune inflammation
 b_C = 1/10 # growth rate of cancer
 
 # Pathogen space parameters
-num_pnts = 15
-infection_sample = np.array(np.meshgrid(b_I*S_0*np.linspace(0.10, 1.0, num_pnts), # vary d_I
+num_pnts = 11
+infection_sample = np.array(np.meshgrid(d_S*np.linspace(1, 100, num_pnts), # vary d_I
                                    S_0*np.logspace(-3.0, 0, num_pnts), # vary K_I
                                    b_I*np.array([1.0]), # vary b_I
                                    K_H*np.logspace(0.0, 0.0, 1), # vary K_H
@@ -72,7 +72,7 @@ infection_sample_select = np.vstack([infection_sample,
                                     ])
 
 # Design space hyper parameters
-pnts = 9
+pnts = 11
 psi_max = 2.0
 L0_max = 3.0
 psi_4d = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
@@ -638,7 +638,7 @@ reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-1]]
 
 perf_vars = ["peff_protection", "peff_clearance", "peff_toxicity", "frac_cM"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Protection", "Clearance "+r"[$S_{max}$]", "Toxicity "+r"[$S_{max}$]", "C. memory \n fraction"] #, "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
+perf_labels = ["Protection", "Clearance", "Toxicity", "C. memory fraction"] #, "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
