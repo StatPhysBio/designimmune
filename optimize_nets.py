@@ -14,7 +14,7 @@ run_time = 4.0
 def run(
     batch = 0,
     outdir='',
-    comment = "sparse-reg",
+    comment = "many-KI",
     inf_sample = infection_sample_select,
     runs = 1,
     infection_model = "acute_all", #'acute_all',
@@ -38,7 +38,7 @@ def run(
         big_psis = np.array(list(itertools.product(psi_4d[int(index_start):int(index_end)+1].tolist(), psi_4d.tolist(), psi_4d.tolist(), psi_4d.tolist()))).reshape(-1,16)
         run_psis = big_psis[int(np.ceil((index_start - int(index_start))*len(psi_4d)**3)): int((index_end - int(index_start))*len(psi_4d)**3)]
 
-    elif "sparse-reg" in comment:
+    elif "sparse-reg" in comment or "many-KI" in comment:
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
         run_psis = psi_sparse[index_start:index_end]
 

@@ -3,7 +3,7 @@
 #SBATCH -p ckpt 
 #SBATCH -A amath 
 #SBATCH --nodes=1
-#SBATCH --mem=20
+#SBATCH --mem=20GB
 #SBATCH --ntasks-per-node=40
 #SBATCH --time=4:00:00
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out
@@ -14,7 +14,7 @@ mamba activate maximmune
 
 SLURM_OUTDIR=/gscratch/scrubbed/oukogu/slurm_output/
 d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/raw"
-comment="sparse-reg"
+comment="many-KI"
 infection_model='acute_all' #"acute_all"
 
 if [ ! -d "$d" ]; then
