@@ -80,9 +80,9 @@ psi_4d = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts
                                  np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
                                  np.linspace(-L0_max, L0_max, int(pnts)).tolist())))
-psi_6d = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
-                                         np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
-                                         np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
+psi_6d = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts + 2)).tolist(),
+                                         np.linspace(-psi_max, psi_max, int(pnts + 2)).tolist(),
+                                         np.linspace(-psi_max, psi_max, int(pnts + 2)).tolist(),
                                          np.linspace(-L0_max, L0_max, int(pnts)).tolist(),
                                          np.linspace(-L0_max, L0_max, int(pnts)).tolist(),
                                          np.linspace(-L0_max, L0_max, int(pnts)).tolist()
@@ -523,7 +523,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
     zeros_n_0_var = np.zeros(N_0_var)
 
-    selection_ratio = -np.sum(div_E_count*np.log10(p_tcr))/np.sum(div_E_count)
+    selection_ratio = 1 + np.sum(div_E_count*np.log10(p_tcr))/np.sum(div_E_count) if np.sum(div_E_count) > 0 else 0.0
 
     lineage_comp = np.vstack([
         np.amax(Na_m, axis = 0), div_M_count, div_E_count,
@@ -547,7 +547,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
               char_times,
               activation_regulation, NE_regulation, EM_regulation, contraction_regulation))
 
-    sim_summary = np.array([np.amax(pI) + np.amax(pS)*(infection_model == "autoimmune"),
+    sim_summary = np.array([I[-1],
                        np.argmax(pI)*dt,
                        np.argmax(pI < I_min)*dt,
                        np.amax(pI_d_I) + I[-1],
@@ -589,7 +589,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     return out_dict
 
 
-stat_names = [r"$I_{p}^{max}$",
+stat_names = [r"$I_{p}(T_{sim})$",
               r"$T_{I_p}^{max}$",
               r"$T_{I_p}^{min}$",
               r"$\int_0^{T_{sim}} (d_I+d_{I,E})I_{p}dt$",
@@ -661,6 +661,6 @@ opt_vars = ['psi_I', 'psi_HI', 'psi_HE', reg_bl[0], reg_bl[1], reg_bl[2]] #, reg
 opt_vars_labels = [r"$\psi_{E}^{Ag}$", 
                    r"$\psi_{E}^{H_I}$", 
                    r"$\psi_{E}^{H_E}$",
-                   r"$L_{0,N \to N^*}$", 
-                   r"$L_{0,N^* \to E}$",
-                   r"$L_{0,E \to \emptyset}$"]
+                   r"$g_{0,N \to N^*}$", 
+                   r"$g_{0,N^* \to E}$",
+                   r"$g_{0,E \to \emptyset}$"]
