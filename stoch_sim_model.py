@@ -43,7 +43,7 @@ b_C = 1/10 # growth rate of cancer
 
 # Pathogen space parameters
 num_pnts = 10
-infection_sample = np.array(np.meshgrid(d_S*np.linspace(10, 100, num_pnts), # vary d_I
+infection_sample = np.array(np.meshgrid(1/np.linspace(1, b_I*S_0, num_pnts), # vary d_I
                                    S_0*np.logspace(-3.0, 0, num_pnts), # vary K_I
                                    b_I*np.array([1.0]), # vary b_I
                                    K_H*np.array([1.0]), # vary K_H
@@ -299,7 +299,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             infection_model = 'acute'
             
         elif (b_I > 0 and I_0 >= 0.01*S_0) or 'cancer' in infection_model: # "cancer"
-            b_I_t = b_I/S_0
+            b_I_t = b_I*(1 - I[i - 1]/S_0)/S[i - 1]
             d_Sauto = 0.0
             infection_model = 'cancer'
             
@@ -322,7 +322,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
         # Update state of susceptible, infected and inflammation
         # (a) Record new cell infections and cell killing events
-        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) * (I[i - 1] >= I_min)
+        S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) * (I[i - 1] >= I_min) * (I[i - 1] <= S_0)
         I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_I + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
         I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") + S_to_I * (infection_model == "cancer") # cells killed by infection or cancer
         S_d_SE[i] += S_d_SE[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_S + S[i - 1] + E_pop)) # susceptible cells killed by immune response
@@ -523,7 +523,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
     zeros_n_0_var = np.zeros(N_0_var)
 
-    selection_ratio = 1 + np.sum(div_E_count*np.log10(p_tcr))/np.sum(div_E_count) if np.sum(div_E_count) > 0 else 0.0
+    selection_ratio = np.sum(div_E_count*p_tcr)/np.sum(div_E_count) if np.sum(div_E_count) > 0 else 0.0
 
     lineage_comp = np.vstack([
         np.amax(Na_m, axis = 0), div_M_count, div_E_count,
@@ -547,7 +547,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
               char_times,
               activation_regulation, NE_regulation, EM_regulation, contraction_regulation))
 
-    sim_summary = np.array([I[-1],
+    sim_summary = np.array([I[-1]/I_0,
                        np.argmax(pI)*dt,
                        np.argmax(pI < I_min)*dt,
                        np.amax(pI_d_I) + I[-1],
@@ -640,7 +640,7 @@ reg_stim = Na_reg[0:3] + NE_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-1]]
 
-perf_vars = ["peff_protection", "peff_clearance", "peff_toxicity", "frac_cM"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
+perf_vars = ["peff_scaled_protection", "peff_clearance", "peff_toxicity", "frac_cM"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
 perf_labels = ["Protection", "Clearance", "Toxicity", "C. memory fraction"] #, "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
 
 key_var = 'antigenicity_over_harm'
@@ -650,7 +650,7 @@ vir_vars = ['d_I', 'K_I', 'b_I', 'K_H', 'N_0', 'S_0', 'I_0']
 
 reg_markers = ['o', 's', 'v', '^', 'X','*', 'D','>', '<']
 signal_classes = ["Ag. sens.", "Inflam. sens.", "Anti-inflam. sens.", "Baseline"]
-opt_vars = ['psi_I', 'psi_HI', 'psi_HE', reg_bl[0], reg_bl[1], reg_bl[2]] #, reg_bl[3]]
+#opt_vars = ['psi_I', 'psi_HI', 'psi_HE', reg_bl[0], reg_bl[1], reg_bl[2]] #, reg_bl[3]]
 # opt_vars_labels = [signal_classes[0]+r", $\psi_{E}^{Ag}$", 
 #                    signal_classes[1]+r", $\psi_{E}^{H_I}$", 
 #                    signal_classes[2]+r", $\psi_{E}^{H_E}$",
