@@ -14,12 +14,12 @@ run_time = 4.0
 def run(
     batch = 0,
     outdir='',
-    comment = "many-KI",
+    comment = "sparse-reg",
     inf_sample = infection_sample_select,
     runs = 1,
     infection_model = "acute_all", #'acute_all',
     default_reg = np.array([act_psis + NE_psis + EM_psis + contract_psis]),
-    sim_per_cpu_hour = 1800,
+    sim_per_cpu_hour = 2880,
     num_cpu = num_cpu,
     run_time = run_time,
     seed = None
@@ -33,12 +33,7 @@ def run(
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_model}-'+ f'{comment}.pkl')
 
     # Find psis to run
-    if "full-reg" in comment:
-        index_start, index_end = batch[0]*int(batch_num)/len(psi_4d)**3, (batch[0]+1)*int(batch_num)/len(psi_4d)**3 # fix psi for activation
-        big_psis = np.array(list(itertools.product(psi_4d[int(index_start):int(index_end)+1].tolist(), psi_4d.tolist(), psi_4d.tolist(), psi_4d.tolist()))).reshape(-1,16)
-        run_psis = big_psis[int(np.ceil((index_start - int(index_start))*len(psi_4d)**3)): int((index_end - int(index_start))*len(psi_4d)**3)]
-
-    elif "sparse-reg" in comment or "many-KI" in comment:
+    if "sparse-reg" in comment or "many-KI" in comment:
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
         run_psis = psi_sparse[index_start:index_end]
 
@@ -62,8 +57,8 @@ def run(
         contraction_regulation = param[-4:],
         infection_model = infection_model,
         reg_model = "mwc_like",
-        duration = 1.5*sim_duration if 'long_sim' in comment else sim_duration,
-        steps = 1.5*sim_steps if 'long_sim' in comment else sim_steps,
+        duration = 2.0*sim_duration if 'long_sim' in comment else sim_duration,
+        steps = 2.0*sim_steps if 'long_sim' in comment else sim_steps,
         seed=child_rng)
         for param, child_rng in zip(params, child_rngs)
     )
