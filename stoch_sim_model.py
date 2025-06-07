@@ -19,8 +19,8 @@ d_I = np.minimum(25*d_S, S_0*b_I) # successful virus cannot kill cells faster th
 K_S = S_0 # effector avidity (half-max) for susceptible cells
 
 # Inflammatory response
-d_H = 2.0 # decay of cytokine response
-K_H = K_I # half-max level of innate/inflammatory response required to trigger lymphocyte response
+d_H = 1.0 # decay of cytokine response
+K_H = d_S*S_0 # half-max level of innate/inflammatory response required to trigger lymphocyte response
 K_HE = d_S*S_0
 
 # Immune cells
@@ -36,10 +36,10 @@ t_Hauto = 1.0 # duration of autoimmune inflammation
 b_C = 1/10 # growth rate of cancer
 
 # Pathogen space parameters
-num_pnts = 10
-infection_sample = np.array(np.meshgrid(1/np.linspace(b_I*S_0, 5*b_I*S_0, num_pnts), # vary d_I
+num_pnts = 9
+infection_sample = np.array(np.meshgrid(np.array([0.5]), # vary d_I
                                    S_0*np.logspace(-3.0, 0, num_pnts), # vary K_I
-                                   b_I*np.array([1.0]), # vary b_I
+                                   b_I*np.linspace(0.5, 2.5, num_pnts), # vary b_I
                                    K_H*np.array([1.0]), # vary K_H
                                    N_0*np.array([1.0]), # vary N_0
                                    I_min*np.logspace(0.0, 0.0, 1) # vary I_0
@@ -303,7 +303,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
         # (b) Evolve susceptible and infected populations
         S[i] += S[i - 1] - S_to_I + dt * (
-            b_S - (d_S + (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2)) * S[i - 1]
+            0*b_S - (0*d_S + (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2)) * S[i - 1]
             - (S_d_SE[i] - S_d_SE[i - 1])/dt
         ) * (S[i - 1] >= 1.0)
 
