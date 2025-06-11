@@ -85,13 +85,13 @@ psi_6d = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts
 
 psi_sparse = np.array([psi_6d[:,0], psi_6d[:,1], psi_6d[:,2], psi_6d[:,3], # Na
           psi_6d[:,0], psi_6d[:,1], psi_6d[:,2], psi_6d[:,4], # NE
-          -0*psi_6d[:,0], -0*psi_6d[:,1], -0*psi_6d[:,2],-L0_max**3 -0*psi_6d[:,4], # EM
+          -0*psi_6d[:,0], -0*psi_6d[:,1], -0*psi_6d[:,2],-L0_max**4 -0*psi_6d[:,4], # EM
           -psi_6d[:,0], -psi_6d[:,1], -psi_6d[:,2], psi_6d[:,5]]).T  # Edie
 
 # default regulatory weights:
 act_psis = [psi_max, psi_max, -psi_max, L0_max]
 NE_psis = [psi_max, psi_max, -psi_max, L0_max]
-EM_psis = [-0*psi_max, -0*psi_max, 0*psi_max, -L0_max**2]
+EM_psis = [-0*psi_max, -0*psi_max, 0*psi_max, -L0_max**4]
 contract_psis = [psi_max, psi_max, -psi_max, 0.0]
 
 ### (2) Define functions for simulations
@@ -524,7 +524,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
                        mean_frac_cM,
                        np.amax(pHE),
                        np.amax(pHI),
-                       E[-1]])
+                       pE[-1]])
 
     # down-size timeseries
     pnts = int(0.1*steps)
@@ -569,10 +569,10 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
                r"$d_H$", r"$K_{E,I}$", r"$K_{E,H}$",
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N,A_{in}}$", r"$\tau_{N \cdot A_{in}}$", r"$\tau_{N^*,N^*}$", r"$\tau_{E_,E}$", r"$\tau_{M,M}$", r"$\tau_{E_{die}}$", r"$\tau_{N^*}$",
-               r"$\psi_{N^*}^{Ag}$", r"$\psi_{N^*}^{H_I}$", r"$\psi_{N^*}^{H_E}$", r"$L_{N^*}$",
-               r"$\psi_{N,E}^{Ag}$", r"$\psi_{N,E}^{H_I}$", r"$\psi_{N,E}^{H_E}$", r"$L_{N^{*},E}$",
-               r"$\psi_{E,M}^{Ag}$", r"$\psi_{E,M}^{H_I}$", r"$\psi_{E,M}^{H_E}$", r"$L_{E,M}$",
-               r"$\psi_{E,\emptyset}^{Ag}$", r"$\psi_{E,\emptyset}^{H_I}$", r"$\psi_{E,\emptyset}^{H_E}$", r"$L_{E,\emptyset}$"]
+               r"$\psi_{N^*}^{Ag}$", r"$\psi_{N^*}^{H_I}$", r"$\psi_{N^*}^{H_E}$", r"$l_{N \to N^*}$",
+               r"$\psi_{N,E}^{Ag}$", r"$\psi_{N,E}^{H_I}$", r"$\psi_{N,E}^{H_E}$", r"$l_{N^{*} \to E}$",
+               r"$\psi_{E,M}^{Ag}$", r"$\psi_{E,M}^{H_I}$", r"$\psi_{E,M}^{H_E}$", r"$l_{E \to M}$",
+               r"$\psi_{E,\emptyset}^{Ag}$", r"$\psi_{E,\emptyset}^{H_I}$", r"$\psi_{E,\emptyset}^{H_E}$", r"$l_{E \to \emptyset}$"]
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_I',
