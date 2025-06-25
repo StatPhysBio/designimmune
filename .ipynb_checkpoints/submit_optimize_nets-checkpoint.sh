@@ -3,7 +3,7 @@
 #SBATCH -p ckpt 
 #SBATCH -A amath 
 #SBATCH --nodes=1
-#SBATCH --mem=20GB
+#SBATCH --mem=25GB
 #SBATCH --ntasks-per-node=40
 #SBATCH --time=4:00:00
 #SBATCH --output=/gscratch/scrubbed/oukogu/slurm_output/%j.out

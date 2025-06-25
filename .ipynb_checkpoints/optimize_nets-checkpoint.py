@@ -16,7 +16,7 @@ def run(
     outdir='',
     comment = "vary_b_I",
     inf_sample = infection_sample_select,
-    runs = 1,
+    runs = 3,
     infection_model = "acute_all", #'acute_all',
     default_reg = np.array([act_psis + NE_psis + EM_psis + contract_psis]),
     sim_per_cpu_hour = 2880,

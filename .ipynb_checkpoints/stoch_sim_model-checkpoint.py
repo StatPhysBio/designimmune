@@ -267,12 +267,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
     for i in np.arange(1, int_steps + 1):
         # select virulence model:
-        if (b_I > 0 and I_0 <= 0.001*S_0) or infection_model == 'acute': # "acute"
+        if (b_I >= 0 and I_0 <= 0.01*S_0) or infection_model == 'acute': # "acute"
             b_I_t = b_I
             d_Sauto = 0.0
             infection_model = 'acute'
             
-        elif (b_I > 0 and I_0 >= 0.01*S_0) or 'cancer' in infection_model: # "cancer"
+        elif (b_I > 0 and I_0 > 0.01*S_0) or 'cancer' in infection_model: # "cancer"
             b_I_t = b_I*(1 - I[i - 1]/S_0)/S[i - 1]
             d_Sauto = 0.0
             infection_model = 'cancer'
@@ -600,7 +600,7 @@ reg_stim = Na_reg[0:3] + NE_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-1]]
 
-perf_vars = ["peff_scaled_protection", "peff_clearance", "peff_toxicity", "frac_cM"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
+perf_vars = ["peff_protection", "peff_clearance", "peff_toxicity", "frac_cM"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
 perf_labels = ["Protection", "Clearance", "Toxicity", "C. memory fraction"] #, "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
 
 key_var = 'antigenicity_over_harm'
