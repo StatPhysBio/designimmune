@@ -67,7 +67,7 @@ infection_sample_select = np.vstack([infection_sample,
                                     ])
 
 # Design space hyper parameters
-pnts = 11
+pnts = 13
 psi_max = 2.0
 L0_max = 3.0
 psi_4d = np.array(list(itertools.product(np.linspace(-psi_max, psi_max, int(pnts)).tolist(),
@@ -569,10 +569,10 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
                r"$d_H$", r"$K_{E,I}$", r"$K_{E,H}$",
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N,A_{in}}$", r"$\tau_{N \cdot A_{in}}$", r"$\tau_{N^*,N^*}$", r"$\tau_{E_,E}$", r"$\tau_{M,M}$", r"$\tau_{E_{die}}$", r"$\tau_{N^*}$",
-               r"$\psi_{N^*}^{Ag}$", r"$\psi_{N^*}^{H_I}$", r"$\psi_{N^*}^{H_E}$", r"$l_{N \to N^*}$",
-               r"$\psi_{N,E}^{Ag}$", r"$\psi_{N,E}^{H_I}$", r"$\psi_{N,E}^{H_E}$", r"$l_{N^{*} \to E}$",
-               r"$\psi_{E,M}^{Ag}$", r"$\psi_{E,M}^{H_I}$", r"$\psi_{E,M}^{H_E}$", r"$l_{E \to M}$",
-               r"$\psi_{E,\emptyset}^{Ag}$", r"$\psi_{E,\emptyset}^{H_I}$", r"$\psi_{E,\emptyset}^{H_E}$", r"$l_{E \to \emptyset}$"]
+               r"$\psi_{N^*}^{Ag}$", r"$\psi_{N^*}^{H_I}$", r"$\psi_{N^*}^{H_E}$", r"$\ell_{N \to N^*}$",
+               r"$\psi_{N,E}^{Ag}$", r"$\psi_{N,E}^{H_I}$", r"$\psi_{N,E}^{H_E}$", r"$\ell_{N^{*} \to E}$",
+               r"$\psi_{E,M}^{Ag}$", r"$\psi_{E,M}^{H_I}$", r"$\psi_{E,M}^{H_E}$", r"$\ell_{E \to M}$",
+               r"$\psi_{E,\emptyset}^{Ag}$", r"$\psi_{E,\emptyset}^{H_I}$", r"$\psi_{E,\emptyset}^{H_E}$", r"$\ell_{E \to \emptyset}$"]
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_I',
@@ -598,10 +598,10 @@ module_labels = ['$N \longrightarrow N^*$', '$N^* \longrightarrow E$', '$E \long
 modules = ['Na', 'NE', 'EE']
 reg_stim = Na_reg[0:3] + NE_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EE_reg[3]]
-reg_bl_label = [param_names[-13]] + [param_names[-9]] + [param_names[-1]]
+reg_bl_label = [param_names[-13]+r", $\ell_{E \to 2E}$"] + [param_names[-9]] + [param_names[-1]]
 
-perf_vars = ["peff_scaled_protection", "peff_clearance", "peff_toxicity", "frac_cM"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Protection", "Clearance", "Toxicity", "C. memory fraction"] #, "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
+perf_vars = ["peff_scaled_total_harm", "peff_infection", "peff_toxicity", "frac_cM"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Total harm", "Infection", "Toxicity", "C. memory fraction"] #, "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
@@ -610,17 +610,9 @@ vir_vars = ['d_I', 'K_I', 'b_I', 'K_H', 'N_0', 'S_0', 'I_0']
 
 reg_markers = ['o', 's', 'v', '^', 'X','*', 'D','>', '<']
 signal_classes = ["Ag. sens.", "Inflam. sens.", "Anti-inflam. sens.", "Baseline"]
-#opt_vars = ['psi_I', 'psi_HI', 'psi_HE', reg_bl[0], reg_bl[1], reg_bl[2]] #, reg_bl[3]]
-# opt_vars_labels = [signal_classes[0]+r", $\psi_{E}^{Ag}$", 
-#                    signal_classes[1]+r", $\psi_{E}^{H_I}$", 
-#                    signal_classes[2]+r", $\psi_{E}^{H_E}$",
-#                    module_labels[0]+r" base., $L_{0,N \to N^*}$", 
-#                    module_labels[1]+r" base., $L_{0,N^* \to E}$",
-#                    #module_labels[2]+r" base., $L_{0,E \to M}$",
-#                    module_labels[2]+r" base., $L_{0,E \to \emptyset}$"]
 opt_vars_labels = [r"$\psi_{E}^{Ag}$", 
                    r"$\psi_{E}^{H_I}$", 
                    r"$\psi_{E}^{H_E}$",
-                   r"$g_{0,N \to N^*}$", 
+                   r"$g_{0,N \to N^*}, g_{0,E \to 2E}$", 
                    r"$g_{0,N^* \to E}$",
                    r"$g_{0,E \to \emptyset}$"]

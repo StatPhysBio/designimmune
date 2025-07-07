@@ -16,10 +16,10 @@ def run(
     outdir='',
     comment = "vary_b_I",
     inf_sample = infection_sample_select,
-    runs = 3,
+    runs = 1,
     infection_model = "acute_all", #'acute_all',
     default_reg = np.array([act_psis + NE_psis + EM_psis + contract_psis]),
-    sim_per_cpu_hour = 2880,
+    sim_per_cpu_hour = 3130,
     num_cpu = num_cpu,
     run_time = run_time,
     seed = None
