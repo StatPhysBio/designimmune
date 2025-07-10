@@ -493,7 +493,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         p_tcr + zeros_n_0_var, p_cyt + zeros_n_0_var
     ])
 
-    dyn_data = np.array([S, I, N, Na, E, Ma, HI, I_d_I + I_d_IE, S_d_SE, HE]).T # add I_d_IE as a separate variable
+    dyn_data = np.array([S, I, N, Na, E, Ma, HI, I_d_I + I_d_IE*(infection_model != 'cancer'), S_d_SE, HE]).T # add I_d_IE as a separate variable
     prim_bias = bias_t
 
     ts = np.linspace(0, duration, int_steps + 1)
