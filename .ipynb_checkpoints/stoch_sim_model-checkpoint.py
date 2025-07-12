@@ -513,7 +513,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     sim_summary = np.array([I[-1]/I_0,
                        np.argmax(pI)*dt,
                        np.argmax(pI < I_min)*dt,
-                       np.amax(pI_d_I) + I[-1],
+                       np.amax(pI_d_I) + 0*I[-1],
                        np.amax(pI_d_SE),
                        np.amax(pE),
                        np.argmax(pE)*dt*(np.max(pE + pM) >= max_Na) if N_0 > 0 else duration,
