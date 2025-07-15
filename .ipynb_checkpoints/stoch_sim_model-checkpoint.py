@@ -267,12 +267,12 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
     for i in np.arange(1, int_steps + 1):
         # select virulence model:
-        if (b_I >= 0 and I_0 <= 0.01*S_0) or infection_model == 'acute': # "acute"
+        if 'acute' in infection_model : # "acute"
             b_I_t = b_I
             d_Sauto = 0.0
             infection_model = 'acute'
             
-        elif (b_I > 0 and I_0 > 0.01*S_0) or 'cancer' in infection_model: # "cancer"
+        elif 'cancer' in infection_model: # "cancer"
             b_I_t = b_I*(1 - I[i - 1]/S_0)/S[i - 1]
             d_Sauto = 0.0
             infection_model = 'cancer'
