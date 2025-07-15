@@ -610,9 +610,9 @@ vir_vars = ['d_I', 'K_I', 'b_I', 'K_H', 'N_0', 'S_0', 'I_0']
 
 reg_markers = ['o', 's', 'v', '^', 'X','*', 'D','>', '<']
 signal_classes = ["Ag. sens.", "Inflam. sens.", "Anti-inflam. sens.", "Baseline"]
-opt_vars_labels = [r"$\psi_{E}^{Ag}$", 
-                   r"$\psi_{E}^{H_I}$", 
-                   r"$\psi_{E}^{H_E}$",
-                   r"$g_{0,N \to N^*}, g_{0,E \to 2E}$", 
+opt_vars_labels = [r"$\psi_{Ag}$", 
+                   r"$\psi_{I}$", 
+                   r"$\psi_{E}$",
+                   r"$g_{0,N \to N^*} ~|~ g_{0,E \to 2E}$", 
                    r"$g_{0,N^* \to E}$",
                    r"$g_{0,E \to \emptyset}$"]
