@@ -11,11 +11,11 @@ sim_steps = int(0.3*(10**4))
 # infection dynamics
 S_0 = 10**7 # max susceptible cells
 d_S = 0.01 # susceptible cell death rate
-b_I = 1.0*(10**(-7)) # fecudity of pathogen (Chao et al. 2004, Iwami et al. 2015)
+b_I = 1/S_0 # fecudity of pathogen (Chao et al. 2004, Iwami et al. 2015)
 I_min = 10**(-4)*S_0 # initial detectable level of infected cells
 d_IE = 12 # effector clearance rate of infection: 2-16 day^(-1) Halle et al. (2016)
 K_I = 10**(-3)*S_0 # max effector avidity (half-max) for infected cells at low infection concetrations (Mayer et al 2019; Chao et al. 2004)
-d_I = np.minimum(25*d_S, S_0*b_I) # successful virus cannot kill cells faster than it infects new ones
+d_I = 0.5 # successful virus cannot kill cells faster than it infects new ones
 K_S = S_0 # effector avidity (half-max) for susceptible cells
 
 # Inflammatory response
@@ -37,7 +37,7 @@ b_C = 1/10 # growth rate of cancer
 
 # Pathogen space parameters
 num_pnts = 9
-infection_sample = np.array(np.meshgrid(np.array([0.5]), # vary d_I
+infection_sample = np.array(np.meshgrid(np.array([d_I]), # vary d_I
                                    S_0*np.logspace(-3.0, 0, num_pnts), # vary K_I
                                    b_I*np.linspace(0.5, 2.5, num_pnts), # vary b_I
                                    K_H*np.array([1.0]), # vary K_H
@@ -241,6 +241,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     bound_N_time = np.zeros(N_0_var)
     Na_div_flag = np.ones(N_0_var, dtype =np.int32)
     Na_flag = np.ones(N_0_var, dtype =np.int32)
+    act_N = np.zeros(N_0_var, dtype =np.int32)
 
     r_NaE = np.zeros((int_steps+1, N_0_var))
     r_EM = np.zeros((int_steps+1, N_0_var))
@@ -287,6 +288,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         else:
             b_I_t = b_I
             d_Sauto = 0
+            infection_model = 'acute'
 
         # Compute total population of cell types
         # Use sum computed in previous iteration.
@@ -322,7 +324,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
 
         # (a) Phase 1: Naive cells encounter and bind APCs
         if cells_sensed >= 1:
-            bound_N += rng.binomial(N_m[i - 1], r_N_bind * dt) - rng.binomial(N_m[i - 1], r_unbind_t * dt)
+            bound_N += rng.binomial(N_m[i - 1], r_N_bind * dt) - act_N #- rng.binomial(N_m[i - 1], r_unbind_t * dt)
         else:
             bound_N = 0
 
@@ -364,7 +366,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         e_m_nonzero_mask = E_m[i] > 0
         n_m_nonzero_mask = N_m[i] > 0
         na_m_nonzero_mask = Na_m[i] > 0
-        bound_na_sum_nonzero_mask = Na_m[i] > 0 | bound_N
+        # bound_na_sum_nonzero_mask = Na_m[i] > 0 | bound_N
         ma_m_nonzero_mask = Ma_m[i] + Ma_m[i-1] > 0
         n_na_sum_nonzero_mask = n_m_nonzero_mask | na_m_nonzero_mask
 
@@ -403,16 +405,16 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             psi_1 = 0.0, psi_2 = 1/np.log(2), psi_3 = 0.0, L_0 = -1, K_1 = S_0, K_2 = K_H, K_3 = K_HE # The rate of non-specific binding is important
         ) / (char_times[0]) if cells_sensed >= 1 else 0.0
 
-        r_unbind_t = bound_N * np.fmin(
-            2 * bound_N_time / (
-                f_XtoY(
-                    sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
-                    psi_1 = L0_max/np.log(2), psi_2 = 0.0, psi_3 = 0.0, L_0 = -L0_max,
-                    K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
-                    K_2 = K_H, K_3 = K_HE
-                ) * char_times[1] * 2 / np.sqrt(np.pi)
-            )**2, 1 / dt
-        ) if np.sum(bound_N) >= 1 else 0.0
+        # r_unbind_t = bound_N * np.fmin(
+        #     2 * bound_N_time / (
+        #         f_XtoY(
+        #             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+        #             psi_1 = psi_max, psi_2 = 0.0, psi_3 = 0.0, L_0 = -L0_max,
+        #             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
+        #             K_2 = K_H, K_3 = K_HE
+        #         ) * char_times[1] * 2 / np.sqrt(np.pi)
+        #     )**2, 1 / dt
+        # ) if np.sum(bound_N) >= 1 else 0.0
 
         #### Transition rates modulated by antigen and cytokine signals ####
         r_Na_div = 1 / char_times[2]
@@ -430,7 +432,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = psi_NE_I, psi_2 = psi_NE_HI, psi_3 = psi_NE_HE,L_0 = L0_NE,
             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
-            K_2 = K_H, K_3 = K_HE)/char_times[6] * bound_na_sum_nonzero_mask
+            K_2 = K_H, K_3 = K_HE)/char_times[6] * na_m_nonzero_mask
 
         r_E_div[i] += (div_count < max_expand) * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
@@ -459,8 +461,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         if np.sum(n_m_nonzero_mask) > 0.:
             to_add_to_bias[0] = np.mean(r_Na[i][n_m_nonzero_mask])
         
-        if np.sum(bound_na_sum_nonzero_mask) > 0.:
-            to_add_to_bias[1] = np.mean(r_NaE[i][bound_na_sum_nonzero_mask])
+        if np.sum(na_m_nonzero_mask) > 0.:
+            to_add_to_bias[1] = np.mean(r_NaE[i][na_m_nonzero_mask])
             
         if sum_e_m > 0.:
             to_add_to_bias[2] = np.mean(r_E_div[i][e_m_nonzero_mask])
@@ -598,10 +600,10 @@ module_labels = ['$N \longrightarrow N^*$', '$N^* \longrightarrow E$', '$E \long
 modules = ['Na', 'NE', 'EE']
 reg_stim = Na_reg[0:3] + NE_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EE_reg[3]]
-reg_bl_label = [param_names[-13]+r", $\ell_{E \to 2E}$"] + [param_names[-9]] + [param_names[-1]]
+reg_bl_label = [param_names[-13]+'\n'+r", $\ell_{E \to 2E}$"] + [param_names[-9]] + [param_names[-1]]
 
-perf_vars = ["peff_scaled_total_harm", "peff_infection", "peff_toxicity", "frac_cM"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Total harm", "Infection", "Toxicity", "C. memory fraction"] #, "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
+perf_vars = ["peff_scaled_total_harm", "peff_infection", "peff_toxicity", "max_pE"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
+perf_labels = ["Total harm", "Infection", "Toxicity", "Max effector"] #, "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
