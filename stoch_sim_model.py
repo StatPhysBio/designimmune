@@ -42,8 +42,9 @@ infection_sample = np.array(np.meshgrid(np.array([d_I]), # vary d_I
                                    b_I*np.linspace(0.5, 2.5, num_pnts), # vary b_I
                                    K_H*np.array([1.0]), # vary K_H
                                    N_0*np.array([1.0]), # vary N_0
-                                   I_min*np.logspace(0.0, 0.0, 1) # vary I_0
-                                           )).T.reshape(-1,6)
+                                   I_min*np.logspace(0.0, 0.0, 1), # vary I_0
+                                   np.array([S_0]) # vary K_S
+                                           )).T.reshape(-1,7)
 
 auto_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
                                    K_S*np.logspace(-1.0, 0, 3), # vary K_I
@@ -58,8 +59,9 @@ cancer_sample = np.array(np.meshgrid(d_S*np.array([1.0]), # vary d_I
                                    b_C*np.array([1.0]), # vary b_I
                                    K_H*np.array([1.0]), # vary K_H
                                    N_0*np.logspace(-1.0, 1, 3), # vary N_0
-                                   S_0*np.array([0.05]) # vary I_0
-                                           )).T.reshape(-1,6)
+                                   S_0*np.array([0.05]), # vary I_0
+                                   np.array([S_0]) # vary K_S
+                                           )).T.reshape(-1,7)
 
 infection_sample_select = np.vstack([infection_sample,
                                      #auto_sample,

@@ -52,7 +52,7 @@ def run(
 
     batch_size = max(int(len(params) / (num_cpu + add_cpu)), 1)
     psi_list = Parallel(n_jobs=num_cpu + add_cpu, batch_size=batch_size)(delayed(lin_stoch_sim)(
-        d_I = param[0], K_I = param[1], b_I = param[2], K_H = param[3], N_0 = param[4], I_0 = param[5],
+        d_I = param[0], K_I = param[1], b_I = param[2], K_H = param[3], N_0 = param[4], I_0 = param[5], K_S = param[6],
         activation_regulation = param[-16:-12], NE_regulation = param[-12:-8], EM_regulation = param[-8:-4],
         contraction_regulation = param[-4:],
         infection_model = infection_model,
