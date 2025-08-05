@@ -617,6 +617,6 @@ signal_classes = ["Ag. sens.", "Inflam. sens.", "Anti-inflam. sens.", "Baseline"
 opt_vars_labels = [r"$\psi_{Ag}$", 
                    r"$\psi_{I}$", 
                    r"$\psi_{E}$",
-                   r"$g_{0,N \to N^*} ~|~ g_{0,E \to 2E}$", 
+                   r"$g_{0,N \to N^*} = g_{0,E \to 2E}$", 
                    r"$g_{0,N^* \to E}$",
                    r"$g_{0,E \to \emptyset}$"]
