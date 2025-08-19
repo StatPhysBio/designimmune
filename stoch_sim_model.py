@@ -509,7 +509,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     dt = ts[1] - ts[0]
 
     parameters = np.concatenate((np.array([S_0, I_0, b_I, d_S, d_I, d_IE, K_I,
-              d_H, K_H,
+              d_H, K_H, K_S,
               N_0, max_Na]),
               char_times,
               activation_regulation, NE_regulation, EM_regulation, contraction_regulation))
@@ -570,7 +570,7 @@ stat_names = [r"$I_{p}(T_{sim})$",
               r"$E(T_{sim})$"]
 
 param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"$d_{I,H}$", r"$K_{I,E}$", r"$K_{I,H}$",
-               r"$d_H$", r"$K_{E,I}$", r"$K_{E,H}$",
+               r"$d_H$", r"$K_{E,I}$", r"$K_{E,H}$", r"$K_{E,S}$",
                r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
                r"$\tau_{N,A_{in}}$", r"$\tau_{N \cdot A_{in}}$", r"$\tau_{N^*,N^*}$", r"$\tau_{E_,E}$", r"$\tau_{M,M}$", r"$\tau_{E_{die}}$", r"$\tau_{N^*}$",
                r"$\psi_{N^*}^{Ag}$", r"$\psi_{N^*}^{H_I}$", r"$\psi_{N^*}^{H_E}$", r"$\ell_{N \to N^*}$",
@@ -580,7 +580,7 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
 
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_I',
-                      'd_H', 'K_H',
+                      'd_H', 'K_H', 'K_S',
                       'N_0', 'max_Na',
                       't_bind', 't_unbind', 't_Na_div', 't_E_div', 't_M_div', 't_E_die', 't_cycle',
                       'psi_myc_I', 'psi_myc_HI', 'psi_myc_HE', 'L0_Na',
@@ -604,8 +604,8 @@ reg_stim = Na_reg[0:3] + NE_reg[0:3] + EE_reg[0:3]
 reg_bl = [Na_reg[3]] + [NE_reg[3]] + [EE_reg[3]]
 reg_bl_label = [param_names[-13]+'\n'+r", $\ell_{E \to 2E}$"] + [param_names[-9]] + [param_names[-1]]
 
-perf_vars = ["peff_scaled_total_harm", "peff_infection", "peff_toxicity", "max_pE"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
-perf_labels = ["Total harm", "Infection", "Toxicity", "Max effector"] #, "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
+perf_vars = ["peff_total_harm", "peff_infection", "peff_toxicity", "max_pE"] #, "max_eM_fold", "log_T_pEcyteM"] #, "max_pE_fold", "T_pE_start", 'T_pE_clear']
+perf_labels = ["total harm", "infection", "toxicity", "max effector"] #, "E. memory\n expansion [$N_0$]", "Time as\n effector [day]"] #, "Effector\n expansion [$N_0$]", "Resp. timing \n [day]", "Resp. clear \n [days]"]
 
 key_var = 'antigenicity_over_harm'
 key_var_label = "Ag.-inflam. salience\n"+r"$\frac{\tau_I^{-1}}{\tau_H^{-1}}$"
