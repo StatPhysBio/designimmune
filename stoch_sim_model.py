@@ -27,7 +27,7 @@ K_HE = d_S*S_0
 N_0 = 100 # initial number of naive cells
 max_Na = 2**2 # number of signal-independent divisions after activation
 max_expand = 2**15 # maximum clone size (Marchingo et al.)
-t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_cycle = 1/2, 1.0, 8.8/24, 8/24, 12/24, 10.0, 1/4
+t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_cycle = 1.0, 1.0, 8.8/24, 8/24, 12/24, 10.0, 1/4
 t_long_M = 10*365.25 # lifespan of central memory cells
 t_short_M = 365.25/12 # lifespan of effector memory cells
 
@@ -217,8 +217,8 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
     HI = np.zeros(int_steps+1)
     HE = np.zeros(int_steps+1)
     I_d_I = np.zeros(int_steps+1)
-    I_d_IE = np.zeros(int_steps+1)
-    S_d_SE = np.zeros(int_steps+1)
+    I_d_E = np.zeros(int_steps+1)
+    S_d_E = np.zeros(int_steps+1)
 
     N_m = np.zeros((int_steps+1, N_0_var), dtype = np.int32)
     N_m[0,:] += 1
@@ -301,21 +301,21 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         # Update state of susceptible, infected and inflammation
         # (a) Record new cell infections and cell killing events
         S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) * (I[i - 1] >= I_min) * (I[i - 1] <= S_0)
-        I_d_IE[i] += I_d_IE[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_I + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
+        I_d_E[i] += I_d_E[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_I + S[i - 1]*(K_I + E_pop)/(K_S + E_pop) + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
         I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") + S_to_I * (infection_model == "cancer") # cells killed by infection or cancer
-        S_d_SE[i] += S_d_SE[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_S + S[i - 1] + E_pop)) # susceptible cells killed by immune response
+        S_d_E[i] += S_d_E[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_S + I[i - 1]*(K_S + E_pop)/(K_I + E_pop) + S[i - 1] + E_pop)) # susceptible cells killed by immune response
 
         # (b) Evolve susceptible and infected populations
         S[i] += S[i - 1] - S_to_I + dt * (
             0*b_S - (0*d_S + (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2)) * S[i - 1]
-            - (S_d_SE[i] - S_d_SE[i - 1])/dt
+            - (S_d_E[i] - S_d_E[i - 1])/dt
         ) * (S[i - 1] >= 1.0)
 
-        I[i] += I[i - 1] + S_to_I - (I_d_IE[i] + I_d_I[i] - I_d_IE[i - 1] - I_d_I[i - 1]) + S_to_I * (infection_model == "cancer")
+        I[i] += I[i - 1] + S_to_I - (I_d_E[i] + I_d_I[i] - I_d_E[i - 1] - I_d_I[i - 1]) + S_to_I * (infection_model == "cancer")
 
         # (C) Evolve inflammatory responses
         harm_detected = (I_d_I[i] - I_d_I[i - 1]) + dt * S[i - 1] * (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2)
-        immunopathology = (S_d_SE[i] - S_d_SE[i - 1]) + (I_d_IE[i] - I_d_IE[i - 1])
+        immunopathology = (S_d_E[i] - S_d_E[i - 1]) + (I_d_E[i] - I_d_E[i - 1])
         cells_sensed = I[i - 1] # + (S[i - 1] * K_I / K_S)
 
         HI[i] += HI[i - 1] + harm_detected - dt * d_H * HI[i - 1] * (HI[i - 1] >= 0.0)
@@ -497,7 +497,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         p_tcr + zeros_n_0_var, p_cyt + zeros_n_0_var
     ])
 
-    dyn_data = np.array([S, I, N, Na, E, Ma, HI, I_d_I + I_d_IE*(infection_model != 'cancer'), S_d_SE, HE]).T # add I_d_IE as a separate variable
+    dyn_data = np.array([S, I, N, Na, E, Ma, HI, I_d_I + I_d_E*(infection_model != 'cancer'), S_d_E, HE]).T # add I_d_E as a separate variable
     prim_bias = bias_t
 
     ts = np.linspace(0, duration, int_steps + 1)
@@ -614,9 +614,9 @@ vir_vars = ['d_I', 'K_I', 'b_I', 'K_H', 'N_0', 'S_0', 'I_0']
 
 reg_markers = ['o', 's', 'v', '^', 'X','*', 'D','>', '<']
 signal_classes = ["Ag. sens.", "Inflam. sens.", "Anti-inflam. sens.", "Baseline"]
-opt_vars_labels = [r"$\psi_{Ag}$", 
-                   r"$\psi_{I}$", 
-                   r"$\psi_{E}$",
-                   r"$g_{0,N \to N^*} = g_{0,E \to 2E}$", 
+opt_vars_labels = [r"$\psi_\text{Ag}$",
+                   r"$\psi_\text{inf}$",
+                   r"$\psi_\text{res}$",
+                   r"$g_{0,N \to N^*}=g_{0,E \to 2E}$",
                    r"$g_{0,N^* \to E}$",
                    r"$g_{0,E \to \emptyset}$"]

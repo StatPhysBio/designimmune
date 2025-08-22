@@ -14,7 +14,7 @@ run_time = 4.0
 def run(
     batch = 0,
     outdir='',
-    comment = "vary_b_I",
+    comment = "compete_d_E",
     inf_sample = infection_sample_select,
     runs = 1,
     infection_model = "acute_all", #'acute_all',
@@ -33,7 +33,7 @@ def run(
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_model}-'+ f'{comment}.pkl')
 
     # Find psis to run
-    if "sparse-reg" in comment or "many-KI" in comment or "vary_b_I" in comment:
+    if "sparse-reg" in comment or "many-KI" in comment or "compete_d_E" in comment: # or "vary_b_I" in comment: # or "simple_d_E" in comment:
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
         run_psis = psi_sparse[index_start:index_end]
 
