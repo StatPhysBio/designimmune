@@ -20,8 +20,7 @@ K_S = S_0 # effector avidity (half-max) for susceptible cells
 
 # Inflammatory response
 d_H = 1.0 # decay of cytokine response
-K_H = d_S*S_0 # half-max level of innate/inflammatory response required to trigger lymphocyte response
-K_HE = d_S*S_0
+K_H = 10**(-2)*S_0 # half-max level of innate/inflammatory response required to trigger lymphocyte response
 
 # Immune cells
 N_0 = 100 # initial number of naive cells
@@ -404,7 +403,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         #### New binding events ####
         r_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
-            psi_1 = 0.0, psi_2 = 1/np.log(2), psi_3 = 0.0, L_0 = -1, K_1 = S_0, K_2 = K_H, K_3 = K_HE # The rate of non-specific binding is important
+            psi_1 = 0.0, psi_2 = 1, psi_3 = 0.0, L_0 = 0, K_1 = S_0, K_2 = K_H, K_3 = K_H # The rate of non-specific binding is important
         ) / (char_times[0]) if cells_sensed >= 1 else 0.0
 
         # r_unbind_t = bound_N * np.fmin(
@@ -413,7 +412,7 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
         #             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
         #             psi_1 = psi_max, psi_2 = 0.0, psi_3 = 0.0, L_0 = -L0_max,
         #             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
-        #             K_2 = K_H, K_3 = K_HE
+        #             K_2 = K_H, K_3 = K_H
         #         ) * char_times[1] * 2 / np.sqrt(np.pi)
         #     )**2, 1 / dt
         # ) if np.sum(bound_N) >= 1 else 0.0
@@ -427,33 +426,33 @@ def lin_stoch_sim(S_0 = S_0, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE 
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = psi_myc_I, psi_2 = psi_myc_HI, psi_3 = psi_myc_HE, L_0 = L0_Na,
             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
-            K_2 = K_H, K_3 = K_HE
+            K_2 = K_H, K_3 = K_H
         )/char_times[6] * n_m_nonzero_mask
 
         r_NaE[i] += f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = psi_NE_I, psi_2 = psi_NE_HI, psi_3 = psi_NE_HE,L_0 = L0_NE,
             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
-            K_2 = K_H, K_3 = K_HE)/char_times[6] * na_m_nonzero_mask
+            K_2 = K_H, K_3 = K_H)/char_times[6] * na_m_nonzero_mask
 
         r_E_div[i] += (div_count < max_expand) * f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = psi_myc_I, psi_2 = psi_myc_HI, psi_3 = psi_myc_HE, L_0 = L0_Na,
             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
-            K_2 = K_H, K_3 = K_HE
+            K_2 = K_H, K_3 = K_H
         )/char_times[6] * e_m_nonzero_mask
         
         r_EM[i] += f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = psi_EM_I, psi_2 = psi_EM_HI, psi_3 = psi_EM_HE, L_0 = L0_EM,
             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
-            K_2 = K_H, K_3 = K_HE)/char_times[6] * e_m_nonzero_mask
+            K_2 = K_H, K_3 = K_H)/char_times[6] * e_m_nonzero_mask
 
         r_Edie[i] += f_XtoY(
             sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
             psi_1 = psi_Edie_I, psi_2 = psi_Edie_HI, psi_3 = psi_Edie_HE, L_0 = L0_Edie,
             K_1 = (K_I*(infection_model != "autoimmune") + K_S*(infection_model == "autoimmune")),
-            K_2 = K_H, K_3 = K_HE)/char_times[6] * e_m_nonzero_mask
+            K_2 = K_H, K_3 = K_H)/char_times[6] * e_m_nonzero_mask
 
         cum_r_NaE += r_NaE[i]
 
