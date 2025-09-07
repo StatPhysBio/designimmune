@@ -205,9 +205,6 @@ def lin_stoch_sim(S_0 = S_max - I_min, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = 
     psi_EM_I, psi_EM_HI, psi_EM_HE, L0_EM = EM_regulation[0], EM_regulation[1], EM_regulation[2], EM_regulation[3]
     psi_Edie_I, psi_Edie_HI, psi_Edie_HE, L0_Edie = contraction_regulation[0], contraction_regulation[1], contraction_regulation[2], contraction_regulation[3]
 
-    p_tcr = 1.0 #np.linspace(1/10, 1, N_0_var)
-    p_cyt = 1.0 #np.ones(N_0_var)
-
     int_steps = int(steps)
 
     # define variables for storage
@@ -224,8 +221,9 @@ def lin_stoch_sim(S_0 = S_max - I_min, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = 
     T_Ecyt = [[] for i in np.arange(0, N_0_var)]
     survive_M = [[] for i in np.arange(0, N_0_var)]
 
+    E_limit = np.zeros(N_0_var)
     div_count = np.zeros(N_0_var)
-    div_E_count = np.log2(max_Na)*np.ones(N_0_var)
+    div_E_count = np.zeros(N_0_var)
     div_M_count = np.log2(max_Na)*np.ones(N_0_var)
     diff_EpM_count = np.zeros(N_0_var, dtype = np.int32)
     die_M = np.zeros(N_0_var, dtype = np.int32)
@@ -292,21 +290,19 @@ def lin_stoch_sim(S_0 = S_max - I_min, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = 
             infection_model = 'acute'
 
         # Compute total population of cell types
-        # Use sum computed in previous iteration.
-        E_pop = sum_e_m
 
         #### Run infection dynamics: replication and effector clearance ####
 
         # Update state of susceptible, infected and inflammation
         # (a) Record new cell infections and cell killing events
         S_to_I = dt * S[i - 1] * b_I_t * I[i - 1] * (S[i - 1] >= 1.0) * (I[i - 1] >= I_min) * (I[i - 1] <= S_max)
-        I_d_E[i] += I_d_E[i - 1] + dt * I[i - 1] * d_IE * E_pop / (K_I + S[i - 1]*(K_I + E_pop)/(K_S + E_pop) + I[i - 1] + E_pop) # infected/cancer cells killed by immune response
+        I_d_E[i] += I_d_E[i - 1] + dt * I[i - 1] * d_IE * sum_e_m / (K_I + S[i - 1]*(K_I + sum_e_m)/(K_S + sum_e_m) + I[i - 1] + sum_e_m) # infected/cancer cells killed by immune response
         I_d_I[i] += I_d_I[i - 1] + dt * I[i - 1]*d_I*(infection_model == "acute") + S_to_I * (infection_model == "cancer") # cells killed by infection or cancer
-        S_d_E[i] += S_d_E[i - 1] + dt * S[i - 1] * (d_IE * E_pop / (K_S + I[i - 1]*(K_S + E_pop)/(K_I + E_pop) + S[i - 1] + E_pop)) # susceptible cells killed by immune response
+        S_d_E[i] += S_d_E[i - 1] + dt * S[i - 1] * (d_IE * sum_e_m / (K_S + I[i - 1]*(K_S + sum_e_m)/(K_I + sum_e_m) + S[i - 1] + sum_e_m)) # susceptible cells killed by immune response
 
         # (b) Evolve susceptible and infected populations
         S[i] += S[i - 1] - S_to_I + dt * (
-            0*b_S - (0*d_S + (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2)) * S[i - 1]
+            0*b_S - 0*d_S*S[i - 1]
             - (S_d_E[i] - S_d_E[i - 1])/dt
         ) * (S[i - 1] >= 1.0)
 
@@ -315,7 +311,7 @@ def lin_stoch_sim(S_0 = S_max - I_min, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = 
         # (C) Evolve inflammatory responses
         harm_detected = (I_d_I[i] - I_d_I[i - 1]) + dt * S[i - 1] * (d_Sauto / t_Hauto) * np.exp(-(t / t_Hauto)**2 / 2)
         immunopathology = (S_d_E[i] - S_d_E[i - 1]) + (I_d_E[i] - I_d_E[i - 1])
-        cells_sensed = I[i - 1] # + (S[i - 1] * K_I / K_S)
+        cells_sensed = I[i] # + (S[i] * K_I / K_S)
 
         HI[i] += HI[i - 1] + harm_detected - dt * d_H * HI[i - 1] * (HI[i - 1] >= 0.0)
         
@@ -347,13 +343,13 @@ def lin_stoch_sim(S_0 = S_max - I_min, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = 
         ## III. Expansion and contraction
 
         # (a) New central memory cells divide
-        div_Ma = rng.binomial(Ma_m[i - 1] - diff_EpM_count, dt * r_Ma_div)
+        div_Ma = rng.binomial(Ma_m[i - 1], dt * r_Ma_div)
         
         # (b) Effector cells divide, differentiate, die
         die_E = rng.binomial(E_m[i - 1], dt * r_Edie[i - 1])
         diff_EM = rng.binomial(E_m[i - 1] - die_E, dt * r_EM[i - 1])
-        div_E = rng.binomial(E_m[i - 1] - die_E - diff_EM, dt * r_E_div[i - 1])
-        diff_EpM_count += diff_EM - die_M
+        div_E = rng.binomial(E_m[i - 1], dt * r_E_div[i - 1])
+        diff_EpM_count += diff_EM
 
         #### Update population dynamics: ####
         N_m[i] += N_m[i - 1] - act_N
@@ -395,6 +391,7 @@ def lin_stoch_sim(S_0 = S_max - I_min, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = 
                 T_Ecyt[l].extend(((1 - Na_div_flag[l])*(Na_m[i-1,l] - diff_NaE[l]) + div_Ma[l]) * [0.0] + diff_EM[l] * [T_E[l].item()])
 
         # Update division flag to allow division to proceed
+        E_limit += ((1 - Na_div_flag) * np.minimum(diff_NaE, max_Na)/max_Na)*(max_expand - max_Na)
         div_count += div_Na + div_E + div_Ma
         div_E_count += div_E
         div_M_count += div_Ma
@@ -402,44 +399,44 @@ def lin_stoch_sim(S_0 = S_max - I_min, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = 
 
         #### New binding events ####
         r_N_bind = (n_m_nonzero_mask) * (1 - bound_N) * f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
-            psi_1 = 0.0, psi_2 = 1, psi_3 = 0.0, L_0 = 0, 
+            sig_1 = cells_sensed, sig_2 = HI[i], sig_3 = HE[i],
+            psi_1 = 0.0, psi_2 = 1.0, psi_3 = 0.0, L_0 = 0, 
             K_1 = S_max, K_2 = K_H, K_3 = K_H # The rate of non-specific binding is important
         ) / (char_times[0]) if cells_sensed >= 1 else 0.0
 
         #### Transition rates modulated by antigen and cytokine signals ####
         r_Na_div = 1 / char_times[2]
         
-        r_Ma_div = 0 * (div_count < max_expand) / char_times[4]
+        r_Ma_div = 0 / char_times[4]
         
         r_Na[i] += bound_N*f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+            sig_1 = cells_sensed, sig_2 = HI[i], sig_3 = HE[i],
             psi_1 = psi_myc_I, psi_2 = psi_myc_HI, psi_3 = psi_myc_HE, L_0 = L0_Na,
             K_1 = K_I,
             K_2 = K_H, K_3 = K_H
         )/char_times[6] * n_m_nonzero_mask
 
         r_NaE[i] += f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+            sig_1 = cells_sensed, sig_2 = HI[i], sig_3 = HE[i],
             psi_1 = psi_NE_I, psi_2 = psi_NE_HI, psi_3 = psi_NE_HE,L_0 = L0_NE,
             K_1 = K_I,
             K_2 = K_H, K_3 = K_H)/char_times[6] * na_m_nonzero_mask
 
-        r_E_div[i] += (div_count < max_expand) * f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+        r_E_div[i] += (div_E_count < E_limit) * f_XtoY(
+            sig_1 = cells_sensed, sig_2 = HI[i], sig_3 = HE[i],
             psi_1 = psi_myc_I, psi_2 = psi_myc_HI, psi_3 = psi_myc_HE, L_0 = L0_Na,
             K_1 = K_I,
             K_2 = K_H, K_3 = K_H
         )/char_times[6] * e_m_nonzero_mask
         
         r_EM[i] += f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+            sig_1 = cells_sensed, sig_2 = HI[i], sig_3 = HE[i],
             psi_1 = psi_EM_I, psi_2 = psi_EM_HI, psi_3 = psi_EM_HE, L_0 = L0_EM,
             K_1 = K_I,
             K_2 = K_H, K_3 = K_H)/char_times[6] * e_m_nonzero_mask
 
         r_Edie[i] += f_XtoY(
-            sig_1 = p_tcr*cells_sensed, sig_2 = p_cyt*HI[i], sig_3 = p_cyt*HE[i],
+            sig_1 = cells_sensed, sig_2 = HI[i], sig_3 = HE[i],
             psi_1 = psi_Edie_I, psi_2 = psi_Edie_HI, psi_3 = psi_Edie_HE, L_0 = L0_Edie,
             K_1 = K_I,
             K_2 = K_H, K_3 = K_H)/char_times[6] * e_m_nonzero_mask
@@ -479,14 +476,14 @@ def lin_stoch_sim(S_0 = S_max - I_min, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = 
 
     zeros_n_0_var = np.zeros(N_0_var)
 
-    selection_ratio = np.sum(div_E_count*p_tcr)/np.sum(div_E_count) if np.sum(div_E_count) > 0 else 0.0
+    selection_ratio = np.sum(div_E_count)/np.sum(div_E_count) if np.sum(div_E_count) > 0 else 0.0
 
     lineage_comp = np.vstack([
         np.amax(Na_m, axis = 0), div_M_count, div_E_count,
-        p_tcr + zeros_n_0_var, p_cyt + zeros_n_0_var
+        zeros_n_0_var, zeros_n_0_var
     ])
 
-    dyn_data = np.array([S, I, N, Na, E, Ma, HI, I_d_I + I_d_E*(infection_model != 'cancer'), S_d_E, HE]).T # add I_d_E as a separate variable
+    dyn_data = np.array([S, I, N, Na, E, Ma, HI, I_d_I + I_d_E*('cancer' not in infection_model), S_d_E, HE]).T # add I_d_E as a separate variable
     prim_bias = bias_t
 
     ts = np.linspace(0, duration, int_steps + 1)
@@ -560,7 +557,7 @@ stat_names = [r"$I_{p}(T_{sim})$",
 
 param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"$d_{I,H}$", r"$K_{I,E}$", r"$K_{I,H}$",
                r"$d_H$", r"$K_{E,I}$", r"$K_{E,H}$", r"$K_{E,S}$",
-               r"$N_0$", r"$N^*_{max}$", r"$b_D$", r"$d_D$", r"$D^*$",
+               r"$N_0$", r"$N^*_{max}$",
                r"$\tau_{N,A_{in}}$", r"$\tau_{N \cdot A_{in}}$", r"$\tau_{N^*,N^*}$", r"$\tau_{E_,E}$", r"$\tau_{M,M}$", r"$\tau_{E_{die}}$", r"$\tau_{N^*}$",
                r"$\psi_{N^*}^{Ag}$", r"$\psi_{N^*}^{H_I}$", r"$\psi_{N^*}^{H_E}$", r"$\ell_{N \to N^*}$",
                r"$\psi_{N,E}^{Ag}$", r"$\psi_{N,E}^{H_I}$", r"$\psi_{N,E}^{H_E}$", r"$\ell_{N^{*} \to E}$",

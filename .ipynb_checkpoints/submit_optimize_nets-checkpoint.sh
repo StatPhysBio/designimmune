@@ -14,7 +14,7 @@ mamba activate maximmune
 
 SLURM_OUTDIR=/gscratch/scrubbed/oukogu/slurm_output/
 d="/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/raw"
-comment="larger-psi"
+comment="limit-E"
 infection_model='acute_all' #"acute_all"
 
 if [ ! -d "$d" ]; then
