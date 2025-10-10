@@ -9,7 +9,7 @@ sim_duration = 30
 sim_steps = int(0.3*(10**4))
 
 # infection dynamics
-S_max = 10**7 # max susceptible cells
+S_max = 10**8 # max susceptible cells
 d_S = 0.01 # susceptible cell death rate
 b_I = 1/S_max # fecudity of pathogen (Chao et al. 2004, Iwami et al. 2015)
 I_min = 10**(-4)*S_max # initial detectable level of infected cells
@@ -25,7 +25,7 @@ K_H = 10**(-3)*S_max # half-max level of innate/inflammatory response required t
 # Immune cells
 N_0 = 100 # initial number of naive cells
 max_Na = 2**2 # number of signal-independent divisions after activation
-max_expand = 2**15 # maximum clone size (Marchingo et al.)
+max_expand = 2**19 # maximum clone size (Marchingo et al.)
 t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_cycle = 1.0, 1.0, 8.8/24, 8/24, 12/24, 10.0, 1/4
 t_long_M = 10*365.25 # lifespan of central memory cells
 t_short_M = 365.25/12 # lifespan of effector memory cells
