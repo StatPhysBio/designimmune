@@ -9,7 +9,7 @@ sim_duration = 30
 sim_steps = int(0.3*(10**4))
 
 # infection dynamics
-S_max = 10**8 # max susceptible cells
+S_max = 10**7 # max susceptible cells
 d_S = 0.01 # susceptible cell death rate
 b_I = 1/S_max # fecudity of pathogen (Chao et al. 2004, Iwami et al. 2015)
 I_min = 10**(-4)*S_max # initial detectable level of infected cells
