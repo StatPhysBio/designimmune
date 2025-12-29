@@ -14,7 +14,7 @@ run_time = 4.0
 def run(
     batch = 0,
     outdir='',
-    comment = "basic",
+    comment = "basic-replicate-5",
     inf_sample = infection_sample_select,
     runs = 1,
     infection_model = "acute_all", #'acute_all',
@@ -33,7 +33,7 @@ def run(
     outfile = ('sim_batch_'+f'{batch[0]}-{runs}-{infection_model}-'+ f'{comment}.pkl')
 
     # Find psis to run
-    if "sparse-reg" in comment or "basic" in comment:
+    if "sparse-reg" in comment or "basic-replicate-5" in comment:
         #  or "incr-S" in comment or "larger-psi" in comment: # or "compete_d_E" in comment: # or "vary_b_I" in comment: # or "simple_d_E" in comment:
         index_start, index_end =int(batch[0]*batch_num), int((batch[0]+1)*batch_num)
         run_psis = psi_sparse[index_start:index_end]
@@ -59,7 +59,7 @@ def run(
         contraction_regulation = param[-4:],
         infection_model = infection_model,
         reg_model = "mwc_like",
-        duration = 2.0*sim_duration if 'long_sim' in comment else sim_duration,
+        duration = param[11],
         steps = 2.0*sim_steps if 'long_sim' in comment else sim_steps,
         seed=child_rng)
         for param, child_rng in zip(params, child_rngs)

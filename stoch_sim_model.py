@@ -25,7 +25,7 @@ K_H = 10**(-3)*S_max # half-max level of innate/inflammatory response required t
 # Immune cells
 N_0 = 100 # initial number of naive cells
 max_Na = 2**2 # number of signal-independent divisions after activation
-max_expand = 2**19 # maximum clone size (Marchingo et al.)
+max_expand = 2**15 # maximum clone size (Marchingo et al.)
 t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_cycle = 1.0, 1.0, 8.8/24, 8/24, 12/24, 10.0, 1/4
 t_long_M = 10*365.25 # lifespan of central memory cells
 t_short_M = 365.25/12 # lifespan of effector memory cells
@@ -46,8 +46,9 @@ infection_sample = np.array(np.meshgrid(b_I*np.linspace(0.5, 2.5, num_pnts), # v
                                         np.array([d_IE]), # vary d_IE
                                         np.array([d_H]), # vary d_H
                                         np.array([max_Na]), # vary max_Na
-                                        np.array([max_expand]) # vary max_expand
-                                           )).T.reshape(-1,11)
+                                        np.array([max_expand]), # vary max_expand
+                                        np.array([sim_duration]) # vary simulation duration
+                                           )).T.reshape(-1,12)
 
 infection_sample_select = np.vstack([infection_sample,
                                      #auto_sample,
@@ -483,7 +484,7 @@ def lin_stoch_sim(S_0 = S_max - I_min, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = 
 
     parameters = np.concatenate((np.array([S_0, I_0, b_I, d_S, d_I, d_IE, K_I,
               d_H, K_H, K_S,
-              N_0, max_Na, max_expand]),
+              N_0, max_Na, max_expand, duration]),
               char_times,
               activation_regulation, NE_regulation, EM_regulation, contraction_regulation))
 
@@ -544,7 +545,7 @@ stat_names = [r"$I_{p}(T_{sim})$",
 
 param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"$d_{I,H}$", r"$K_{I,E}$", r"$K_{I,H}$",
                r"$d_H$", r"$K_{E,I}$", r"$K_{E,H}$", r"$K_{E,S}$",
-               r"$N_0$", r"$N^*_{max}$", r"$E_{max}$",
+               r"$N_0$", r"$N^*_{max}$", r"$E_{max}$",r"$T_{sim}$",
                r"$\tau_{N,A_{in}}$", r"$\tau_{N \cdot A_{in}}$", r"$\tau_{N^*,N^*}$", r"$\tau_{E_,E}$", r"$\tau_{M,M}$", r"$\tau_{E_{die}}$", r"$\tau_{N^*}$",
                r"$\psi_{N^*}^{Ag}$", r"$\psi_{N^*}^{H_I}$", r"$\psi_{N^*}^{H_E}$", r"$\ell_{N \to N^*}$",
                r"$\psi_{N,E}^{Ag}$", r"$\psi_{N,E}^{H_I}$", r"$\psi_{N,E}^{H_E}$", r"$\ell_{N^{*} \to E}$",
@@ -554,7 +555,7 @@ param_names = [r"$S_0$",r"$I_0$", r"$b_I$", r"$d_S$", r"$d_I$", r"$d_{I,E}$", r"
 
 param_names_for_df = ['S_0', 'I_0', 'b_I', 'd_S', 'd_I', 'd_IE', 'K_I',
                       'd_H', 'K_H', 'K_S',
-                      'N_0', 'max_Na', 'max_expand',
+                      'N_0', 'max_Na', 'max_expand', 'sim_duration',
                       't_bind', 't_unbind', 't_Na_div', 't_E_div', 't_M_div', 't_E_die', 't_cycle',
                       'psi_myc_I', 'psi_myc_HI', 'psi_myc_HE', 'L0_Na',
                       'psi_NE_I', 'psi_NE_HI', 'psi_NE_HE', 'L0_NE',

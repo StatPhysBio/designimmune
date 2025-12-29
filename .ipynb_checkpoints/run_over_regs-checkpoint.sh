@@ -3,7 +3,7 @@ script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 max_job=1248 #2814 # change depending on number of inputs
 # if some jobs don't run, run the following:
-rerun_list=(216)
+rerun_list=(60 61 62 63 64 65 66)
 
 # for i in "${rerun_list[@]}";
 
