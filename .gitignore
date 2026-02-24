@@ -1,0 +1,17 @@
+# Ignore JSON files
+*.json 
+
+#Ignore PKL files
+*.pkl
+
+#Ignore 
+*.sh
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook
+.ipynb_checkpoints
+simulate-multiple-infections.ipynb
