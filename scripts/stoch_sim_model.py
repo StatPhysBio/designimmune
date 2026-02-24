@@ -50,11 +50,6 @@ infection_sample = np.array(np.meshgrid(b_I*np.linspace(0.5, 2.5, num_pnts), # v
                                         np.array([sim_duration]) # vary simulation duration
                                            )).T.reshape(-1,12)
 
-infection_sample_select = np.vstack([infection_sample,
-                                     #auto_sample,
-                                     #cancer_sample
-                                    ])
-
 # Design space hyper parameters
 pnts = 13
 psi_max = 3.0
@@ -110,7 +105,7 @@ def f_XtoY_ret0(sig_1 = 0.0, sig_2 = 0.0, sig_3 = 0.0, psi_1 = 0.0, psi_2 = 0.0,
     return 0.0
 
 def memory_lifespan(T_eff, T_degrade = t_E_die, min_time = 0):
-    # out =  np.maximum(t_long_M - (t_long_M - t_short_M)*T_eff/T_degrade, min_time)
+    
     out = t_long_M*np.exp(-T_eff/T_degrade*np.log(t_long_M/t_short_M))
     return out
 
@@ -118,7 +113,7 @@ def memory_lifespan(T_eff, T_degrade = t_E_die, min_time = 0):
 ## AGENT-BASED STOCHASTIC SIMULATION WITH TAU-LEAPING
 #######################
 
-def lin_stoch_sim(S_0 = S_max - I_min, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, K_I = K_I, K_S = K_S,
+def lin_stoch_sim(S_0 = S_max, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = d_I, d_IE = d_IE, K_I = K_I, K_S = K_S,
                   d_H = d_H, K_H = K_H,
                   N_0 = N_0, max_Na = max_Na, max_expand = max_expand,
                   char_times = [t_bind, t_unbind, t_Na_div, t_E_div, t_M_div, t_E_die, t_cycle],
@@ -457,7 +452,7 @@ def lin_stoch_sim(S_0 = S_max - I_min, I_0 = I_min, b_I = b_I, d_S = d_S, d_I = 
     sim_summary = np.array([I[-1]/I_0,
                        np.argmax(pI)*dt,
                        np.argmax(pI < I_min)*dt,
-                       np.amax(pI_d_I) + 0*I[-1],
+                       np.amax(pI_d_I),
                        np.amax(pI_d_SE),
                        np.amax(pE),
                        np.argmax(pE)*dt*(np.max(pE) >= N_0) if N_0 > 0 else duration,
