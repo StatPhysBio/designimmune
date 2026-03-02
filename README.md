@@ -3,11 +3,12 @@ Cytotoxic T lymphocytes eliminate infected or malignant cells, safeguarding surr
 
 > Obinna Ukogu, University of Washington (oukogu@uw.edu)
 
-This repository contains code and scripts in[^1] for running agent-based stochastic simulations of the CD8+ T cell response to varied immune challenges. The `notebooks` directory contains a folder `notebooks/scripts` which includes a set of scripts for running discrete simulations and parameter sweeps, and jupyter notebooks for analyzing the simulation results in Ukogu et al. (2025).
+This repository contains code and scripts in[^1] for running agent-based stochastic simulations of the CD8+ T cell response to varied immune challenges. The `notebooks` directory contains a folder `notebooks/scripts` which includes a set of scripts for running discrete simulations and parameter sweeps, and jupyter notebooks for analyzing the simulation results in Ukogu et al. (2025). The data generated for this analysis is hosted on Zenodo[^2].
 
 ![Schematic](local/paper_figs/fig1_large.png)
 
 ## References
 
 [^1]: O. A. Ukogu, Z. Montague, G. Altan-Bonnet, A. Nourmohammad, Design principles of the cytotoxic CD8+ T-cell response, arXiv [physics.bio-ph] (2025). http://arxiv.org/abs/2509.22997.
+[^2]: O. A. Ukogu, & A. Nourmohammad (2026). Design principles of the cytotoxic CD8+ T-cell response [Data set]. Zenodo. https://doi.org/10.5281/zenodo.18763761.
   
