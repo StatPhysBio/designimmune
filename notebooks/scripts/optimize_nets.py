@@ -57,7 +57,6 @@ def run(
         activation_regulation = param[-16:-12], NE_regulation = param[-12:-8], EM_regulation = param[-8:-4],
         contraction_regulation = param[-4:],
         infection_model = infection_model,
-        reg_model = "mwc_like",
         duration = param[11],
         steps = sim_steps,
         seed=child_rng)

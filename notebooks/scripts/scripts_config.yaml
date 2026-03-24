@@ -1,0 +1,11 @@
+# Configuration file for designimmune scripts
+# Edit these paths to match your local setup
+
+# Directory containing processed data files
+data_dir: '/mmfs1/gscratch/spe/oukogu/design_principles/'
+
+# Directory for output plots
+fig_dir: '/mmfs1/home/oukogu/infoimmune/local/raw_figs/'
+
+# Directory for raw data output
+out_dir: '/mmfs1/gscratch/scrubbed/oukogu/infoimmune/sim_output/no_cell_var/raw'
